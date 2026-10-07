@@ -11,7 +11,7 @@ from medcite.contract.audit_models import (
 )
 from medcite.contract.handles import HandleCodec
 from medcite.contract.models import ToolError
-from medcite.server.cursor import decode_cursor, encode_cursor
+from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
 from medcite.server.render import render_audit, render_error
 from medcite.sources.errors import InvalidInputError
 
@@ -100,3 +100,16 @@ def test_render_audit_lists_verdicts_flags_and_closest_match() -> None:
 def test_render_error_includes_hint() -> None:
     error = ToolError(code="invalid_input", message="bad", retryable=False, hint="do this")
     assert render_error(error) == "error invalid_input: bad\nhint: do this"
+
+
+def test_cursor_carries_structured_state() -> None:
+    state = {"p": 10, "m": "AoIIQ", "s": 3, "pd": False, "ed": True}
+    cursor = encode_cursor(CODEC, "search_literature", ARGS, state)
+    assert decode_cursor(CODEC, "search_literature", ARGS, cursor) == state
+
+
+@pytest.mark.parametrize("state", [{"p": 1}, -1, True, "5"])
+def test_decode_offset_rejects_anything_but_a_non_negative_integer(state: object) -> None:
+    cursor = encode_cursor(CODEC, "fetch_passages", ARGS, state)  # type: ignore[arg-type]
+    with pytest.raises(InvalidInputError):
+        decode_offset(CODEC, "fetch_passages", ARGS, cursor)

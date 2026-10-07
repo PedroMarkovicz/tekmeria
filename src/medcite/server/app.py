@@ -30,7 +30,7 @@ from medcite.infra.http import (
 )
 from medcite.infra.logging import get_logger
 from medcite.server import render
-from medcite.server.cursor import decode_cursor, encode_cursor
+from medcite.server.cursor import decode_offset, encode_cursor
 from medcite.server.runtime import AppContext, RuntimeConfig, open_runtime
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.pubmed import LiteratureQuery
@@ -148,7 +148,7 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
 
         async def work(app: AppContext) -> tuple[BaseModel, str]:
             offset = (
-                decode_cursor(app.codec, "search_literature", query_args, cursor) if cursor else 0
+                decode_offset(app.codec, "search_literature", query_args, cursor) if cursor else 0
             )
             page = await app.service.search_literature(
                 LiteratureQuery(
@@ -194,7 +194,7 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         query_args: dict[str, object] = {"record_ids": record_ids, "sections": sections}
 
         async def work(app: AppContext) -> tuple[BaseModel, str]:
-            offset = decode_cursor(app.codec, "fetch_passages", query_args, cursor) if cursor else 0
+            offset = decode_offset(app.codec, "fetch_passages", query_args, cursor) if cursor else 0
             page = await app.service.fetch_passages(
                 record_ids, sections=sections, max_passages=max_passages, offset=offset
             )
