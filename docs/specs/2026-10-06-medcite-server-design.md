@@ -575,7 +575,7 @@ Decisions made while implementing the project, stage by stage. Where they differ
   1. Core server (done)
   2. Literature sources (done)
   3. ClinicalTrials.gov and openFDA, with `search_trials` and `search_drug_labels` (section 16.3)
-  4. The audit view, as an MCP App and on GitHub Pages
+  4. The audit view, as an MCP App and on GitHub Pages (section 16.4)
   5. `CONTRACT.md`, the README, the licence and the manual acceptance checks
 
 ### 16.3 Trials and drug labels
@@ -613,3 +613,24 @@ Decisions made while implementing the project, stage by stage. Where they differ
   - **Versions.** A version in a requested record ID is ignored and the current version is fetched. The audit's `version_changed` flag reports any difference.
 - **9.1 Hosts.** ClinicalTrials.gov is limited to 50 requests per minute and openFDA to 240 per minute. Without `OPENFDA_API_KEY`, openFDA also allows only 1,000 requests per day. Trial records request only the modules they use, leaving out locations, baseline data and adverse events.
 - **9.2 Cache.** Trial and label records are cached for 1 day and search pages for 1 hour.
+
+### 16.4 Audit view
+
+- **10 Shared types.** `python -m medcite.contract.schemas` writes `schemas/audit_report.schema.json` from the Pydantic models. A Python test fails while the committed schema is stale, and another checks that the view's test fixtures are valid reports. The view generates its TypeScript types from the schema before every type-check, test run and build. The generated file is not committed, so a model change the view does not follow breaks `tsc`.
+- **10 One HTML file, committed.** `npm run build` writes `src/medcite/ui/audit-view.html` (about 630 KB, 170 KB gzipped, mostly React and the ext-apps client). The file is committed, so the package works without Node, and `uvx --from git+…` installs it too. CI rebuilds it and fails if the committed file differs; the build is reproducible.
+- **10 Embedding a report.** The page holds an empty `<script type="application/json" id="medcite-report">`. For a standalone page, Python fills it with a report: `medcite.ui.standalone_page()` escapes every `<` in the JSON so no string can close the tag. "Embedded at build time" therefore means when the site is built, not when Vite runs. This keeps one HTML file for both uses.
+- **10 Where the view gets its report:**
+  - an embedded report is shown first;
+  - inside a frame, the view connects to the MCP Apps host and shows the `audit_answer` result, or the tool's error text;
+  - a top-level page without a report explains how to get one.
+- **10 Showing a citation.** Details open below the chip, in the page flow, on hover or on focus and Enter, and close on Escape. They do not float: inside a chat the view is an iframe sized to its content, so a floating popover would be clipped. The quote is marked in the passage using the same whitespace and typographic folding as the audit; for a `quote_mismatch`, the closest match is marked instead.
+- **10 Inside a chat.** The server uses the SDK's `Apps` extension to serve `ui://medcite/audit-view` as `text/html;profile=mcp-app` and to advertise `io.modelcontextprotocol/ui`. `audit_answer` keeps its place in the fixed tool order and carries `_meta.ui.resourceUri`, plus the older flat `_meta["ui/resourceUri"]` key that some hosts still read. Hosts without the extension get the same structured content and text.
+- **12 Demo output.** `medcite demo` writes files only when asked:
+  - `--json-out PATH` writes the report as JSON;
+  - `--html-out PATH` writes the audit view with the report embedded;
+  - `--open` opens the view in a browser, using a temporary file when no `--html-out` is given.
+
+  Writing `demo-report.json` unasked would drop a file in whatever directory `uvx` runs from.
+- **11 CI and Pages.**
+  - CI gains a `web` job (type-check, Vitest, build and the drift check above) and a check that the wheel contains `medcite/ui/audit-view.html`.
+  - A `pages` workflow publishes `medcite demo --html-out site/index.html` and the JSON report to GitHub Pages on every push to `main`. It needs Pages set to "GitHub Actions" in the repository settings.
