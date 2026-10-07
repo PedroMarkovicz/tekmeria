@@ -14,8 +14,10 @@ import pytest
 from medcite.contract.handles import HandleCodec, Locator
 from medcite.infra.cache import Cache
 from medcite.infra.http import Upstream, UpstreamUnavailableError
+from medcite.sources.clinicaltrials import ClinicalTrialsAdapter, clinicaltrials_host
 from medcite.sources.crossref import CrossrefAdapter, crossref_host
 from medcite.sources.europepmc import EuropePmcAdapter, europepmc_host
+from medcite.sources.openfda import OpenFdaAdapter, openfda_host
 from medcite.sources.pubmed import LiteratureQuery, PubMedAdapter, ncbi_host
 from medcite.sources.pubtator import PubTatorAdapter, pubtator_host
 from medcite.sources.service import EvidenceService, SearchState
@@ -131,6 +133,8 @@ async def _service(world: World, cache: Cache, *, deadline_s: float = 30.0) -> E
         europepmc_host(),
         pubtator_host(),
         crossref_host(mailto=None),
+        clinicaltrials_host(),
+        openfda_host(api_key=None),
     ]
     for host in hosts:
         object.__setattr__(host, "rate", 1000.0)
@@ -141,6 +145,8 @@ async def _service(world: World, cache: Cache, *, deadline_s: float = 30.0) -> E
         europepmc=EuropePmcAdapter(up(hosts[1])),
         pubtator=PubTatorAdapter(up(hosts[2])),
         crossref=CrossrefAdapter(up(hosts[3])),
+        trials=ClinicalTrialsAdapter(up(hosts[4])),
+        labels=OpenFdaAdapter(up(hosts[5])),
         deadline_s=deadline_s,
     )
 

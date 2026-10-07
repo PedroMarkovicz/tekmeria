@@ -11,8 +11,10 @@ import httpx
 from medcite.contract.handles import HandleCodec
 from medcite.infra.cache import Cache
 from medcite.infra.http import HostConfig, Upstream
+from medcite.sources.clinicaltrials import ClinicalTrialsAdapter, clinicaltrials_host
 from medcite.sources.crossref import CrossrefAdapter, crossref_host
 from medcite.sources.europepmc import EuropePmcAdapter, europepmc_host
+from medcite.sources.openfda import OpenFdaAdapter, openfda_host
 from medcite.sources.pubmed import PubMedAdapter, ncbi_host
 from medcite.sources.pubtator import PubTatorAdapter, pubtator_host
 from medcite.sources.service import EvidenceService
@@ -27,6 +29,7 @@ class RuntimeConfig:
     ncbi_api_key: str | None = None
     ncbi_email: str | None = None
     crossref_mailto: str | None = None
+    openfda_api_key: str | None = None
     rate_override: float | None = None  # requests/second; fixtures need no spacing
     deadline_s: float = 45.0
 
@@ -59,6 +62,8 @@ async def open_runtime(config: RuntimeConfig) -> AsyncIterator[AppContext]:
             europepmc=EuropePmcAdapter(upstream(europepmc_host())),
             pubtator=PubTatorAdapter(upstream(pubtator_host())),
             crossref=CrossrefAdapter(upstream(crossref_host(mailto=config.crossref_mailto))),
+            trials=ClinicalTrialsAdapter(upstream(clinicaltrials_host())),
+            labels=OpenFdaAdapter(upstream(openfda_host(api_key=config.openfda_api_key))),
             deadline_s=config.deadline_s,
         )
         yield AppContext(service=service, codec=codec, deadline_s=config.deadline_s)

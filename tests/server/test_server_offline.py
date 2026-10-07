@@ -86,7 +86,9 @@ async def test_genuine_handle_with_upstream_down_is_unavailable_not_fabricated(
     assert report["verdict"] == "incomplete"
 
 
-@pytest.mark.parametrize("record_id", ["nct:NCT04368728", "pubmed:1", "pmid:1/title"])
+@pytest.mark.parametrize(
+    "record_id", ["nct:NCT123", "setid:not-a-uuid", "pubmed:1", "pmid:1/title"]
+)
 async def test_unsupported_or_invalid_record_ids(offline: Client, record_id: str) -> None:
     result = await offline.call_tool("fetch_passages", {"record_ids": [record_id]})
     assert result.is_error and result.structured_content is not None

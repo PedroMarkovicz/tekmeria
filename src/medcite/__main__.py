@@ -12,6 +12,7 @@ from pathlib import Path
 import anyio
 from mcp import Client
 from platformdirs import user_cache_dir
+from pydantic import SecretStr
 
 from medcite.demo.scenario import FIXTURES_DIR, record_scenario, run_demo
 from medcite.infra.fixtures import FixtureTransport, RecordingTransport
@@ -24,6 +25,10 @@ from medcite.server.runtime import RuntimeConfig
 
 async def _no_sleep(_: float) -> None:
     return None
+
+
+def _secret(value: SecretStr | None) -> str | None:
+    return value.get_secret_value() if value else None
 
 
 def demo_config() -> RuntimeConfig:
@@ -47,6 +52,7 @@ def live_config(settings: Settings) -> RuntimeConfig:
         ncbi_api_key=settings.ncbi_api_key.get_secret_value() if settings.ncbi_api_key else None,
         ncbi_email=settings.ncbi_email,
         crossref_mailto=settings.crossref_mailto,
+        openfda_api_key=_secret(settings.openfda_api_key),
         deadline_s=settings.tool_deadline_s,
     )
 
@@ -75,6 +81,7 @@ async def _record(settings: Settings) -> None:
         transport=RecordingTransport(FIXTURES_DIR),
         ncbi_api_key=settings.ncbi_api_key.get_secret_value() if settings.ncbi_api_key else None,
         ncbi_email=settings.ncbi_email,
+        openfda_api_key=_secret(settings.openfda_api_key),
     )
     async with Client(create_server(config)) as client:
         await record_scenario(client)

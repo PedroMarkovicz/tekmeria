@@ -21,19 +21,24 @@ from medcite.contract.models import (
     Signal,
     SourceStatusValue,
 )
-from medcite.contract.tool_models import LiteratureHit, RecordPassages
+from medcite.contract.tool_models import LabelHit, LiteratureHit, RecordPassages, TrialHit
 from medcite.infra.cache import Cache
 from medcite.infra.http import UpstreamResponseError, UpstreamUnavailableError
-from medcite.sources.base import PassageDraft, RecordBundle
+from medcite.sources.base import FetchOutcome, PassageDraft, RecordBundle
+from medcite.sources.clinicaltrials import PAGE_SIZE as TRIALS_PAGE_SIZE
+from medcite.sources.clinicaltrials import ClinicalTrialsAdapter, TrialQuery
+from medcite.sources.clinicaltrials_parse import trial_hit
 from medcite.sources.crossref import CrossrefAdapter, merge_retraction
 from medcite.sources.errors import InvalidInputError
-from medcite.sources.europepmc import EuropePmcAdapter, is_citable
+from medcite.sources.europepmc import EuropePmcAdapter, LoadOutcome, is_citable
 from medcite.sources.europepmc_parse import parse_result, record_id_for
 from medcite.sources.merge import Candidate, identity_keys, interleave
+from medcite.sources.openfda import MAX_SKIP, OpenFdaAdapter
+from medcite.sources.openfda_parse import label_hit
 from medcite.sources.pubmed import LiteratureQuery, PubMedAdapter
 from medcite.sources.pubtator import PubTatorAdapter, attach_entities
 
-SUPPORTED_SCHEMES = ("pmid", "pmcid", "ppr")
+SUPPORTED_SCHEMES = ("pmid", "pmcid", "ppr", "nct", "setid")
 LITERATURE_SOURCES = ("pubmed", "europepmc")
 PREVIEW_CHARS = 300
 EPMC_PAGE_SIZE = 25  # fixed, so deep paging never asks Europe PMC for an oversized page
@@ -42,6 +47,28 @@ EPMC_PAGE_SIZE = 25  # fixed, so deep paging never asks Europe PMC for an oversi
 SOURCE_SHARE = 0.4
 STEP_SHARE = 0.15
 UPSTREAM_FAILURES = (UpstreamUnavailableError, UpstreamResponseError)
+# Which source serves each scheme, and its name in messages.
+SCHEME_SOURCES = {
+    "pmid": "pubmed",
+    "pmcid": "europepmc",
+    "ppr": "europepmc",
+    "nct": "clinicaltrials",
+    "setid": "openfda",
+}
+SOURCE_NAMES = {
+    "pubmed": "PubMed",
+    "europepmc": "Europe PMC",
+    "clinicaltrials": "ClinicalTrials.gov",
+    "openfda": "openFDA",
+}
+# Record IDs that the registries would reject, caught before any request.
+_ID_FORMS = {
+    "nct": (re.compile(r"^NCT\d{8}$"), "nct:NCT04368728"),
+    "setid": (
+        re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
+        "setid:0cbce382-9c88-4f58-ae0f-532a841e8f95",
+    ),
+}
 # PubMed field tags such as [tiab] or [MeSH Terms]; Europe PMC would search them as text.
 _PUBMED_TAG = re.compile(r"\[[A-Za-z][A-Za-z /:-]*\]")
 
@@ -84,6 +111,42 @@ class SearchState:
         if state.pubmed < 0 or state.europepmc_skip < 0:
             raise InvalidInputError("cursor state is not valid")
         return state
+
+
+@dataclass(frozen=True)
+class TrialSearchState:
+    """Where trial search continues: item `skip` of the registry page at `token`."""
+
+    token: str | None = None  # None is the first registry page
+    skip: int = 0
+
+    def to_json(self) -> dict[str, JsonValue]:
+        return {"t": self.token, "s": self.skip}
+
+    @classmethod
+    def from_json(cls, data: JsonValue) -> "TrialSearchState":
+        if not isinstance(data, dict):
+            raise InvalidInputError("cursor state is not valid")
+        token, skip = data.get("t"), data.get("s")
+        if token is not None and not isinstance(token, str):
+            raise InvalidInputError("cursor state is not valid")
+        if not isinstance(skip, int) or isinstance(skip, bool) or skip < 0:
+            raise InvalidInputError("cursor state is not valid")
+        return cls(token=token, skip=skip)
+
+
+@dataclass(frozen=True)
+class TrialSearchPage:
+    hits: list[TrialHit]
+    total: int
+    next_state: TrialSearchState | None
+
+
+@dataclass(frozen=True)
+class LabelSearchPage:
+    hits: list[LabelHit]
+    total: int
+    next_offset: int | None
 
 
 @dataclass(frozen=True)
@@ -132,6 +195,15 @@ def _matches(path: str, prefixes: Sequence[str] | None) -> bool:
     return any(path == prefix or path.startswith(prefix + ".") for prefix in prefixes)
 
 
+def canonical(ref: RecordRef) -> RecordRef:
+    """IDs as the upstreams spell them: NCT, PMC and PPR upper case, set IDs lower case."""
+    if ref.scheme == "setid":
+        return replace(ref, id=ref.id.lower())
+    if ref.scheme in ("nct", "pmcid", "ppr"):
+        return replace(ref, id=ref.id.upper())
+    return ref
+
+
 def _record_ref(record_id: str) -> RecordRef:
     try:
         ref = parse_record_id(record_id)
@@ -144,6 +216,11 @@ def _record_ref(record_id: str) -> RecordRef:
             f"scheme {ref.scheme!r} is not supported yet",
             hint="Supported schemes: " + ", ".join(SUPPORTED_SCHEMES),
         )
+    ref = canonical(ref)
+    if ref.scheme in _ID_FORMS:
+        pattern, example = _ID_FORMS[ref.scheme]
+        if not pattern.match(ref.id):
+            raise InvalidInputError(f"invalid {ref.scheme} id {ref.id!r}", hint=f"e.g. {example}")
     return ref
 
 
@@ -179,6 +256,8 @@ class EvidenceService:
         europepmc: EuropePmcAdapter,
         pubtator: PubTatorAdapter,
         crossref: CrossrefAdapter,
+        trials: ClinicalTrialsAdapter,
+        labels: OpenFdaAdapter,
         deadline_s: float = math.inf,
     ) -> None:
         self.codec = codec
@@ -187,6 +266,8 @@ class EvidenceService:
         self.europepmc = europepmc
         self.pubtator = pubtator
         self.crossref = crossref
+        self.trials = trials
+        self.labels = labels
         # Every upstream step gets a share of the tool deadline, so a slow source yields
         # an `unavailable` or `degraded` status in a full result instead of losing it all.
         self.deadline_s = deadline_s
@@ -380,6 +461,45 @@ class EvidenceService:
             source_status=status,
         )
 
+    async def search_trials(
+        self, query: TrialQuery, *, state: TrialSearchState, limit: int
+    ) -> TrialSearchPage:
+        """A page of trial hits. Registry pages have a fixed size, so `limit` hits may span
+        two of them; the next state names the registry page and position to resume at."""
+        assert limit <= TRIALS_PAGE_SIZE
+        items: list[tuple[str | None, int, dict[str, Any]]] = []
+        token, skip, total = state.token, state.skip, 0
+        for _ in range(2):
+            page = await self.trials.search(query, token=token)
+            total = page.total
+            items.extend((token, i, study) for i, study in enumerate(page.studies) if i >= skip)
+            token, skip = page.next_token, 0
+            if token is None or len(items) >= limit:
+                break
+        if len(items) > limit:
+            resume_token, resume_skip, _ = items[limit]
+            next_state: TrialSearchState | None = TrialSearchState(resume_token, resume_skip)
+        else:
+            next_state = TrialSearchState(token, 0) if token is not None else None
+        now = self.trials.now()
+        return TrialSearchPage(
+            hits=[trial_hit(study, now) for _, _, study in items[:limit]],
+            total=total,
+            next_state=next_state,
+        )
+
+    async def search_labels(self, drug: str, *, offset: int, limit: int) -> LabelSearchPage:
+        """Every label naming the drug, newest first, `limit` at a time."""
+        page = await self.labels.search(drug, skip=offset, limit=limit)
+        end = offset + len(page.results)
+        more = bool(page.results) and end < min(page.total, MAX_SKIP)
+        now = self.labels.now()
+        return LabelSearchPage(
+            hits=[label_hit(result, now) for result in page.results],
+            total=page.total,
+            next_offset=end if more else None,
+        )
+
     async def _hits(
         self, chosen: Sequence[Candidate], status: dict[str, SourceStatusValue]
     ) -> list[LiteratureHit]:
@@ -427,53 +547,45 @@ class EvidenceService:
     async def _load(
         self, refs: Sequence[RecordRef], *, full_text: bool, share: float = SOURCE_SHARE
     ) -> _Loaded:
-        """Records from PubMed and Europe PMC side by side, each within `share` of the deadline."""
+        """Records from every source involved, side by side, each within `share` of the
+        deadline."""
         loaded = _Loaded()
-        pmid_refs = [r for r in refs if r.scheme == "pmid"]
-        epmc_refs = [r for r in refs if r.scheme in ("pmcid", "ppr")]
         budget = self.deadline_s * share
+        loaders: dict[str, Callable[[list[str]], Awaitable[FetchOutcome]]] = {
+            "pubmed": self.pubmed.fetch,
+            "europepmc": partial(self.europepmc.load, full_text=full_text),
+            "clinicaltrials": self.trials.load,
+            "openfda": self.labels.load,
+        }
 
         def fail(source: str, group: Sequence[RecordRef], reason: str) -> None:
             loaded.status[source] = "unavailable"
             loaded.failed.update({r.key: reason for r in group})
 
-        async def from_pubmed() -> None:
+        async def from_source(source: str, group: list[RecordRef]) -> None:
             with anyio.move_on_after(budget) as scope:
                 try:
-                    outcome = await self.pubmed.fetch([r.id for r in pmid_refs])
+                    outcome = await loaders[source]([r.id for r in group])
                 except UPSTREAM_FAILURES as exc:
-                    fail("pubmed", pmid_refs, str(exc))
+                    fail(source, group, str(exc))
                     return
-                loaded.status["pubmed"] = "ok"
-                loaded.bundles.update({f"pmid:{k}": b for k, b in outcome.bundles.items()})
-                loaded.missing.extend(f"pmid:{m}" for m in outcome.missing)
-            if scope.cancelled_caught:
-                fail("pubmed", pmid_refs, f"no answer from PubMed within {budget:g}s")
-
-        async def from_europepmc() -> None:
-            with anyio.move_on_after(budget) as scope:
-                try:
-                    outcome = await self.europepmc.load(
-                        [r.id for r in epmc_refs], full_text=full_text
-                    )
-                except UPSTREAM_FAILURES as exc:
-                    fail("europepmc", epmc_refs, str(exc))
-                    return
-                loaded.status["europepmc"] = "degraded" if outcome.full_text_failed else "ok"
-                loaded.no_full_text.update(f"pmcid:{i}" for i in outcome.full_text_failed)
-                for ref in epmc_refs:
+                loaded.status[source] = "ok"
+                if isinstance(outcome, LoadOutcome) and outcome.full_text_failed:
+                    loaded.status[source] = "degraded"
+                    loaded.no_full_text.update(f"pmcid:{i}" for i in outcome.full_text_failed)
+                for ref in group:
                     bundle = outcome.bundles.get(ref.id)
                     if bundle is None:
                         loaded.missing.append(ref.key)
                     else:
                         loaded.bundles[ref.key] = bundle
             if scope.cancelled_caught:
-                fail("europepmc", epmc_refs, f"no answer from Europe PMC within {budget:g}s")
+                fail(source, group, f"no answer from {SOURCE_NAMES[source]} within {budget:g}s")
 
-        await _concurrently(
-            *([from_pubmed] if pmid_refs else []),
-            *([from_europepmc] if epmc_refs else []),
-        )
+        groups: dict[str, list[RecordRef]] = {}
+        for ref in refs:
+            groups.setdefault(SCHEME_SOURCES[ref.scheme], []).append(ref)
+        await _concurrently(*(partial(from_source, s, g) for s, g in groups.items()))
         return loaded
 
     async def _with_retractions(
