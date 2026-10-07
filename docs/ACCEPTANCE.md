@@ -11,8 +11,8 @@ How each acceptance criterion in spec section 13 is checked, and where it stands
 | 3 | `tools/list` returns the seven tools in a fixed order, each with an `outputSchema`, and every tool result validates against its schema. | Each tool's output is validated against its schema in at least one test: `tests/server/test_server_offline.py::test_tools_listed_in_fixed_order_with_schemas`, plus the schema-validating `_call` helpers in `tests/server/test_server.py::test_search_returns_hits_with_title_handles`, `tests/server/test_server_literature.py::test_default_search_merges_both_sources` and `tests/server/test_server_registries.py::test_trial_search_pages_without_repeats` | Automated |
 | 4 | CI passes: lint, types, Python tests and web tests. | The `python` and `web` jobs in `.github/workflows/ci.yml` | Automated; first run when the repository is pushed |
 | 5 | The audit view renders the demo report on GitHub Pages, and keyboard navigation reaches every citation chip. | `.github/workflows/pages.yml` publishes `medcite demo --html-out`; `web/src/AuditView.test.tsx::are all reachable with the keyboard` | Keyboard: automated. Publication: pending, since Pages needs a public repository (or a paid plan) and is not enabled yet |
-| 6 | The audit view renders inside an MCP Apps host (Claude Desktop), documented with a screenshot in the README. | Manual: checklist A | Not yet run |
-| 7 | A live run in Claude Desktop or VS Code, using the `cite_by_handle` prompt, gives an answer whose audit is `pass` or `warn` with zero fabricated citations; the transcript goes in the README. | Manual: checklist B | Not yet run |
+| 6 | The audit view renders inside an MCP Apps host (Claude Desktop), documented with a screenshot in the README. | Manual: checklist A; the screenshot is `docs/assets/host-audit-view.png` | Done (2026-10-07): Claude Desktop rendered the audit view as a medcite widget |
+| 7 | A live run in Claude Desktop or VS Code, using the `cite_by_handle` prompt, gives an answer whose audit is `pass` or `warn` with zero fabricated citations; the transcript goes in the README. | Manual: checklist B; transcripts in `docs/live-run.md` | Run 1 (2026-10-07) failed: its only forged citation was the instructions' own example handle, repeated by the model (fixed, spec 16.6). Re-run pending |
 | 8 | `docs/CONTRACT.md` matches the implementation. | `tests/contract/test_contract_doc.py::test_every_value_in_the_code_is_documented` and `tests/contract/test_contract_doc.py::test_verdicts_are_listed_in_precedence_order` | Automated |
 
 ## Manual checklist
@@ -48,7 +48,7 @@ Both checks use Claude Desktop with medcite installed from GitHub. They need net
 
 ### B. A live run citing by handle (criterion 7)
 
-1. Start a new chat and add the `cite_by_handle` prompt (the attachment menu lists medcite's prompts). Use the question *"Does MMR vaccination cause autism?"*
+1. Start a new chat with the `cite_by_handle` prompt and the question *"Does MMR vaccination cause autism?"*. If the host lists MCP prompts (for example as slash commands), pick it there; the Claude Desktop version used on 2026-10-07 did not, so paste the prompt text instead (`describe_contract` returns it, as `instructions`).
 2. Let the model search and fetch, then answer with handle citations.
 3. Ask: *"Now call audit_answer on your answer exactly as written."*
 4. The audit must be `pass` or `warn`, with `fabricated: 0`. If it is `fail`, keep the transcript anyway: it is a finding, not a failed check of this checklist.

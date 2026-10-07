@@ -139,6 +139,12 @@ fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 [6] uncited: Parents should discuss the vaccination schedule with their paediatrician.
 ```
 
+## In a chat
+
+Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued:
+
+![The audit view rendered inside Claude Desktop](docs/assets/host-audit-view.png)
+
 ## Architecture
 
 ```
