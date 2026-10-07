@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Biomedical evidence over MCP, cited by handle: every passage is citable and every citation is auditable."
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 authors = [{ name = "Pedro Markovicz" }]
 keywords = ["mcp", "pubmed", "citations", "rag", "biomedical"]
@@ -23,6 +24,12 @@ dependencies = [
     "structlog>=26.1",
     "anyio>=4.15,<5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/PedroMarkovicz/medcite"
+Repository = "https://github.com/PedroMarkovicz/medcite"
+Documentation = "https://github.com/PedroMarkovicz/medcite/blob/main/docs/CONTRACT.md"
+"Audit view demo" = "https://pedromarkovicz.github.io/medcite/"
 
 [project.scripts]
 medcite = "medcite.__main__:main"
@@ -55,6 +62,8 @@ only-include = [
   "pyproject.toml",
   "uv.lock",
   "README.md",
+  "LICENSE",
+  "NOTICE",
   ".gitignore",
   ".python-version",
 ]
