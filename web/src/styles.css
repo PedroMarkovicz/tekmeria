@@ -1,0 +1,242 @@
+/* Plain CSS (spec 10). Tones always come with an icon and a text label. */
+:root {
+  --bg: #ffffff;
+  --fg: #1d1f23;
+  --muted: #5d6470;
+  --line: #d9dde3;
+  --panel: #f6f7f9;
+  --good: #1f7a3d;
+  --good-bg: #e7f5ec;
+  --warn: #8a5a00;
+  --warn-bg: #fff4dc;
+  --bad: #b3261e;
+  --bad-bg: #fdeceb;
+  --mark: #fff0a8;
+  --mark-closest: #ffd9d6;
+  --focus: #2f6fdb;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17191d;
+    --fg: #e8eaee;
+    --muted: #a3aab5;
+    --line: #353a42;
+    --panel: #20242a;
+    --good: #6fd08f;
+    --good-bg: #16301f;
+    --warn: #f2c063;
+    --warn-bg: #352a12;
+    --bad: #ff8a80;
+    --bad-bg: #3a1a18;
+    --mark: #5c4f12;
+    --mark-closest: #5a2420;
+    --focus: #7aa7ff;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #17191d;
+  --fg: #e8eaee;
+  --muted: #a3aab5;
+  --line: #353a42;
+  --panel: #20242a;
+  --good: #6fd08f;
+  --good-bg: #16301f;
+  --warn: #f2c063;
+  --warn-bg: #352a12;
+  --bad: #ff8a80;
+  --bad-bg: #3a1a18;
+  --mark: #5c4f12;
+  --mark-closest: #5a2420;
+  --focus: #7aa7ff;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.audit {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.tone-good {
+  color: var(--good);
+}
+.tone-warn {
+  color: var(--warn);
+}
+.tone-bad {
+  color: var(--bad);
+}
+
+.summary .verdict {
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+}
+
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+.numbers div {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+.numbers dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.numbers dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.by-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.fail-on,
+.meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.claims {
+  padding-left: 1.5rem;
+}
+.claim {
+  margin: 0.5rem 0;
+}
+.claim-uncited .sentence {
+  text-decoration: underline wavy var(--warn);
+  text-underline-offset: 3px;
+}
+.status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Details open in the page flow, below the chip: inside a chat the view is an iframe
+   sized to its content, so a floating popover would be clipped. */
+.citation {
+  display: inline;
+  margin-right: 0.25rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.chip.tone-good {
+  background: var(--good-bg);
+}
+.chip.tone-warn {
+  background: var(--warn-bg);
+}
+.chip.tone-bad {
+  background: var(--bad-bg);
+}
+.chip:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.chip-icon {
+  font-weight: 700;
+}
+.chip-handle {
+  color: var(--fg);
+  font-size: 0.75rem;
+}
+
+.badge {
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.detail {
+  display: block;
+  margin: 0.4rem 0 0.6rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+.detail[hidden] {
+  display: none;
+}
+.detail p {
+  margin: 0 0 0.5rem;
+}
+.detail-handle code {
+  word-break: break-all;
+  color: var(--muted);
+}
+.detail-quote {
+  margin: 0 0 0.5rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--line);
+  font-style: italic;
+}
+.passage {
+  margin: 0;
+}
+.passage figcaption {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.passage-text {
+  max-height: 14rem;
+  overflow: auto;
+}
+mark.mark-quote {
+  background: var(--mark);
+  color: inherit;
+}
+mark.mark-closest {
+  background: var(--mark-closest);
+  color: inherit;
+}
+
+.notice {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}

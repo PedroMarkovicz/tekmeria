@@ -1,0 +1,99 @@
+{
+  "contract_version": "0.1.0",
+  "audited_at": "2026-10-07T12:00:00Z",
+  "claims": [
+    {
+      "index": 0,
+      "sentence": "A preprint reported a 12% reduction.",
+      "status": "cited",
+      "citations": [
+        {
+          "handle": "ppr:PPR1297067/abstract.1~ab3de",
+          "quote": "12% reduction",
+          "verdict": "ok",
+          "flags": [{ "name": "preprint", "detail": null }],
+          "checked_against": "current",
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": {
+            "handle": "ppr:PPR1297067/abstract.1~ab3de",
+            "record_id": "ppr:PPR1297067",
+            "path": "abstract.1",
+            "section_label": null,
+            "text": "Vaccination gave a 12% reduction in hospital admissions.",
+            "entities": { "state": "not_checked", "value": null, "sources": [] }
+          },
+          "support": "not_checked"
+        },
+        {
+          "handle": "nct:NCT04368728@2025-11-02/summary.1~k7m2q",
+          "quote": null,
+          "verdict": "ok",
+          "flags": [{ "name": "version_changed", "detail": "2026-03-25" }],
+          "checked_against": "issued",
+          "resolved_version": "2026-03-25",
+          "closest_match": null,
+          "similarity": null,
+          "passage": {
+            "handle": "nct:NCT04368728@2026-03-25/summary.1~p0c8m",
+            "record_id": "nct:NCT04368728@2026-03-25",
+            "path": "summary.1",
+            "section_label": "Brief summary",
+            "text": "A phase 1/2/3 study of an RNA vaccine.",
+            "entities": { "state": "not_checked", "value": null, "sources": [] }
+          },
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "sentence": "Two other sources agree.",
+      "status": "invalid_only",
+      "citations": [
+        {
+          "handle": "pmid:1/title~abcde",
+          "quote": null,
+          "verdict": "unavailable",
+          "flags": [],
+          "checked_against": null,
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": null,
+          "support": "not_checked"
+        },
+        {
+          "handle": "pmid:2/abstract.9~fghjk",
+          "quote": null,
+          "verdict": "withdrawn",
+          "flags": [],
+          "checked_against": null,
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": null,
+          "support": "not_checked"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "sentences": 2,
+    "cited_sentences": 1,
+    "uncited_sentences": 0,
+    "invalid_only_sentences": 1,
+    "citations": 4,
+    "by_verdict": { "malformed": 0, "forged": 0, "unavailable": 1, "withdrawn": 1, "quote_mismatch": 0, "ok": 2 },
+    "quotes_checked": 1,
+    "quotes_ok": 1,
+    "citation_validity": 0.6666666666666666,
+    "sentence_coverage": 0.5,
+    "quote_accuracy": 1.0,
+    "fabricated": 0,
+    "retracted_cited": 0
+  },
+  "verdict": "incomplete",
+  "fail_on": ["forged", "malformed"]
+}

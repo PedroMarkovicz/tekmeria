@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from medcite.contract.audit_models import AuditReport
 from medcite.contract.schemas import SCHEMAS, export, schema_text
 
 REPO = Path(__file__).resolve().parents[2]
@@ -17,3 +18,10 @@ def test_export_writes_every_schema(tmp_path: Path) -> None:
     written = export(tmp_path / "out")
     assert sorted(p.name for p in written) == sorted(SCHEMAS)
     assert '"title": "AuditReport"' in written[0].read_text(encoding="utf-8")
+
+
+def test_the_audit_view_test_fixtures_are_valid_reports() -> None:
+    fixtures = sorted((REPO / "web" / "src" / "test" / "fixtures").glob("*.json"))
+    assert fixtures, "web/src/test/fixtures has no reports"
+    for path in fixtures:
+        AuditReport.model_validate_json(path.read_text(encoding="utf-8"))

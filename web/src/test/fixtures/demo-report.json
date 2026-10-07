@@ -1,0 +1,172 @@
+{
+  "contract_version": "0.1.0",
+  "audited_at": "2026-10-07T19:26:01.676801Z",
+  "claims": [
+    {
+      "index": 0,
+      "sentence": "A nationwide Danish cohort found no increased risk of autism after MMR vaccination.",
+      "status": "cited",
+      "citations": [
+        {
+          "handle": "pmid:30831578/abstract.7~rbhq7",
+          "quote": "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism",
+          "verdict": "ok",
+          "flags": [],
+          "checked_against": "issued",
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": {
+            "handle": "pmid:30831578/abstract.7~rbhq7",
+            "record_id": "pmid:30831578",
+            "path": "abstract.7",
+            "section_label": "RESULTS",
+            "text": "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism (incidence rate, 129.7 per 100 000 person-years). Comparing MMR-vaccinated with MMR-unvaccinated children yielded a fully adjusted autism hazard ratio of 0.93 (95% CI, 0.85 to 1.02). Similarly, no increased risk for autism after MMR vaccination was consistently observed in subgroups of children defined according to sibling history of autism, autism risk factors (based on a disease risk score) or other childhood vaccinations, or during specified time periods after vaccination.",
+            "entities": {
+              "state": "not_checked",
+              "value": null,
+              "sources": []
+            }
+          },
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "sentence": "The same study concluded that MMR vaccination raises autism risk.",
+      "status": "invalid_only",
+      "citations": [
+        {
+          "handle": "pmid:30831578/abstract.9~kmtk5",
+          "quote": "MMR vaccination strongly increases the risk of autism",
+          "verdict": "quote_mismatch",
+          "flags": [],
+          "checked_against": "issued",
+          "resolved_version": null,
+          "closest_match": "MMR vaccination does not increase the risk for autism",
+          "similarity": 0.8491,
+          "passage": {
+            "handle": "pmid:30831578/abstract.9~kmtk5",
+            "record_id": "pmid:30831578",
+            "path": "abstract.9",
+            "section_label": "CONCLUSION",
+            "text": "The study strongly supports that MMR vaccination does not increase the risk for autism, does not trigger autism in susceptible children, and is not associated with clustering of autism cases after vaccination. It adds to previous studies through significant additional statistical power and by addressing hypotheses of susceptible subgroups and clustering of cases.",
+            "entities": {
+              "state": "not_checked",
+              "value": null,
+              "sources": []
+            }
+          },
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "sentence": "A second cohort reported the same null association.",
+      "status": "invalid_only",
+      "citations": [
+        {
+          "handle": "pmid:30831578/abstract.7~rbhq0",
+          "quote": null,
+          "verdict": "forged",
+          "flags": [],
+          "checked_against": null,
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": null,
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "sentence": "Earlier reviews reached the same conclusion.",
+      "status": "invalid_only",
+      "citations": [
+        {
+          "handle": "pmid:30831578-abstract",
+          "quote": null,
+          "verdict": "malformed",
+          "flags": [],
+          "checked_against": null,
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": null,
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "sentence": "A 1998 case series that proposed a link was later retracted.",
+      "status": "cited",
+      "citations": [
+        {
+          "handle": "pmid:9500320/abstract.4~5z8a5",
+          "quote": null,
+          "verdict": "ok",
+          "flags": [
+            {
+              "name": "retracted",
+              "detail": "10.1016/s0140-6736(10)60175-4"
+            }
+          ],
+          "checked_against": "issued",
+          "resolved_version": null,
+          "closest_match": null,
+          "similarity": null,
+          "passage": {
+            "handle": "pmid:9500320/abstract.4~5z8a5",
+            "record_id": "pmid:9500320",
+            "path": "abstract.4",
+            "section_label": "INTERPRETATION",
+            "text": "We identified associated gastrointestinal disease and developmental regression in a group of previously normal children, which was generally associated in time with possible environmental triggers.",
+            "entities": {
+              "state": "not_checked",
+              "value": null,
+              "sources": []
+            }
+          },
+          "support": "not_checked"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "sentence": "Parents should discuss the vaccination schedule with their paediatrician.",
+      "status": "uncited",
+      "citations": []
+    }
+  ],
+  "summary": {
+    "sentences": 6,
+    "cited_sentences": 2,
+    "uncited_sentences": 1,
+    "invalid_only_sentences": 3,
+    "citations": 5,
+    "by_verdict": {
+      "malformed": 1,
+      "forged": 1,
+      "unavailable": 0,
+      "withdrawn": 0,
+      "quote_mismatch": 1,
+      "ok": 2
+    },
+    "quotes_checked": 2,
+    "quotes_ok": 1,
+    "citation_validity": 0.4,
+    "sentence_coverage": 0.3333333333333333,
+    "quote_accuracy": 0.5,
+    "fabricated": 1,
+    "retracted_cited": 1
+  },
+  "verdict": "fail",
+  "fail_on": [
+    "forged",
+    "malformed"
+  ]
+}
