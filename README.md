@@ -145,6 +145,17 @@ Claude Desktop shows the result of `audit_answer` as the audit view, here for an
 
 ![The audit view rendered inside Claude Desktop](docs/assets/host-audit-view.png)
 
+## A real run
+
+On 2026-10-07, a model in Claude Desktop answered *"Does MMR vaccination cause autism?"* with the `cite_by_handle` instructions, then audited its own answer:
+
+```text
+verdict: WARN  (16 citations: 16 ok)
+fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
+```
+
+Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in medcite's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
+
 ## Architecture
 
 ```
