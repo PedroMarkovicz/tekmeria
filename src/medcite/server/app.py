@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal
 
 import anyio
+from mcp.server.apps import Apps
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
@@ -38,6 +39,7 @@ from medcite.sources.clinicaltrials import TrialPhase, TrialQuery, TrialStatus
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.pubmed import LiteratureQuery
 from medcite.sources.service import LITERATURE_SOURCES, SearchState, TrialSearchState
+from medcite.ui import AUDIT_VIEW_URI, audit_view_html
 
 log = get_logger("medcite.server")
 
@@ -56,6 +58,9 @@ LiteratureSource = Literal["pubmed", "europepmc"]
 READ_ONLY = ToolAnnotations(read_only_hint=True)
 READ_ONLY_OPEN = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 READ_ONLY_IDEMPOTENT = ToolAnnotations(read_only_hint=True, idempotent_hint=True)
+# MCP Apps (io.modelcontextprotocol/ui): hosts render the audit in this view. The flat
+# "ui/resourceUri" key is the older form, still read by some hosts.
+AUDIT_VIEW_META = {"ui": {"resourceUri": AUDIT_VIEW_URI}, "ui/resourceUri": AUDIT_VIEW_URI}
 
 Work = Callable[[AppContext], Awaitable[tuple[BaseModel, str]]]
 
@@ -115,8 +120,23 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         async with open_runtime(config) as app:
             yield app
 
+    # The view is served through the SDK's Apps extension, which also advertises the
+    # extension. The tool stays registered below, so tools/list keeps its fixed order.
+    apps = Apps()
+    apps.add_html_resource(
+        AUDIT_VIEW_URI,
+        audit_view_html(),
+        name="audit-view",
+        title="medcite audit view",
+        description="Shows an audit_answer report: verdicts, flags and the cited passages.",
+        prefers_border=True,
+    )
     server: MCPServer[AppContext] = MCPServer(
-        name="medcite", version=__version__, instructions=INSTRUCTIONS, lifespan=lifespan
+        name="medcite",
+        version=__version__,
+        instructions=INSTRUCTIONS,
+        lifespan=lifespan,
+        extensions=[apps],
     )
 
     # Registration order is the tools/list order (spec 6.1).
@@ -379,7 +399,7 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
 
         return await _run(ctx, "resolve_handles", work)
 
-    @server.tool(annotations=READ_ONLY_IDEMPOTENT)
+    @server.tool(annotations=READ_ONLY_IDEMPOTENT, meta=AUDIT_VIEW_META)
     async def audit_answer(
         ctx: Context[Any, Any],
         answer_text: Annotated[
