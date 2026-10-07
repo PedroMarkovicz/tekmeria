@@ -113,26 +113,31 @@ class SearchState:
         return state
 
 
+def _is_count(value: JsonValue) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 @dataclass(frozen=True)
 class TrialSearchState:
     """Where trial search continues: item `skip` of the registry page at `token`."""
 
     token: str | None = None  # None is the first registry page
     skip: int = 0
+    total: int | None = None  # from the first page; later pages do not repeat it
 
     def to_json(self) -> dict[str, JsonValue]:
-        return {"t": self.token, "s": self.skip}
+        return {"t": self.token, "s": self.skip, "n": self.total}
 
     @classmethod
     def from_json(cls, data: JsonValue) -> "TrialSearchState":
         if not isinstance(data, dict):
             raise InvalidInputError("cursor state is not valid")
-        token, skip = data.get("t"), data.get("s")
+        token, skip, total = data.get("t"), data.get("s"), data.get("n")
         if token is not None and not isinstance(token, str):
             raise InvalidInputError("cursor state is not valid")
-        if not isinstance(skip, int) or isinstance(skip, bool) or skip < 0:
+        if not _is_count(skip) or (total is not None and not _is_count(total)):
             raise InvalidInputError("cursor state is not valid")
-        return cls(token=token, skip=skip)
+        return cls(token=token, skip=skip, total=total)  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True)
@@ -468,23 +473,23 @@ class EvidenceService:
         two of them; the next state names the registry page and position to resume at."""
         assert limit <= TRIALS_PAGE_SIZE
         items: list[tuple[str | None, int, dict[str, Any]]] = []
-        token, skip, total = state.token, state.skip, 0
+        token, skip, total = state.token, state.skip, state.total
         for _ in range(2):
             page = await self.trials.search(query, token=token)
-            total = page.total
+            total = page.total if page.total is not None else total
             items.extend((token, i, study) for i, study in enumerate(page.studies) if i >= skip)
             token, skip = page.next_token, 0
             if token is None or len(items) >= limit:
                 break
         if len(items) > limit:
             resume_token, resume_skip, _ = items[limit]
-            next_state: TrialSearchState | None = TrialSearchState(resume_token, resume_skip)
+            next_state: TrialSearchState | None = TrialSearchState(resume_token, resume_skip, total)
         else:
-            next_state = TrialSearchState(token, 0) if token is not None else None
+            next_state = TrialSearchState(token, 0, total) if token is not None else None
         now = self.trials.now()
         return TrialSearchPage(
             hits=[trial_hit(study, now) for _, _, study in items[:limit]],
-            total=total,
+            total=total or 0,
             next_state=next_state,
         )
 

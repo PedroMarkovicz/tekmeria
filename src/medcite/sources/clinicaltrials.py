@@ -142,7 +142,7 @@ def nct_of(study: dict[str, Any]) -> str:
 @dataclass(frozen=True)
 class TrialsPage:
     studies: list[dict[str, Any]]
-    total: int
+    total: int | None  # the registry sends the count with the first page only
     next_token: str | None  # None on the last page
 
 
@@ -170,7 +170,7 @@ class ClinicalTrialsAdapter:
         data = json.loads(body)
         return TrialsPage(
             studies=list(data["studies"]),
-            total=int(data.get("totalCount") or 0),
+            total=int(data["totalCount"]) if "totalCount" in data else None,
             next_token=data.get("nextPageToken") or None,
         )
 
@@ -190,8 +190,14 @@ class ClinicalTrialsAdapter:
                 "studies", params, ttl_s=RECORD_TTL_S, validate=_check
             )
             for study in json.loads(body)["studies"]:
-                nct = nct_of(study)
-                if nct in batch:
-                    outcome.bundles[nct] = parse_study(study, self._clock())
+                # An obsolete ID merged into this study is listed in nctIdAliases; the
+                # registry answers it with the study under its current ID.
+                ident = study["protocolSection"]["identificationModule"]
+                ids = [nct_of(study), *(str(a) for a in ident.get("nctIdAliases") or [])]
+                requested = [i for i in ids if i in batch]
+                if requested:
+                    bundle = parse_study(study, self._clock())
+                    for nct in requested:
+                        outcome.bundles[nct] = bundle
         outcome.missing = [i for i in wanted if i not in outcome.bundles]
         return outcome

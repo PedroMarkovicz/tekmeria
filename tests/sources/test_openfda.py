@@ -10,6 +10,7 @@ from medcite.infra.http import Upstream, UpstreamResponseError
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.openfda import (
     NOT_FOUND_ATTEMPTS,
+    NOT_FOUND_RETRY_DELAY_S,
     OpenFdaAdapter,
     label_query,
     openfda_host,
@@ -18,6 +19,10 @@ from medcite.sources.openfda import (
 pytestmark = pytest.mark.anyio
 
 NOT_FOUND = '{"error": {"code": "NOT_FOUND", "message": "No matches found!"}}'
+
+
+async def _no_sleep(_: float) -> None:
+    return None
 
 
 def _label(set_id: str) -> dict[str, Any]:
@@ -31,7 +36,8 @@ def _page(results: list[dict[str, Any]], total: int) -> str:
 def test_label_query_matches_any_name_field() -> None:
     assert label_query("  Warfarin  sodium ") == (
         'openfda.brand_name:"Warfarin sodium" OR openfda.generic_name:"Warfarin sodium" '
-        'OR openfda.substance_name:"Warfarin sodium"'
+        'OR openfda.substance_name:"Warfarin sodium" '
+        'OR (_missing_:openfda AND spl_product_data_elements:"Warfarin sodium")'
     )
 
 
@@ -70,8 +76,9 @@ async def test_no_match_404_is_an_empty_page_once_confirmed() -> None:
     transport = httpx.MockTransport(handler)
     async with Cache(":memory:") as cache:
         upstream = Upstream(openfda_host(api_key=None), cache=cache, transport=transport)
-        page = await OpenFdaAdapter(upstream).search("zzzqqq", skip=0, limit=5)
-        outcome = await OpenFdaAdapter(upstream).load(["00000000-0000-0000-0000-000000000000"])
+        adapter = OpenFdaAdapter(upstream, sleep=_no_sleep)
+        page = await adapter.search("zzzqqq", skip=0, limit=5)
+        outcome = await adapter.load(["00000000-0000-0000-0000-000000000000"])
         await upstream.aclose()
     assert (page.results, page.total) == ([], 0)
     assert outcome.missing == ["00000000-0000-0000-0000-000000000000"]
@@ -86,7 +93,7 @@ async def test_a_spurious_404_is_retried() -> None:
     transport = httpx.MockTransport(lambda request: answers.pop(0))
     async with Cache(":memory:") as cache:
         upstream = Upstream(openfda_host(api_key=None), cache=cache, transport=transport)
-        page = await OpenFdaAdapter(upstream).search("warfarin", skip=0, limit=5)
+        page = await OpenFdaAdapter(upstream, sleep=_no_sleep).search("warfarin", skip=0, limit=5)
         await upstream.aclose()
     assert [r["set_id"] for r in page.results] == ["a"]
 
@@ -113,3 +120,19 @@ async def test_label_without_version_is_an_upstream_error() -> None:
         with pytest.raises(UpstreamResponseError):
             await OpenFdaAdapter(upstream).search("warfarin", skip=0, limit=5)
         await upstream.aclose()
+
+
+async def test_the_confirming_attempt_waits_first() -> None:
+    slept: list[float] = []
+
+    async def sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    answers = [httpx.Response(404, text=NOT_FOUND), httpx.Response(404, text=NOT_FOUND)]
+    transport = httpx.MockTransport(lambda request: answers.pop(0))
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(openfda_host(api_key=None), cache=cache, transport=transport)
+        page = await OpenFdaAdapter(upstream, sleep=sleep).search("zzzqqq", skip=0, limit=5)
+        await upstream.aclose()
+    assert page.results == []
+    assert slept == [NOT_FOUND_RETRY_DELAY_S] and NOT_FOUND_RETRY_DELAY_S >= 0.5

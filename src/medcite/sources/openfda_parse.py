@@ -13,6 +13,7 @@ from medcite.sources.base import PassageDraft, RecordBundle
 
 SOURCE = "openfda"
 CHUNK_CHARS = 1000
+PRODUCT_NAME_WORDS = 8
 
 # Fields that are metadata or packaging rather than label text; *_table fields hold HTML.
 _NOT_TEXT = frozenset(
@@ -115,10 +116,24 @@ def _summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _title(set_id: str, brands: list[str], generics: list[str]) -> str:
+def _product_name(result: dict[str, Any]) -> str | None:
+    """The product name that opens `spl_product_data_elements`: the words before the
+    first repeat of the opening word, e.g. "Warfarin Sodium" in "Warfarin Sodium Warfarin
+    WARFARIN SODIUM LACTOSE ...". None when no repeat comes within a few words."""
+    elements = result.get("spl_product_data_elements") or []
+    words = normalize_text(str(elements[0])).split(" ") if elements else []
+    for index in range(1, min(len(words), PRODUCT_NAME_WORDS + 1)):
+        if words[index].casefold() == words[0].casefold():
+            return " ".join(words[:index])
+    return None
+
+
+def _title(result: dict[str, Any], brands: list[str], generics: list[str]) -> str:
     if brands and generics and brands[0].casefold() != generics[0].casefold():
         return f"{brands[0]} ({generics[0]})"
-    return (brands or generics or [f"Drug label {set_id}"])[0]
+    if brands or generics:
+        return (brands or generics)[0]
+    return _product_name(result) or f"Drug label {result['set_id']}"
 
 
 def label_record_id(result: dict[str, Any]) -> str:
@@ -145,7 +160,7 @@ def _record(result: dict[str, Any], retrieved_at: datetime) -> Record:
         record_id=label_record_id(result),
         kind="drug_label",
         ids=RecordIds(setid=set_id),
-        title=_title(set_id, summary["brand_names"], summary["generic_names"]),
+        title=_title(result, summary["brand_names"], summary["generic_names"]),
         published=PublishedDate(date=date, precision="day") if date else None,
         venue=summary["manufacturer"],
         provenance=Provenance(

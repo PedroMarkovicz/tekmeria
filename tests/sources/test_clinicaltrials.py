@@ -108,3 +108,19 @@ async def test_unexpected_bodies_are_upstream_errors(body: str) -> None:
         with pytest.raises(UpstreamResponseError):
             await ClinicalTrialsAdapter(upstream).load(["NCT00000001"])
         await upstream.aclose()
+
+
+async def test_an_obsolete_alias_finds_the_merged_study() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        study = _study("NCT05024188")
+        study["protocolSection"]["identificationModule"]["nctIdAliases"] = ["NCT04707222"]
+        return httpx.Response(200, text=json.dumps({"studies": [study]}))
+
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(
+            clinicaltrials_host(), cache=cache, transport=httpx.MockTransport(handler)
+        )
+        outcome = await ClinicalTrialsAdapter(upstream).load(["NCT04707222"])
+        await upstream.aclose()
+    assert outcome.missing == []
+    assert outcome.bundles["NCT04707222"].record.record_id == "nct:NCT05024188@2025-01-02"

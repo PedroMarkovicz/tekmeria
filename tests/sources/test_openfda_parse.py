@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -90,3 +91,23 @@ def test_chunks_rejoin_to_the_text_and_respect_the_limit(parts: list[str]) -> No
     assert all(p for p in pieces)
     for piece in pieces:
         assert len(piece) <= 120 or chunk_text(piece, limit=120) == [piece]
+
+
+@pytest.mark.parametrize(
+    ("elements", "title"),
+    [
+        ("Warfarin Sodium Warfarin WARFARIN SODIUM LACTOSE", "Warfarin Sodium"),
+        (
+            "Acetaminophen and Codeine Phosphate acetaminophen and codeine phosphate STARCH",
+            "Acetaminophen and Codeine Phosphate",
+        ),
+        ("one two three four five six seven eight nine ten", "Drug label s"),
+    ],
+)
+def test_a_label_without_openfda_names_is_titled_from_its_product_data(
+    elements: str, title: str
+) -> None:
+    result = {"set_id": "s", "version": "1", "spl_product_data_elements": [elements]}
+    hit = label_hit(result, NOW)
+    assert hit.title == title
+    assert hit.brand_names == [] and hit.generic_names == []

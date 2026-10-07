@@ -1,10 +1,12 @@
 """openFDA drug labels: search by drug name and records by SPL set ID (spec section 8)."""
 
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+
+import anyio
 
 from medcite.contract.normalize import normalize_text
 from medcite.infra.http import HostConfig, Upstream, UpstreamNotFoundError, UpstreamResponseError
@@ -18,8 +20,9 @@ MAX_IDS_PER_CALL = 20
 MAX_SKIP = 25000  # openFDA refuses a larger skip
 NAME_FIELDS = ("brand_name", "generic_name", "substance_name")
 # openFDA now and then answers "No matches found!" (404) for a query that has matches,
-# so "no match" is believed only when a second attempt says the same.
+# so "no match" is believed only when a second attempt, a moment later, says the same.
 NOT_FOUND_ATTEMPTS = 2
+NOT_FOUND_RETRY_DELAY_S = 1.0
 
 
 def openfda_host(*, api_key: str | None) -> HostConfig:
@@ -35,14 +38,19 @@ def openfda_host(*, api_key: str | None) -> HostConfig:
 
 
 def label_query(drug: str) -> str:
-    """Brand, generic or substance name, as an exact phrase in any of the three."""
+    """Brand, generic or substance name, as an exact phrase in any of the three.
+
+    About two thirds of labels have no harmonized `openfda` block; for those, the phrase
+    is matched in the product data elements, which name the product and its ingredients.
+    """
     name = normalize_text(drug)
     if not name or '"' in name or "\\" in name:
         raise InvalidInputError(
             f"drug name {drug!r} is not usable",
             hint="Give a brand, generic or substance name without quotes, e.g. warfarin.",
         )
-    return " OR ".join(f'openfda.{field}:"{name}"' for field in NAME_FIELDS)
+    names = " OR ".join(f'openfda.{field}:"{name}"' for field in NAME_FIELDS)
+    return f'{names} OR (_missing_:openfda AND spl_product_data_elements:"{name}")'
 
 
 def _check(body: str) -> None:
@@ -66,10 +74,15 @@ class LabelsPage:
 
 class OpenFdaAdapter:
     def __init__(
-        self, upstream: Upstream, *, clock: Callable[[], datetime] = lambda: datetime.now(UTC)
+        self,
+        upstream: Upstream,
+        *,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        sleep: Callable[[float], Awaitable[None]] = anyio.sleep,
     ) -> None:
         self.upstream = upstream
         self._clock = clock
+        self._sleep = sleep
 
     def now(self) -> datetime:
         return self._clock()
@@ -82,7 +95,9 @@ class OpenFdaAdapter:
             "sort": "effective_time:desc",
         }
         body = None
-        for _ in range(NOT_FOUND_ATTEMPTS):
+        for attempt in range(NOT_FOUND_ATTEMPTS):
+            if attempt:
+                await self._sleep(NOT_FOUND_RETRY_DELAY_S)
             try:
                 body = await self.upstream.get_text(
                     "drug/label.json", params, ttl_s=ttl_s, validate=_check

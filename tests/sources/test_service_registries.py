@@ -9,6 +9,7 @@ from typing import Any
 
 import httpx
 import pytest
+from pydantic import JsonValue
 
 from medcite.contract.audit import check_handles
 from medcite.contract.handles import HandleCodec, Locator
@@ -21,6 +22,7 @@ from medcite.sources.clinicaltrials import (
     clinicaltrials_host,
 )
 from medcite.sources.crossref import CrossrefAdapter, crossref_host
+from medcite.sources.errors import InvalidInputError
 from medcite.sources.europepmc import EuropePmcAdapter, europepmc_host
 from medcite.sources.openfda import OpenFdaAdapter, openfda_host
 from medcite.sources.pubmed import PubMedAdapter, ncbi_host
@@ -81,9 +83,10 @@ class Registries:
             self.trial_pages.append((token, size))
             start = int(token[1:]) if token else 0
             body: dict[str, Any] = {
-                "totalCount": len(self.trials),
                 "studies": [self._study(i) for i in self.trials[start : start + size]],
             }
+            if token is None:  # like the real registry: the count comes with page 1 only
+                body["totalCount"] = len(self.trials)
             if start + size < len(self.trials):
                 body["nextPageToken"] = f"t{start + size}"
             return httpx.Response(200, text=json.dumps(body))
@@ -130,7 +133,7 @@ def _service(world: Registries, cache: Cache) -> EvidenceService:
         pubtator=PubTatorAdapter(up(pubtator_host())),
         crossref=CrossrefAdapter(up(crossref_host(mailto=None))),
         trials=ClinicalTrialsAdapter(up(clinicaltrials_host())),
-        labels=OpenFdaAdapter(up(openfda_host(api_key=None))),
+        labels=OpenFdaAdapter(up(openfda_host(api_key=None)), sleep=_no_sleep),
     )
 
 
@@ -149,8 +152,12 @@ async def test_trial_pages_span_registry_pages_without_gaps(cache: Cache) -> Non
 
 
 async def test_trial_search_state_round_trips_through_json() -> None:
-    state = TrialSearchState(token="t50", skip=10)
+    state = TrialSearchState(token="t50", skip=10, total=120)
     assert TrialSearchState.from_json(state.to_json()) == state
+    bad_states: list[JsonValue] = [{"t": None, "s": -1}, {"t": None, "s": 0, "n": "9"}, {"t": 5}]
+    for bad in bad_states:
+        with pytest.raises(InvalidInputError):
+            TrialSearchState.from_json(bad)
     assert TrialSearchState.from_json(TrialSearchState().to_json()) == TrialSearchState()
 
 

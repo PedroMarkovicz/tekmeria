@@ -63,7 +63,9 @@ async def open_runtime(config: RuntimeConfig) -> AsyncIterator[AppContext]:
             pubtator=PubTatorAdapter(upstream(pubtator_host())),
             crossref=CrossrefAdapter(upstream(crossref_host(mailto=config.crossref_mailto))),
             trials=ClinicalTrialsAdapter(upstream(clinicaltrials_host())),
-            labels=OpenFdaAdapter(upstream(openfda_host(api_key=config.openfda_api_key))),
+            labels=OpenFdaAdapter(
+                upstream(openfda_host(api_key=config.openfda_api_key)), sleep=config.sleep
+            ),
             deadline_s=config.deadline_s,
         )
         yield AppContext(service=service, codec=codec, deadline_s=config.deadline_s)

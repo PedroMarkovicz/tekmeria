@@ -583,12 +583,12 @@ Decisions made while implementing the project, stage by stage. Where they differ
 - **6.2 `search_trials`.**
   - **Input.** At least one of `condition`, `intervention` or `terms` is required; otherwise the call is `invalid_input`. `statuses`, `phases` and `has_results` are filtered upstream: `filter.overallStatus`, plus `AREA[Phase](…)` and `AREA[HasResults]…` in `filter.advanced`.
   - **Hits.** A hit gives `phases` as a list instead of `phase`, because a trial can be in phases 2 and 3 at once. Hits carry no handles; citable passages come from `fetch_passages`.
-  - **Paging.** ClinicalTrials.gov is read in fixed pages of 50 that hold only the hit fields. The cursor stores the page token and the position within the page.
+  - **Paging.** ClinicalTrials.gov is read in fixed pages of 50 that hold only the hit fields. The cursor stores the page token, the position within the page, and the total, which the registry sends with the first page only.
   - **Status.** `source_status` is `{"clinicaltrials": "ok"}`. If the registry fails, the call is an `upstream_unavailable` error, since it is the only source.
 - **6.2 `search_drug_labels`.**
-  - **Matching.** `drug` matches openFDA's brand, generic or substance name as an exact phrase. A name containing a double quote or a backslash is `invalid_input`.
+  - **Matching.** `drug` matches openFDA's brand, generic or substance name as an exact phrase. About two thirds of labels have no harmonized `openfda` block, so for those the phrase is matched in the SPL product data elements, which name the product and its ingredients. A name containing a double quote or a backslash is `invalid_input`.
   - **Order and paging.** Labels come newest first (`effective_time` descending). Paging uses an offset, up to openFDA's skip limit of 25,000.
-  - **No matches.** openFDA answers "No matches found!" with a 404, which becomes an empty result. Because openFDA has answered this for a query that does have matches, the answer is believed only when a second attempt agrees.
+  - **No matches.** openFDA answers "No matches found!" with a 404, which becomes an empty result. Because openFDA has answered this for a query that does have matches, the answer is believed only when a second attempt, one second later, agrees.
 - **4.3 Trial paths.** These are as specified, with two additions:
   - **`eligibility.other.N`** holds statements outside the inclusion and exclusion lists. Criteria are split on numbered or bulleted lines, and indented sub-bullets join their item, separated by "; ". Markdown escapes such as `\>` are removed.
   - **Posted results are split,** so each passage can be cited precisely:
@@ -603,12 +603,13 @@ Decisions made while implementing the project, stage by stage. Where they differ
   - `extras` holds status, phases, enrolment, conditions, interventions, `has_results`, `linked_pmids`, study type, official title, sponsor, and start and completion dates.
   - Study design, peer review and retraction stay `not_checked`.
 - **5.2 Label records.**
-  - `title` is "Brand (generic)", `venue` is the manufacturer and `published` is the effective date.
+  - `title` is "Brand (generic)", `venue` is the manufacturer and `published` is the effective date. A label without harmonized names is titled with the product name that opens its SPL product data elements.
   - `extras` holds brand and generic names, routes, RxCUIs, pharmacologic class (EPC, then MOA), product type, effective date, `has_boxed_warning` and the SPL document ID.
   - Study design, peer review and retraction stay `not_checked`.
 - **6.2 Record IDs.**
   - **Format.** An `nct:` ID must be `NCT` plus eight digits, and a `setid:` ID must be a UUID; anything else is `invalid_input` before any request is made.
   - **Case.** IDs are matched case-insensitively and returned as the upstreams spell them: NCT, PMC and PPR IDs in upper case, set IDs in lower case.
+  - **Merged trials.** An obsolete NCT ID that ClinicalTrials.gov merged into another study (listed in `nctIdAliases`) returns that study, under its current ID.
   - **Versions.** A version in a requested record ID is ignored and the current version is fetched. The audit's `version_changed` flag reports any difference.
 - **9.1 Hosts.** ClinicalTrials.gov is limited to 50 requests per minute and openFDA to 240 per minute. Without `OPENFDA_API_KEY`, openFDA also allows only 1,000 requests per day. Trial records request only the modules they use, leaving out locations, baseline data and adverse events.
 - **9.2 Cache.** Trial and label records are cached for 1 day and search pages for 1 hour.
