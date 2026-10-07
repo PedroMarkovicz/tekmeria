@@ -45,7 +45,7 @@ log = get_logger("medcite.server")
 
 INSTRUCTIONS = (
     "medcite returns biomedical evidence (articles, preprints, trial registrations and drug "
-    "labels) as passages with handles such as pmid:30831578/abstract.7~7hq3k. Search, then "
+    "labels) as passages with handles such as pmid:<id>/abstract.<n>~<code>. Search, then "
     "fetch_passages for citable text. Cite only handles you received, in square brackets "
     "after each claim, and check drafts with audit_answer. See the cite_by_handle prompt."
 )

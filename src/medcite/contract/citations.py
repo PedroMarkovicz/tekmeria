@@ -28,6 +28,11 @@ _LEADING_PLACEHOLDERS_RE = re.compile(r"^(?:\s*" + _OPEN + r"\d+" + _CLOSE + r")
 _SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?)])")
 _WORD_RE = re.compile(r"\w")
 _SEGMENTER = pysbd.Segmenter(language="en", clean=False)
+# Markdown that is layout, not claims: heading lines, and a bold run opening a line
+# ("**Results.** The study..." or "**Safety**" alone on its line).
+_HEADING_LINE_RE = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+(.*)$", re.MULTILINE)
+_BOLD_LEAD_RE = re.compile(r"^([ \t]*)(\*\*|__)(.+?)\2", re.MULTILINE)
+_EMPHASIS_RE = re.compile(r"\*\*|__")
 
 
 def _entries(group_body: str) -> list[str]:
@@ -61,6 +66,21 @@ def _clean_sentence(text: str) -> str:
     return _SPACE_BEFORE_PUNCT_RE.sub(r"\1", collapsed)
 
 
+def _drop_labels(masked: str) -> str:
+    """Drop Markdown headings and bold lead-in labels, which are not claims, unless they
+    carry a citation (then only their markers go). Remaining ** and __ are removed."""
+
+    def heading(match: re.Match[str]) -> str:
+        return match.group(1) if _PLACEHOLDER_RE.search(match.group(1)) else ""
+
+    def lead(match: re.Match[str]) -> str:
+        label = match.group(3)
+        return match.group(1) + (label if _PLACEHOLDER_RE.search(label) else "")
+
+    unlabelled = _BOLD_LEAD_RE.sub(lead, _HEADING_LINE_RE.sub(heading, masked))
+    return _EMPHASIS_RE.sub("", unlabelled)
+
+
 def parse_answer_text(text: str) -> list[ClaimIn]:
     """Split text into sentences and attach each citation group to its sentence.
 
@@ -68,7 +88,7 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
     `scheme:...`; other brackets such as `[1]` stay as plain text. A handle-shaped
     token outside any group still counts, so no handle can vanish. Placeholders
     that open a sentence (citations written after the full stop) belong to the
-    previous sentence.
+    previous sentence. Markdown headings and bold lead-in labels are not claims.
     """
     groups: list[list[CitationIn]] = []
 
@@ -83,7 +103,7 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
         groups.append([CitationIn(handle=match.group(0))])
         return f"{_OPEN}{len(groups) - 1}{_CLOSE}"
 
-    masked = _BARE_HANDLE_RE.sub(mask_bare, _GROUP_RE.sub(mask, text))
+    masked = _drop_labels(_BARE_HANDLE_RE.sub(mask_bare, _GROUP_RE.sub(mask, text)))
     claims: list[ClaimIn] = []
     segments = cast("list[str]", _SEGMENTER.segment(masked))  # pyright: ignore[reportUnknownMemberType]
     for raw in segments:

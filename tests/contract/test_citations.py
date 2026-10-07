@@ -104,3 +104,30 @@ def test_backticks_with_a_quote() -> None:
 def test_unparseable_long_entry_does_not_raise() -> None:
     (claim,) = parse_answer_text("Claim [pmid:1 " + "x" * 400 + "].")
     assert len(claim.citations) == 1 and len(claim.citations[0].handle) <= 300
+
+
+H1 = "pmid:1/title~abcde"
+H2 = "pmid:2/title~fghjk"
+
+
+def _claims(text: str) -> list[tuple[str, list[str]]]:
+    return [(c.sentence, [x.handle for x in c.citations]) for c in parse_answer_text(text)]
+
+
+def test_a_bold_lead_in_label_is_not_a_claim() -> None:
+    text = f"**Danish cohort (2019).** This study followed 657 children [{H1}]."
+    assert _claims(text) == [("This study followed 657 children.", [H1])]
+
+
+def test_markdown_headings_and_bold_only_lines_are_not_claims() -> None:
+    text = f"## Results\n\nRisk was unchanged [{H1}].\n\n**Safety**\n\nSeizures were rare [{H2}]."
+    assert _claims(text) == [("Risk was unchanged.", [H1]), ("Seizures were rare.", [H2])]
+
+
+def test_a_label_with_a_citation_stays_a_claim() -> None:
+    text = f"**MMR is safe [{H1}].** More text [{H2}]."
+    assert _claims(text) == [("MMR is safe.", [H1]), ("More text.", [H2])]
+
+
+def test_emphasis_markers_are_removed_from_sentences() -> None:
+    assert _claims(f"Risk was **not** raised [{H1}].") == [("Risk was not raised.", [H1])]

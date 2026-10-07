@@ -533,7 +533,7 @@ Deleting the cache never changes a verdict when the upstream content is unchange
 
 ## 16. Amendments
 
-Decisions made while implementing the project, stage by stage. Where they differ from the sections above, these win.
+Decisions made while implementing the project, stage by stage, and after the first live run. Where they differ from the sections above, these win.
 
 ### 16.1 Core server
 
@@ -643,3 +643,11 @@ Decisions made while implementing the project, stage by stage. Where they differ
 - **12 `docs/CONTRACT.md`.** The test checks every value the code can produce, not only verdicts and flags: schemes, passage paths, claim statuses, overall verdicts, `fail_on` values and metric names. It also checks that the handle regular expression is quoted verbatim, that verdicts are listed in precedence order, and that the default `fail_on` is stated.
 - **12 The README's demo "recording".** This is the demo's audit text, verbatim, plus a screenshot of the standalone audit view (`docs/assets/audit-view.png`). A test fails if the text no longer matches what `medcite demo` prints. Other README tests check the tools table, the documented settings, the CLI flags it mentions and the files it links to. Every reference the README cites (spec 1.2) was checked against its source on 2026-10-07.
 - **13 `docs/ACCEPTANCE.md`.** It lists each acceptance criterion with the test or workflow that checks it, and a test fails if a named test disappears. Criteria 6 and 7 (the view inside a real MCP Apps host, and a live model run) are manual. They follow the checklist in that file and are marked done only with real material: a screenshot and a transcript from an actual run, never a reconstruction.
+
+### 16.6 After the first live run (2026-10-07)
+
+The first live run of acceptance check B (`docs/live-run.md`) failed its audit with one forged citation. All 13 real citations were genuine and all 5 quotes verbatim. Two changes followed:
+
+- **6.3 No example handles in instructions.** The `cite_by_handle` prompt and the server instructions showed a real-looking handle, `pmid:30831578/abstract.7~7hq3k`. The model repeated it in its answer, and the audit counted it as forged, because a handle-shaped token anywhere in the text is a citation (16.1). The instructions now show the pattern `pmid:<id>/abstract.<n>~<code>`, which cannot be read as a handle, and a test keeps every instruction text free of handle-shaped tokens.
+- **7.2 Markdown is not a claim.** Bold lead-in labels such as `**Danish nationwide cohort (2019).**` were split into uncited "sentences", and their closing `**` was left on the next sentence. Headings and bold labels that open a line are now dropped unless they carry a citation, and `**` and `__` are removed from sentence text. On that run's answer this leaves 16 sentences instead of 19, and 4 uncited instead of 7.
+- **Contract version.** It stays `0.1.0`: nothing has been released, and both changes narrow what counts as a claim without changing any field, verdict or metric definition.

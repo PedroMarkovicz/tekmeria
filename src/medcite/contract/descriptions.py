@@ -53,7 +53,8 @@ PASSAGE_PATHS: dict[str, str] = {
 CITE_BY_HANDLE_INSTRUCTIONS = """\
 Answer only from passages you fetched with medcite tools in this conversation.
 - After each sentence that makes a claim, cite 1-3 handles in square brackets: [handle; handle].
-- Handles look like pmid:30831578/abstract.7~7hq3k. Copy them exactly; never invent or edit one.
+- Handles look like pmid:<id>/abstract.<n>~<code>. Copy them exactly from the tool results;
+  never invent or edit one, and do not repeat this pattern as if it were a handle.
 - For specific numbers, doses or outcomes, add a verbatim quote: [handle "exact words"].
 - If no fetched passage supports a sentence, say so instead of citing.
 - Before answering, you may call audit_answer on your draft and fix every non-ok citation.
