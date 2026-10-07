@@ -114,14 +114,28 @@ def _claims(text: str) -> list[tuple[str, list[str]]]:
     return [(c.sentence, [x.handle for x in c.citations]) for c in parse_answer_text(text)]
 
 
-def test_a_bold_lead_in_label_is_not_a_claim() -> None:
+def test_a_bold_lead_in_is_a_sentence_of_its_own() -> None:
     text = f"**Danish cohort (2019).** This study followed 657 children [{H1}]."
-    assert _claims(text) == [("This study followed 657 children.", [H1])]
+    assert _claims(text) == [
+        ("Danish cohort (2019).", []),
+        ("This study followed 657 children.", [H1]),
+    ]
 
 
-def test_markdown_headings_and_bold_only_lines_are_not_claims() -> None:
+def test_headings_and_bold_only_lines_are_sentences_of_their_own() -> None:
     text = f"## Results\n\nRisk was unchanged [{H1}].\n\n**Safety**\n\nSeizures were rare [{H2}]."
-    assert _claims(text) == [("Risk was unchanged.", [H1]), ("Seizures were rare.", [H2])]
+    assert _claims(text) == [
+        ("Results", []),
+        ("Risk was unchanged.", [H1]),
+        ("Safety", []),
+        ("Seizures were rare.", [H2]),
+    ]
+
+
+def test_an_uncited_bold_claim_is_still_audited() -> None:
+    # Dropping "labels" would let a model hide an uncited claim behind bold text.
+    text = f"**MMR causes autism.** Other text [{H1}]."
+    assert _claims(text) == [("MMR causes autism.", []), ("Other text.", [H1])]
 
 
 def test_a_label_with_a_citation_stays_a_claim() -> None:

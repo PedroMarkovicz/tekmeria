@@ -646,8 +646,12 @@ Decisions made while implementing the project, stage by stage, and after the fir
 
 ### 16.6 After the first live run (2026-10-07)
 
-The first live run of acceptance check B (`docs/live-run.md`) failed its audit with one forged citation. All 13 real citations were genuine and all 5 quotes verbatim. Two changes followed:
+The first live run of acceptance check B (`docs/live-run.md`) failed its audit with one forged citation. All 13 real citations were genuine and all 5 quotes verbatim. Two changes followed, and the second run met the criterion (`warn`, 16 of 16 citations genuine, none fabricated):
 
 - **6.3 No example handles in instructions.** The `cite_by_handle` prompt and the server instructions showed a real-looking handle, `pmid:30831578/abstract.7~7hq3k`. The model repeated it in its answer, and the audit counted it as forged, because a handle-shaped token anywhere in the text is a citation (16.1). The instructions now show the pattern `pmid:<id>/abstract.<n>~<code>`, which cannot be read as a handle, and a test keeps every instruction text free of handle-shaped tokens.
-- **7.2 Markdown is not a claim.** Bold lead-in labels such as `**Danish nationwide cohort (2019).**` were split into uncited "sentences", and their closing `**` was left on the next sentence. Headings and bold labels that open a line are now dropped unless they carry a citation, and `**` and `__` are removed from sentence text. On that run's answer this leaves 16 sentences instead of 19, and 4 uncited instead of 7.
+- **7.2 Markdown layout.** Bold lead-ins such as `**Danish nationwide cohort (2019).**` split badly: their closing `**` was left on the next sentence, and a label without a full stop merged with the text after it.
+  - **The rule now.** Headings and bold runs that open a line are sentences of their own, and the `#`, `**` and `__` markers are removed from sentence text.
+  - **Nothing is dropped.** A first version of this fix dropped such lines as layout. The second run's answer showed the loophole: it opened with `**No.**`, its actual answer. Dropping bold text would let a model hide an uncited claim from the audit, so these lines stay sentences and count as uncited unless they carry a citation.
+  - **The cost.** Answers with headings get `warn` more often; that is the conservative side. On the first run's answer, the result is 19 sentences, 7 uncited and 14 citations, now cleanly split.
+  - **Line breaks.** A line break also ends a sentence, as before, which keeps list items apart.
 - **Contract version.** It stays `0.1.0`: nothing has been released, and both changes narrow what counts as a claim without changing any field, verdict or metric definition.
