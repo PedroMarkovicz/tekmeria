@@ -1,0 +1,23 @@
+# Old project, kept locally for reference only
+healthcare_mcp_codespaces/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+web/dist/
+
+# Local config and secrets
+.env
+*.key
