@@ -1,0 +1,6 @@
+{
+ "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%28autism%29+AND+%28meta-analysis%5Bpt%5D+OR+systematic+review%5Bpt%5D%29+NOT+retracted+publication%5Bpt%5D&retstart=0&retmax=3&retmode=json&sort=relevance&datetype=pdat&mindate=2020&maxdate=2024%2F12%2F31",
+ "status": 200,
+ "content_type": "application/json; charset=UTF-8",
+ "body": "{\"header\":{\"type\":\"esearch\",\"version\":\"0.3\"},\"esearchresult\":{\"count\":\"1451\",\"retmax\":\"3\",\"retstart\":\"0\",\"idlist\":[\"35238171\",\"35982160\",\"34563942\"],\"translationset\":[{\"from\":\"autism\",\"to\":\"\\\"autism's\\\"[All Fields] OR \\\"autisms\\\"[All Fields] OR \\\"autistic disorder\\\"[MeSH Terms] OR (\\\"autistic\\\"[All Fields] AND \\\"disorder\\\"[All Fields]) OR \\\"autistic disorder\\\"[All Fields] OR \\\"autism\\\"[All Fields]\"}],\"querytranslation\":\"(((\\\"autism s\\\"[All Fields] OR \\\"autisms\\\"[All Fields] OR \\\"autistic disorder\\\"[MeSH Terms] OR (\\\"autistic\\\"[All Fields] AND \\\"disorder\\\"[All Fields]) OR \\\"autistic disorder\\\"[All Fields] OR \\\"autism\\\"[All Fields]) AND (\\\"meta-analysis\\\"[Publication Type] OR \\\"systematic review\\\"[Publication Type])) NOT \\\"retracted publication\\\"[Publication Type]) AND 2020/01/01:2024/12/31[Date - Publication]\"}}\n"
+}

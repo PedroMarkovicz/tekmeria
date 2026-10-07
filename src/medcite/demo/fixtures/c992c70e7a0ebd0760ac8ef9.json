@@ -1,0 +1,6 @@
+{
+ "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%28autism%5Btiab%5D+AND+inprocess%5Bsb%5D%29&retstart=0&retmax=1&retmode=json&sort=relevance",
+ "status": 200,
+ "content_type": "application/json; charset=UTF-8",
+ "body": "{\"header\":{\"type\":\"esearch\",\"version\":\"0.3\"},\"esearchresult\":{\"count\":\"485\",\"retmax\":\"1\",\"retstart\":\"0\",\"idlist\":[\"40881072\"],\"translationset\":[{\"from\":\"inprocess[sb]\",\"to\":\"\\\"medlinestatus_in-process\\\"[all]\"}],\"querytranslation\":\"\\\"autism\\\"[Title/Abstract] AND \\\"medlinestatus in process\\\"[All Fields]\"}}\n"
+}
