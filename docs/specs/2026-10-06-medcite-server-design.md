@@ -576,7 +576,7 @@ Decisions made while implementing the project, stage by stage. Where they differ
   2. Literature sources (done)
   3. ClinicalTrials.gov and openFDA, with `search_trials` and `search_drug_labels` (section 16.3)
   4. The audit view, as an MCP App and on GitHub Pages (section 16.4)
-  5. `CONTRACT.md`, the README, the licence and the manual acceptance checks
+  5. `CONTRACT.md`, the README, the licence and the manual acceptance checks (section 16.5)
 
 ### 16.3 Trials and drug labels
 
@@ -635,3 +635,11 @@ Decisions made while implementing the project, stage by stage. Where they differ
 - **11 CI and Pages.**
   - CI gains a `web` job (type-check, Vitest, build and the drift check above) and a check that the wheel contains `medcite/ui/audit-view.html`.
   - A `pages` workflow publishes `medcite demo --html-out site/index.html` and the JSON report to GitHub Pages on every push to `main`. It needs Pages set to "GitHub Actions" in the repository settings.
+
+### 16.5 Documentation and acceptance
+
+- **12 Where it lives.** The repository is `github.com/PedroMarkovicz/medcite`. The README installs from it with `uvx --from git+https://github.com/PedroMarkovicz/medcite medcite`, and the Pages site is `pedromarkovicz.github.io/medcite`. Publishing to PyPI stays optional.
+- **12 Licence.** Apache-2.0, with `LICENSE` (the unmodified Apache text) and a `NOTICE` naming the copyright holder. Both ship in the wheel (`dist-info/licenses/`) and in the sdist, and `pyproject.toml` declares them with `license-files`.
+- **12 `docs/CONTRACT.md`.** The test checks every value the code can produce, not only verdicts and flags: schemes, passage paths, claim statuses, overall verdicts, `fail_on` values and metric names. It also checks that the handle regular expression is quoted verbatim, that verdicts are listed in precedence order, and that the default `fail_on` is stated.
+- **12 The README's demo "recording".** This is the demo's audit text, verbatim, plus a screenshot of the standalone audit view (`docs/assets/audit-view.png`). A test fails if the text no longer matches what `medcite demo` prints. Other README tests check the tools table, the documented settings, the CLI flags it mentions and the files it links to. Every reference the README cites (spec 1.2) was checked against its source on 2026-10-07.
+- **13 `docs/ACCEPTANCE.md`.** It lists each acceptance criterion with the test or workflow that checks it, and a test fails if a named test disappears. Criteria 6 and 7 (the view inside a real MCP Apps host, and a live model run) are manual. They follow the checklist in that file and are marked done only with real material: a screenshot and a transcript from an actual run, never a reconstruction.
