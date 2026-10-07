@@ -6,6 +6,8 @@
 import argparse
 import json
 import sys
+import tempfile
+import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from medcite.infra.logging import configure_logging
 from medcite.infra.settings import Settings
 from medcite.server.app import create_server
 from medcite.server.runtime import RuntimeConfig
+from medcite.ui import standalone_page
 
 
 async def _no_sleep(_: float) -> None:
@@ -62,16 +65,28 @@ def _text(result: object) -> str:
     return content[0].text if content and getattr(content[0], "type", "") == "text" else ""
 
 
-async def _demo(json_out: Path | None) -> None:
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+async def _demo(json_out: Path | None, html_out: Path | None, open_page: bool) -> None:
     async with Client(create_server(demo_config())) as client:
         run = await run_demo(client)
     print("== search_literature\n" + _text(run.search))
     print("\n== fetch_passages\n" + _text(run.fetch))
     print("\n== answer under audit\n" + run.answer)
     print("\n== audit_answer\n" + _text(run.audit))
+    report = json.dumps(run.audit.structured_content, indent=2)
     if json_out is not None:
-        json_out.write_text(json.dumps(run.audit.structured_content, indent=2), encoding="utf-8")
+        _write(json_out, report)
         print(f"\nreport written to {json_out}")
+    if html_out is not None or open_page:
+        page = html_out or Path(tempfile.mkdtemp(prefix="medcite-")) / "demo-report.html"
+        _write(page, standalone_page(report))
+        print(f"audit view written to {page}")
+        if open_page:
+            webbrowser.open(page.resolve().as_uri())
 
 
 async def _record(settings: Settings) -> None:
@@ -97,14 +112,18 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
     commands = parser.add_subparsers(dest="command")
     demo = commands.add_parser("demo", help="run the offline demo and print the audit")
-    demo.add_argument("--json-out", type=Path, default=None)
+    demo.add_argument("--json-out", type=Path, default=None, help="write the report as JSON")
+    demo.add_argument(
+        "--html-out", type=Path, default=None, help="write the audit view with the report"
+    )
+    demo.add_argument("--open", action="store_true", help="open the audit view in a browser")
     commands.add_parser("record-fixtures", help="(maintainers) re-record demo fixtures live")
     args = parser.parse_args(argv)
 
     settings = Settings()
     configure_logging(settings.log_level)
     if args.command == "demo":
-        anyio.run(_demo, args.json_out)
+        anyio.run(_demo, args.json_out, args.html_out, args.open)
         return
     if args.command == "record-fixtures":
         anyio.run(_record, settings)
