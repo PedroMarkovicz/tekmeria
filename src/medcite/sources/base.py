@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from medcite.contract.models import Record
+from medcite.contract.models import Entity, Record, Signal
 
 
 @dataclass(frozen=True)
@@ -10,6 +10,7 @@ class PassageDraft:
     path: str
     text: str  # already normalized
     section_label: str | None = None
+    entities: Signal[list[Entity]] | None = None  # None: entities were not looked up
 
 
 @dataclass(frozen=True)
