@@ -21,6 +21,8 @@ KEY = bytes(range(32))
 CODEC = HandleCodec(KEY)
 TOOL_ORDER = [
     "search_literature",
+    "search_trials",
+    "search_drug_labels",
     "fetch_passages",
     "resolve_handles",
     "audit_answer",
@@ -94,6 +96,12 @@ async def test_unsupported_or_invalid_record_ids(offline: Client, record_id: str
     assert result.is_error and result.structured_content is not None
     assert result.structured_content["code"] == "invalid_input"
     assert result.structured_content["hint"]
+
+
+async def test_trial_search_needs_a_condition_intervention_or_terms(offline: Client) -> None:
+    result = await offline.call_tool("search_trials", {"statuses": ["COMPLETED"]})
+    assert result.is_error and result.structured_content is not None
+    assert result.structured_content["code"] == "invalid_input"
 
 
 @pytest.mark.parametrize("args", [{}, {"answer_text": "x", "claims": []}])

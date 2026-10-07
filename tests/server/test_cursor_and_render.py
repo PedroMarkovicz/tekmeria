@@ -11,8 +11,14 @@ from medcite.contract.audit_models import (
 )
 from medcite.contract.handles import HandleCodec
 from medcite.contract.models import ToolError
+from medcite.contract.tool_models import (
+    LabelHit,
+    LabelSearchResult,
+    TrialHit,
+    TrialSearchResult,
+)
 from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
-from medcite.server.render import render_audit, render_error
+from medcite.server.render import render_audit, render_error, render_labels, render_trials
 from medcite.sources.errors import InvalidInputError
 
 CODEC = HandleCodec(bytes(range(32)))
@@ -95,6 +101,48 @@ def test_render_audit_lists_verdicts_flags_and_closest_match() -> None:
     assert text.splitlines()[0].startswith("verdict: WARN")
     assert "quote_mismatch pmid:1/title~abcde" in text and "[retracted]" in text
     assert 'closest: "y" (0.5)' in text
+
+
+def test_render_trials_and_labels_lead_with_the_record_id() -> None:
+    trial = TrialHit(
+        record_id="nct:NCT01234567@2025-11-02",
+        title="Drug X in HF",
+        status="COMPLETED",
+        phases=["PHASE3"],
+        enrollment=300,
+        conditions=[],
+        interventions=[],
+        has_results=True,
+        linked_pmids=["33301246"],
+    )
+    text = render_trials(
+        TrialSearchResult(
+            hits=[trial], total=9, next_cursor="c", source_status={"clinicaltrials": "ok"}
+        )
+    )
+    assert text.splitlines() == [
+        "1 of 9 trials",
+        "nct:NCT01234567@2025-11-02  Drug X in HF (COMPLETED, PHASE3, n=300, results posted)"
+        "  results in: 33301246",
+        "next_cursor: c",
+    ]
+    label = LabelHit(
+        record_id="setid:abc@3",
+        title="Coumadin (WARFARIN SODIUM)",
+        brand_names=[],
+        generic_names=[],
+        manufacturer=None,
+        effective_date=None,
+        routes=[],
+        rxcui=[],
+        has_boxed_warning=True,
+    )
+    text = render_labels(LabelSearchResult(hits=[label], total=1, source_status={"openfda": "ok"}))
+    assert text.splitlines() == [
+        "1 of 1 labels",
+        "setid:abc@3  Coumadin (WARFARIN SODIUM) (unknown manufacturer, n.d., route n/a)"
+        "  BOXED WARNING",
+    ]
 
 
 def test_render_error_includes_hint() -> None:

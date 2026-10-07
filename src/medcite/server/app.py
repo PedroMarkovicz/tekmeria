@@ -20,8 +20,10 @@ from medcite.contract.models import StudyDesign, ToolError
 from medcite.contract.tool_models import (
     ContractDescription,
     FetchResult,
+    LabelSearchResult,
     LiteratureSearchResult,
     ResolveResult,
+    TrialSearchResult,
 )
 from medcite.infra.http import (
     UpstreamNotFoundError,
@@ -32,16 +34,18 @@ from medcite.infra.logging import get_logger
 from medcite.server import render
 from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
 from medcite.server.runtime import AppContext, RuntimeConfig, open_runtime
+from medcite.sources.clinicaltrials import TrialPhase, TrialQuery, TrialStatus
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.pubmed import LiteratureQuery
-from medcite.sources.service import LITERATURE_SOURCES, SearchState
+from medcite.sources.service import LITERATURE_SOURCES, SearchState, TrialSearchState
 
 log = get_logger("medcite.server")
 
 INSTRUCTIONS = (
-    "medcite returns biomedical evidence as passages with handles such as "
-    "pmid:30831578/abstract.7~7hq3k. Cite only handles you received, in square brackets after "
-    "each claim, and check drafts with audit_answer. See the cite_by_handle prompt."
+    "medcite returns biomedical evidence (articles, preprints, trial registrations and drug "
+    "labels) as passages with handles such as pmid:30831578/abstract.7~7hq3k. Search, then "
+    "fetch_passages for citable text. Cite only handles you received, in square brackets "
+    "after each claim, and check drafts with audit_answer. See the cite_by_handle prompt."
 )
 DATE = r"^\d{4}(-\d{2}-\d{2})?$"
 AUDIT_LIMITS_HINT = (
@@ -200,9 +204,118 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         return await _run(ctx, "search_literature", work)
 
     @server.tool(annotations=READ_ONLY_OPEN)
+    async def search_trials(
+        ctx: Context[Any, Any],
+        condition: Annotated[
+            str | None, Field(min_length=1, max_length=300, description="e.g. heart failure")
+        ] = None,
+        intervention: Annotated[
+            str | None, Field(min_length=1, max_length=300, description="e.g. dapagliflozin")
+        ] = None,
+        terms: Annotated[
+            str | None,
+            Field(min_length=1, max_length=300, description="Any other words, e.g. a sponsor"),
+        ] = None,
+        statuses: Annotated[
+            list[TrialStatus] | None, Field(description="Overall status, e.g. COMPLETED")
+        ] = None,
+        phases: list[TrialPhase] | None = None,
+        has_results: Annotated[
+            bool | None, Field(description="Only trials with (true) or without (false) results")
+        ] = None,
+        limit: Annotated[int, Field(ge=1, le=50)] = 10,
+        cursor: str | None = None,
+    ) -> Annotated[CallToolResult, TrialSearchResult]:
+        """Search ClinicalTrials.gov registrations (give a condition, intervention or terms).
+        Returns trial summaries; fetch nct: records for citable passages."""
+        query_args: dict[str, object] = {
+            "condition": condition,
+            "intervention": intervention,
+            "terms": terms,
+            "statuses": statuses,
+            "phases": phases,
+            "has_results": has_results,
+        }
+
+        async def work(app: AppContext) -> tuple[BaseModel, str]:
+            state = (
+                TrialSearchState.from_json(
+                    decode_cursor(app.codec, "search_trials", query_args, cursor)
+                )
+                if cursor
+                else TrialSearchState()
+            )
+            query = TrialQuery(
+                condition=condition,
+                intervention=intervention,
+                terms=terms,
+                statuses=tuple(statuses or ()),
+                phases=tuple(phases or ()),
+                has_results=has_results,
+            )
+            page = await app.service.search_trials(query, state=state, limit=limit)
+            next_cursor = (
+                encode_cursor(app.codec, "search_trials", query_args, page.next_state.to_json())
+                if page.next_state is not None
+                else None
+            )
+            result = TrialSearchResult(
+                hits=page.hits,
+                total=page.total,
+                next_cursor=next_cursor,
+                source_status={"clinicaltrials": "ok"},
+            )
+            return result, render.render_trials(result)
+
+        return await _run(ctx, "search_trials", work)
+
+    @server.tool(annotations=READ_ONLY_OPEN)
+    async def search_drug_labels(
+        drug: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=100,
+                description="Brand, generic or substance name, e.g. warfarin",
+            ),
+        ],
+        ctx: Context[Any, Any],
+        limit: Annotated[int, Field(ge=1, le=50)] = 10,
+        cursor: str | None = None,
+    ) -> Annotated[CallToolResult, LabelSearchResult]:
+        """Search openFDA drug labels; returns every matching label, newest first. Fetch
+        setid: records for citable passages (boxed_warning, contraindications, ...)."""
+        query_args: dict[str, object] = {"drug": drug}
+
+        async def work(app: AppContext) -> tuple[BaseModel, str]:
+            offset = (
+                decode_offset(app.codec, "search_drug_labels", query_args, cursor) if cursor else 0
+            )
+            page = await app.service.search_labels(drug, offset=offset, limit=limit)
+            next_cursor = (
+                encode_cursor(app.codec, "search_drug_labels", query_args, page.next_offset)
+                if page.next_offset is not None
+                else None
+            )
+            result = LabelSearchResult(
+                hits=page.hits,
+                total=page.total,
+                next_cursor=next_cursor,
+                source_status={"openfda": "ok"},
+            )
+            return result, render.render_labels(result)
+
+        return await _run(ctx, "search_drug_labels", work)
+
+    @server.tool(annotations=READ_ONLY_OPEN)
     async def fetch_passages(
         record_ids: Annotated[
-            list[str], Field(min_length=1, max_length=20, description="e.g. pmid:30831578")
+            list[str],
+            Field(
+                min_length=1,
+                max_length=20,
+                description="e.g. pmid:30831578, nct:NCT04368728 or setid:<SPL set ID>",
+            ),
         ],
         ctx: Context[Any, Any],
         sections: Annotated[
@@ -218,8 +331,8 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         max_passages: Annotated[int, Field(ge=1, le=200)] = 60,
         cursor: str | None = None,
     ) -> Annotated[CallToolResult, FetchResult]:
-        """Fetch records (pmid:, pmcid:, ppr:) and their passages. Every passage carries a
-        citable handle; retraction status is checked with Crossref."""
+        """Fetch records (pmid:, pmcid:, ppr:, nct:, setid:) and their passages. Every passage
+        carries a citable handle; articles with a DOI get Crossref's retraction status."""
         query_args: dict[str, object] = {
             "record_ids": record_ids,
             "sections": sections,

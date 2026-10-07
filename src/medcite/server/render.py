@@ -2,7 +2,13 @@
 
 from medcite.contract.audit_models import AuditReport, HandleCheck
 from medcite.contract.models import Signal, ToolError
-from medcite.contract.tool_models import ContractDescription, FetchResult, LiteratureSearchResult
+from medcite.contract.tool_models import (
+    ContractDescription,
+    FetchResult,
+    LabelSearchResult,
+    LiteratureSearchResult,
+    TrialSearchResult,
+)
 
 
 def _signal(signal: Signal[bool]) -> str:
@@ -21,6 +27,36 @@ def render_search(result: LiteratureSearchResult) -> str:
             f"{hit.title_handle or hit.record_id}  {hit.title} ({hit.venue or 'unknown venue'}, "
             f"{date}) designs={designs} peer_reviewed={_signal(hit.peer_reviewed)}"
             + ("  RETRACTED" if retracted else "")
+        )
+    if result.next_cursor:
+        lines.append(f"next_cursor: {result.next_cursor}")
+    return "\n".join(lines)
+
+
+def render_trials(result: TrialSearchResult) -> str:
+    lines = [f"{len(result.hits)} of {result.total} trials"]
+    for hit in result.hits:
+        phases = "/".join(hit.phases) or "phase n/a"
+        size = f"n={hit.enrollment}" if hit.enrollment is not None else "n=?"
+        posted = "results posted" if hit.has_results else "no results posted"
+        pmids = f"  results in: {', '.join(hit.linked_pmids)}" if hit.linked_pmids else ""
+        lines.append(
+            f"{hit.record_id}  {hit.title} ({hit.status or 'status unknown'}, {phases}, "
+            f"{size}, {posted}){pmids}"
+        )
+    if result.next_cursor:
+        lines.append(f"next_cursor: {result.next_cursor}")
+    return "\n".join(lines)
+
+
+def render_labels(result: LabelSearchResult) -> str:
+    lines = [f"{len(result.hits)} of {result.total} labels"]
+    for hit in result.hits:
+        routes = ",".join(hit.routes) or "route n/a"
+        lines.append(
+            f"{hit.record_id}  {hit.title} ({hit.manufacturer or 'unknown manufacturer'}, "
+            f"{hit.effective_date or 'n.d.'}, {routes})"
+            + ("  BOXED WARNING" if hit.has_boxed_warning else "")
         )
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
