@@ -41,6 +41,8 @@ def render_fetch(result: FetchResult) -> str:
             lines.append(f"{passage.handle}  {label}{passage.text}")
     if result.not_found:
         lines.append("not found: " + ", ".join(result.not_found))
+    if result.unavailable:
+        lines.append("source unavailable for: " + ", ".join(result.unavailable))
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
     return "\n".join(lines)

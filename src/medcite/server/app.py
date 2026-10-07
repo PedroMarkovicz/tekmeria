@@ -3,7 +3,7 @@
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import anyio
 from mcp.server.mcpserver import Context, MCPServer
@@ -30,10 +30,11 @@ from medcite.infra.http import (
 )
 from medcite.infra.logging import get_logger
 from medcite.server import render
-from medcite.server.cursor import decode_offset, encode_cursor
+from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
 from medcite.server.runtime import AppContext, RuntimeConfig, open_runtime
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.pubmed import LiteratureQuery
+from medcite.sources.service import LITERATURE_SOURCES, SearchState
 
 log = get_logger("medcite.server")
 
@@ -47,6 +48,7 @@ AUDIT_LIMITS_HINT = (
     "Limits: at most 10 citations per sentence, quotes up to 1000 characters, sentences up "
     "to 4000 characters. Split long sentences or shorten quotes."
 )
+LiteratureSource = Literal["pubmed", "europepmc"]
 READ_ONLY = ToolAnnotations(read_only_hint=True)
 READ_ONLY_OPEN = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 READ_ONLY_IDEMPOTENT = ToolAnnotations(read_only_hint=True, idempotent_hint=True)
@@ -132,12 +134,19 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         peer_reviewed_only: bool = False,
         open_access_only: bool = False,
         exclude_retracted: bool = False,
+        sources: Annotated[
+            list[LiteratureSource] | None,
+            Field(min_length=1, description="Default: both. Duplicates are merged."),
+        ] = None,
         limit: Annotated[int, Field(ge=1, le=50)] = 10,
         cursor: str | None = None,
     ) -> Annotated[CallToolResult, LiteratureSearchResult]:
-        """Search PubMed. Returns record summaries; each has the title passage's handle."""
+        """Search PubMed and Europe PMC (including preprints). Returns record summaries;
+        each citable hit has its title passage's handle."""
+        chosen = list(dict.fromkeys(sources or LITERATURE_SOURCES))
         query_args: dict[str, object] = {
             "query": query,
+            "sources": chosen,
             "date_from": date_from,
             "date_to": date_to,
             "study_designs": study_designs,
@@ -147,8 +156,12 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         }
 
         async def work(app: AppContext) -> tuple[BaseModel, str]:
-            offset = (
-                decode_offset(app.codec, "search_literature", query_args, cursor) if cursor else 0
+            state = (
+                SearchState.from_json(
+                    decode_cursor(app.codec, "search_literature", query_args, cursor)
+                )
+                if cursor
+                else SearchState()
             )
             page = await app.service.search_literature(
                 LiteratureQuery(
@@ -160,19 +173,21 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
                     open_access_only=open_access_only,
                     exclude_retracted=exclude_retracted,
                 ),
-                offset=offset,
+                sources=chosen,
+                state=state,
                 limit=limit,
             )
             next_cursor = (
-                encode_cursor(app.codec, "search_literature", query_args, page.next_offset)
-                if page.next_offset is not None
+                encode_cursor(app.codec, "search_literature", query_args, page.next_state.to_json())
+                if page.next_state is not None
                 else None
             )
             result = LiteratureSearchResult(
                 hits=page.hits,
-                total=page.total,
+                total=max(page.totals.values(), default=0),
+                totals=page.totals,
                 next_cursor=next_cursor,
-                source_status={"pubmed": "ok"},
+                source_status=page.source_status,
             )
             return result, render.render_search(result)
 
@@ -187,16 +202,34 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         sections: Annotated[
             list[str] | None, Field(description="Path prefixes to keep, e.g. ['abstract']")
         ] = None,
+        full_text: Annotated[
+            bool,
+            Field(description="Add open-access full text (pmcid: records, body.* passages)"),
+        ] = False,
+        include_entities: Annotated[
+            bool, Field(description="PubTator3 entities on PubMed passages")
+        ] = True,
         max_passages: Annotated[int, Field(ge=1, le=200)] = 60,
         cursor: str | None = None,
     ) -> Annotated[CallToolResult, FetchResult]:
-        """Fetch records and their passages. Every passage carries a citable handle."""
-        query_args: dict[str, object] = {"record_ids": record_ids, "sections": sections}
+        """Fetch records (pmid:, pmcid:, ppr:) and their passages. Every passage carries a
+        citable handle; retraction status is checked with Crossref."""
+        query_args: dict[str, object] = {
+            "record_ids": record_ids,
+            "sections": sections,
+            "full_text": full_text,
+            "include_entities": include_entities,
+        }
 
         async def work(app: AppContext) -> tuple[BaseModel, str]:
             offset = decode_offset(app.codec, "fetch_passages", query_args, cursor) if cursor else 0
             page = await app.service.fetch_passages(
-                record_ids, sections=sections, max_passages=max_passages, offset=offset
+                record_ids,
+                sections=sections,
+                max_passages=max_passages,
+                offset=offset,
+                full_text=full_text,
+                include_entities=include_entities,
             )
             next_cursor = (
                 encode_cursor(app.codec, "fetch_passages", query_args, page.next_offset)
@@ -206,8 +239,9 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
             result = FetchResult(
                 records=page.records,
                 not_found=page.not_found,
+                unavailable=page.unavailable,
                 next_cursor=next_cursor,
-                source_status={"pubmed": "ok"},
+                source_status=page.source_status,
             )
             return result, render.render_fetch(result)
 
@@ -272,7 +306,7 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
         app = _app(ctx)
         try:
             page = await app.service.fetch_passages(
-                [record_id], sections=["title"], max_passages=1, offset=0
+                [record_id], sections=["title"], max_passages=1, offset=0, include_entities=False
             )
         except InvalidInputError as exc:
             raise ResourceNotFoundError(str(exc)) from exc

@@ -32,6 +32,8 @@ METRIC_MEANINGS: dict[str, str] = {
 PASSAGE_PATHS: dict[str, str] = {
     "title": "Article title.",
     "abstract.N": "Nth non-empty abstract section, in document order (1-based).",
+    "body.<section>[.<subsection>].pN": "Nth paragraph of an open-access full-text section "
+    "(pmcid: records only).",
 }
 
 CITE_BY_HANDLE_INSTRUCTIONS = """\

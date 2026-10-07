@@ -45,7 +45,7 @@ async def test_search_returns_hits_with_title_handles(client: Client) -> None:
     data = await _call(client, "search_literature", {"query": DEMO_QUERY, "limit": 5})
     assert data["total"] >= 5 and len(data["hits"]) == 5
     assert CODEC.verify(data["hits"][0]["title_handle"]).path == "title"
-    assert data["source_status"] == {"pubmed": "ok"}
+    assert data["source_status"] == {"pubmed": "ok", "europepmc": "ok"}
     assert data["next_cursor"]
 
 

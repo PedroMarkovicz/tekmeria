@@ -1,0 +1,6 @@
+{
+ "url": "https://www.ncbi.nlm.nih.gov/research/pubtator3-api/publications/export/biocjson?pmids=42530928",
+ "status": 200,
+ "content_type": "application/json",
+ "body": "{\"PubTator3\": [{\"_id\": \"42530928|None\", \"id\": \"42530928\", \"infons\": {}, \"passages\": [{\"infons\": {\"journal\": \"JAMA Netw Open;2026Jul01; 9 (7) 2626224. doi:10.1001/jamanetworkopen.2026.26224\", \"year\": \"2026\", \"type\": \"title\", \"authors\": \"Jacobson KB, Goddard K, Bartlett J, Stephens SC, Archer HI, Liao LD, Williams JTB, Kim S, Zerbo O, Newcomer SR, Klein NP, \"}, \"offset\": 0, \"text\": \"Geographic Variation in Measles Vaccine Coverage Among Children Aged 7 Years in Northern California.\", \"sentences\": [], \"annotations\": [], \"relations\": []}, {\"infons\": {\"type\": \"abstract\"}, \"offset\": 101, \"text\": \"\", \"sentences\": [], \"annotations\": [], \"relations\": []}], \"relations\": [], \"pmid\": 42530928, \"pmcid\": null, \"meta\": {}, \"date\": \"2026-07-01T00:00:00Z\", \"journal\": \"JAMA Netw Open\", \"authors\": [\"Jacobson KB\", \"Goddard K\", \"Bartlett J\", \"Stephens SC\", \"Archer HI\", \"Liao LD\", \"Williams JTB\", \"Kim S\", \"Zerbo O\", \"Newcomer SR\", \"Klein NP\"], \"relations_display\": []}]}"
+}

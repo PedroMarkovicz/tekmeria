@@ -34,7 +34,10 @@ class LiteratureHit(BaseModel):
 
 class LiteratureSearchResult(BaseModel):
     hits: list[LiteratureHit]
-    total: int = Field(description="Total matches upstream, not just this page")
+    total: int = Field(description="Largest single-source match count (sources overlap)")
+    totals: dict[str, int] = Field(
+        default_factory=dict[str, int], description="Match count per source"
+    )
     next_cursor: str | None = None
     source_status: dict[str, SourceStatusValue]
 
@@ -47,6 +50,9 @@ class RecordPassages(BaseModel):
 class FetchResult(BaseModel):
     records: list[RecordPassages]
     not_found: list[str] = Field(default_factory=list[str])
+    unavailable: list[str] = Field(
+        default_factory=list[str], description="Requested records whose source did not answer"
+    )
     next_cursor: str | None = None
     source_status: dict[str, SourceStatusValue]
 

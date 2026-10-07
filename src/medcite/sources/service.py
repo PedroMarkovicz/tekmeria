@@ -2,36 +2,107 @@
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
+from typing import Any
 
 import anyio
+from pydantic import JsonValue
 
 from medcite.contract.audit import Resolution, Resolved, Unavailable, Withdrawn
 from medcite.contract.handles import HandleCodec, Locator, RecordRef, parse_record_id
-from medcite.contract.models import Passage, Record
+from medcite.contract.models import (
+    Entity,
+    Passage,
+    Record,
+    Retraction,
+    Signal,
+    SourceStatusValue,
+)
 from medcite.contract.tool_models import LiteratureHit, RecordPassages
 from medcite.infra.cache import Cache
 from medcite.infra.http import UpstreamResponseError, UpstreamUnavailableError
-from medcite.sources.base import FetchOutcome, RecordBundle
+from medcite.sources.base import PassageDraft, RecordBundle
+from medcite.sources.crossref import CrossrefAdapter, merge_retraction
 from medcite.sources.errors import InvalidInputError
+from medcite.sources.europepmc import EuropePmcAdapter
+from medcite.sources.europepmc_parse import parse_result, record_id_for
+from medcite.sources.merge import Candidate, identity_keys, interleave
 from medcite.sources.pubmed import LiteratureQuery, PubMedAdapter
+from medcite.sources.pubtator import PubTatorAdapter, attach_entities
 
-SUPPORTED_SCHEMES = ("pmid",)
+SUPPORTED_SCHEMES = ("pmid", "pmcid", "ppr")
+LITERATURE_SOURCES = ("pubmed", "europepmc")
 PREVIEW_CHARS = 300
+UPSTREAM_FAILURES = (UpstreamUnavailableError, UpstreamResponseError)
+
+
+@dataclass(frozen=True)
+class SearchState:
+    """Where each source's results continue; serialized into the search cursor."""
+
+    pubmed: int = 0
+    europepmc_mark: str = "*"
+    europepmc_skip: int = 0
+    pubmed_done: bool = False
+    europepmc_done: bool = False
+
+    def to_json(self) -> dict[str, JsonValue]:
+        return {
+            "p": self.pubmed,
+            "m": self.europepmc_mark,
+            "s": self.europepmc_skip,
+            "pd": self.pubmed_done,
+            "ed": self.europepmc_done,
+        }
+
+    @classmethod
+    def from_json(cls, data: JsonValue) -> "SearchState":
+        try:
+            assert isinstance(data, dict)
+            state = cls(
+                pubmed=int(data["p"]),  # type: ignore[arg-type]
+                europepmc_mark=str(data["m"]),
+                europepmc_skip=int(data["s"]),  # type: ignore[arg-type]
+                pubmed_done=bool(data["pd"]),
+                europepmc_done=bool(data["ed"]),
+            )
+        except (AssertionError, KeyError, TypeError, ValueError) as exc:
+            raise InvalidInputError("cursor state is not valid") from exc
+        if state.pubmed < 0 or state.europepmc_skip < 0:
+            raise InvalidInputError("cursor state is not valid")
+        return state
 
 
 @dataclass(frozen=True)
 class SearchPage:
     hits: list[LiteratureHit]
-    total: int
-    next_offset: int | None
+    totals: dict[str, int]
+    next_state: SearchState | None
+    source_status: dict[str, SourceStatusValue]
 
 
 @dataclass(frozen=True)
 class FetchPage:
     records: list[RecordPassages]
     not_found: list[str]
+    unavailable: list[str]
     next_offset: int | None
+    source_status: dict[str, SourceStatusValue]
+
+
+@dataclass
+class _Loaded:
+    bundles: dict[str, RecordBundle] = field(default_factory=dict[str, RecordBundle])
+    missing: list[str] = field(default_factory=list[str])
+    failed: dict[str, str] = field(default_factory=dict[str, str])  # record key -> reason
+    status: dict[str, SourceStatusValue] = field(default_factory=dict[str, SourceStatusValue])
+
+
+_SEVERITY: dict[SourceStatusValue, int] = {"ok": 0, "degraded": 1, "unavailable": 2}
+
+
+def _worse(a: SourceStatusValue | None, b: SourceStatusValue) -> SourceStatusValue:
+    return b if a is None or _SEVERITY[b] > _SEVERITY[a] else a
 
 
 def _matches(path: str, prefixes: Sequence[str] | None) -> bool:
@@ -62,82 +133,234 @@ class EvidenceService:
         codec: HandleCodec,
         cache: Cache,
         pubmed: PubMedAdapter,
+        europepmc: EuropePmcAdapter,
+        pubtator: PubTatorAdapter,
+        crossref: CrossrefAdapter,
         resolve_budget_s: float = math.inf,
     ) -> None:
         self.codec = codec
         self.cache = cache
         self.pubmed = pubmed
+        self.europepmc = europepmc
+        self.pubtator = pubtator
+        self.crossref = crossref
         # Resolution must finish inside the tool deadline, so a slow upstream yields
         # `unavailable` citations in a full report instead of losing the whole audit.
         self.resolve_budget_s = resolve_budget_s
 
-    async def _issue(
-        self, record: Record, drafts: Sequence[tuple[str, str, str | None]]
-    ) -> list[Passage]:
-        """Mint handles for (path, text, section_label) drafts and remember the text as issued."""
+    async def _issue(self, record: Record, drafts: Sequence[PassageDraft]) -> list[Passage]:
+        """Mint handles for drafts and remember each text as issued."""
         ref = parse_record_id(record.record_id)
         passages: list[Passage] = []
         rows: list[tuple[str, str, str | None]] = []
-        for path, text, label in drafts:
-            locator = ref.at(path)
+        for draft in drafts:
+            locator = ref.at(draft.path)
             passages.append(
                 Passage(
                     handle=self.codec.issue(locator),
                     record_id=record.record_id,
-                    path=path,
-                    section_label=label,
-                    text=text,
+                    path=draft.path,
+                    section_label=draft.section_label,
+                    text=draft.text,
+                    entities=draft.entities or Signal[list[Entity]].not_checked(),
                 )
             )
-            rows.append((str(locator), text, record.provenance.upstream_version))
+            rows.append((str(locator), draft.text, record.provenance.upstream_version))
         await self.cache.record_issued(rows)
         return passages
 
-    async def search_literature(
-        self, query: LiteratureQuery, *, offset: int, limit: int
-    ) -> SearchPage:
-        total, pmids = await self.pubmed.search(query, offset=offset, limit=limit)
-        outcome = await self.pubmed.fetch(pmids)
-        hits: list[LiteratureHit] = []
-        for pmid in pmids:
-            bundle = outcome.bundles.get(pmid)
-            if bundle is None:
-                continue
-            record = bundle.record
-            title = next((d for d in bundle.passages if d.path == "title"), None)
-            first_abstract = next(
-                (d for d in bundle.passages if d.path.startswith("abstract.")), None
-            )
-            title_handle = None
-            if title is not None:
-                (issued,) = await self._issue(record, [(title.path, title.text, None)])
-                title_handle = issued.handle
-            hits.append(
-                LiteratureHit(
-                    record_id=record.record_id,
-                    kind=record.kind,
-                    title=record.title,
-                    title_handle=title_handle,
-                    preview=first_abstract.text[:PREVIEW_CHARS] if first_abstract else None,
-                    published=record.published,
-                    venue=record.venue,
-                    study_designs=record.quality.study_designs,
-                    peer_reviewed=record.quality.peer_reviewed,
-                    retraction=record.quality.retraction,
-                    open_access_full_text=record.quality.open_access_full_text,
-                    ids=record.ids,
-                )
-            )
-        end = offset + len(pmids)
-        return SearchPage(
-            hits=hits, total=total, next_offset=end if pmids and end < total else None
+    async def _hit(self, bundle: RecordBundle, *, mint_title: bool) -> LiteratureHit:
+        record = bundle.record
+        title = next((d for d in bundle.passages if d.path == "title"), None)
+        first_abstract = next((d for d in bundle.passages if d.path.startswith("abstract.")), None)
+        title_handle = None
+        if title is not None and mint_title:
+            (issued,) = await self._issue(record, [title])
+            title_handle = issued.handle
+        return LiteratureHit(
+            record_id=record.record_id,
+            kind=record.kind,
+            title=record.title,
+            title_handle=title_handle,
+            preview=first_abstract.text[:PREVIEW_CHARS] if first_abstract else None,
+            published=record.published,
+            venue=record.venue,
+            study_designs=record.quality.study_designs,
+            peer_reviewed=record.quality.peer_reviewed,
+            retraction=record.quality.retraction,
+            open_access_full_text=record.quality.open_access_full_text,
+            ids=record.ids,
         )
 
-    async def _bundles(
-        self, refs: Sequence[RecordRef]
-    ) -> tuple[dict[str, RecordBundle], list[str]]:
-        outcome = await self.pubmed.fetch([ref.id for ref in refs])
-        return outcome.bundles, [f"pmid:{pmid}" for pmid in outcome.missing]
+    async def search_literature(
+        self, query: LiteratureQuery, *, sources: Sequence[str], state: SearchState, limit: int
+    ) -> SearchPage:
+        status: dict[str, SourceStatusValue] = {}
+        totals: dict[str, int] = {}
+        pages: list[list[Candidate]] = []
+        names: list[str] = []
+        pubmed_returned = 0
+        epmc_fetched = 0
+        epmc_next_mark: str | None = None
+        if "pubmed" in sources and not state.pubmed_done:
+            try:
+                total, pmids = await self.pubmed.search(query, offset=state.pubmed, limit=limit)
+            except UPSTREAM_FAILURES:
+                status["pubmed"] = "unavailable"
+            else:
+                status["pubmed"], totals["pubmed"] = "ok", total
+                pubmed_returned = len(pmids)
+                keys = [identity_keys(pmid=p, pmcid=None, doi=None, ppr=None) for p in pmids]
+                pages.append([Candidate(k, ("pmid", p)) for k, p in zip(keys, pmids, strict=True)])
+                names.append("pubmed")
+        if "europepmc" in sources and not state.europepmc_done:
+            try:
+                page = await self.europepmc.search(
+                    query, mark=state.europepmc_mark, size=state.europepmc_skip + limit
+                )
+            except UPSTREAM_FAILURES:
+                status["europepmc"] = "unavailable"
+            else:
+                status["europepmc"], totals["europepmc"] = "ok", page.total
+                epmc_fetched, epmc_next_mark = len(page.results), page.next_mark
+                pages.append(
+                    [
+                        Candidate(
+                            identity_keys(
+                                pmid=r.get("pmid"),
+                                pmcid=r.get("pmcid"),
+                                doi=r.get("doi"),
+                                ppr=r.get("id") if r.get("source") == "PPR" else None,
+                            ),
+                            ("europepmc", r),
+                        )
+                        for r in page.results[state.europepmc_skip :]
+                    ]
+                )
+                names.append("europepmc")
+        if status and all(value == "unavailable" for value in status.values()):
+            raise UpstreamUnavailableError("no literature source answered: " + ", ".join(status))
+
+        chosen, consumed = interleave(pages, limit)
+        used = dict(zip(names, consumed, strict=True))
+        hits = await self._hits(chosen, status)
+
+        next_state = replace(state)
+        if "pubmed" in used:
+            offset = state.pubmed + used["pubmed"]
+            next_state = replace(
+                next_state,
+                pubmed=offset,
+                pubmed_done=offset >= totals["pubmed"] or pubmed_returned == 0,
+            )
+        if "europepmc" in used:
+            skip = state.europepmc_skip + used["europepmc"]
+            if skip < epmc_fetched:
+                next_state = replace(next_state, europepmc_skip=skip)
+            elif epmc_next_mark is not None:
+                next_state = replace(next_state, europepmc_mark=epmc_next_mark, europepmc_skip=0)
+            else:
+                next_state = replace(next_state, europepmc_done=True)
+        finished = all(
+            (name == "pubmed" and next_state.pubmed_done)
+            or (name == "europepmc" and next_state.europepmc_done)
+            for name in sources
+            if name in LITERATURE_SOURCES
+        )
+        return SearchPage(
+            hits=hits,
+            totals=totals,
+            next_state=None if finished else next_state,
+            source_status=status,
+        )
+
+    async def _hits(
+        self, chosen: Sequence[Candidate], status: dict[str, SourceStatusValue]
+    ) -> list[LiteratureHit]:
+        """PMID-bearing hits are rendered from PubMed, the source of record for `pmid:`."""
+        pmids: list[str] = []
+        for candidate in chosen:
+            kind, value = candidate.payload
+            pmid = value if kind == "pmid" else value.get("pmid")
+            if pmid:
+                pmids.append(str(pmid))
+        pubmed_bundles: dict[str, RecordBundle] = {}
+        if pmids:
+            try:
+                pubmed_bundles = (await self.pubmed.fetch(pmids)).bundles
+            except UPSTREAM_FAILURES:
+                status["pubmed"] = "unavailable"
+        hits: list[LiteratureHit] = []
+        for candidate in chosen:
+            kind, value = candidate.payload
+            if kind == "pmid":
+                bundle = pubmed_bundles.get(value)
+                if bundle is not None:
+                    hits.append(await self._hit(bundle, mint_title=True))
+                continue
+            result: dict[str, Any] = value
+            pmid = result.get("pmid")
+            if pmid and str(pmid) in pubmed_bundles:
+                hit = await self._hit(pubmed_bundles[str(pmid)], mint_title=True)
+                # PubMed does not say whether full text is open; Europe PMC does.
+                epmc_record = parse_result(result, self.europepmc.now()).record
+                oa = epmc_record.quality.open_access_full_text
+                hits.append(hit.model_copy(update={"open_access_full_text": oa}))
+                continue
+            bundle = parse_result(result, self.europepmc.now())
+            # A pmid: hit is only citable with PubMed's text; without it, no handle.
+            mint = not record_id_for(result).startswith("pmid:")
+            hits.append(await self._hit(bundle, mint_title=mint))
+        return hits
+
+    async def _load(self, refs: Sequence[RecordRef], *, full_text: bool) -> _Loaded:
+        loaded = _Loaded()
+        pmid_refs = [r for r in refs if r.scheme == "pmid"]
+        epmc_refs = [r for r in refs if r.scheme in ("pmcid", "ppr")]
+        if pmid_refs:
+            try:
+                outcome = await self.pubmed.fetch([r.id for r in pmid_refs])
+            except UPSTREAM_FAILURES as exc:
+                loaded.status["pubmed"] = "unavailable"
+                loaded.failed.update({r.key: str(exc) for r in pmid_refs})
+            else:
+                loaded.status["pubmed"] = "ok"
+                loaded.bundles.update({f"pmid:{k}": b for k, b in outcome.bundles.items()})
+                loaded.missing.extend(f"pmid:{m}" for m in outcome.missing)
+        if epmc_refs:
+            try:
+                outcome = await self.europepmc.load([r.id for r in epmc_refs], full_text=full_text)
+            except UPSTREAM_FAILURES as exc:
+                loaded.status["europepmc"] = "unavailable"
+                loaded.failed.update({r.key: str(exc) for r in epmc_refs})
+            else:
+                loaded.status["europepmc"] = "ok"
+                for ref in epmc_refs:
+                    bundle = outcome.bundles.get(ref.id)
+                    if bundle is None:
+                        loaded.missing.append(ref.key)
+                    else:
+                        loaded.bundles[ref.key] = bundle
+        return loaded
+
+    async def _with_retractions(
+        self, bundles: dict[str, RecordBundle], status: dict[str, SourceStatusValue]
+    ) -> None:
+        """Merge Crossref's retraction status into every record that has a DOI (in place)."""
+        dois = {b.record.ids.doi for b in bundles.values() if b.record.ids.doi}
+        if not dois:
+            return
+        found: dict[str, Retraction] = {}
+        for doi in sorted(dois):
+            try:
+                found[doi] = await self.crossref.retraction(doi)
+            except UPSTREAM_FAILURES:
+                status["crossref"] = "degraded"
+        status.setdefault("crossref", "ok")
+        for key, bundle in bundles.items():
+            doi = bundle.record.ids.doi
+            if doi in found:
+                bundles[key] = replace(bundle, record=merge_retraction(bundle.record, found[doi]))
 
     async def fetch_passages(
         self,
@@ -146,57 +369,118 @@ class EvidenceService:
         sections: Sequence[str] | None,
         max_passages: int,
         offset: int,
+        full_text: bool = False,
+        include_entities: bool = True,
     ) -> FetchPage:
         refs = list(dict.fromkeys(_record_ref(record_id) for record_id in record_ids))
-        bundles, not_found = await self._bundles(refs)
-        ordered = [bundles[ref.id] for ref in refs if ref.id in bundles]
-        flat = [
-            (bundle, draft)
-            for bundle in ordered
-            for draft in bundle.passages
-            if _matches(draft.path, sections)
-        ]
+        loaded = await self._load(refs, full_text=full_text)
+        companions: dict[str, str] = {}  # pmid key -> pmcid key holding its full text
+        if full_text:
+            requested = {r.key.lower() for r in refs}
+            extra = [
+                RecordRef("pmcid", b.record.ids.pmcid)
+                for k, b in loaded.bundles.items()
+                if k.startswith("pmid:")
+                and b.record.ids.pmcid
+                and f"pmcid:{b.record.ids.pmcid}".lower() not in requested
+            ]
+            if extra:
+                more = await self._load(extra, full_text=True)
+                for name, value in more.status.items():
+                    loaded.status[name] = _worse(loaded.status.get(name), value)
+                for key, bundle in list(loaded.bundles.items()):
+                    pmcid = bundle.record.ids.pmcid
+                    companion = more.bundles.get(f"pmcid:{pmcid}") if pmcid else None
+                    if not key.startswith("pmid:") or companion is None:
+                        continue
+                    # PubMed does not say whether full text is open; Europe PMC does.
+                    oa = companion.record.quality.open_access_full_text
+                    quality = bundle.record.quality.model_copy(update={"open_access_full_text": oa})
+                    record = bundle.record.model_copy(update={"quality": quality})
+                    loaded.bundles[key] = replace(bundle, record=record)
+                    if any(d.path.startswith("body.") for d in companion.passages):
+                        companions[key] = f"pmcid:{pmcid}"
+                        loaded.bundles[f"pmcid:{pmcid}"] = companion
+        if not loaded.bundles and loaded.failed:
+            raise UpstreamUnavailableError("no source answered for the requested records")
+        if include_entities:
+            await self._with_entities(loaded.bundles, loaded.status)
+        await self._with_retractions(loaded.bundles, loaded.status)
+
+        ordered: list[RecordBundle] = []
+        for ref in refs:
+            bundle = loaded.bundles.get(ref.key)
+            if bundle is None:
+                continue
+            ordered.append(bundle)
+            if ref.key in companions:
+                ordered.append(loaded.bundles[companions[ref.key]])
+        flat = [(b, d) for b in ordered for d in b.passages if _matches(d.path, sections)]
         page = flat[offset : offset + max_passages]
         records: list[RecordPassages] = []
         for bundle in ordered:
-            drafts = [(d.path, d.text, d.section_label) for b, d in page if b is bundle]
+            drafts = [d for b, d in page if b is bundle]
             has_any = any(b is bundle for b, _ in flat)
             if drafts or (offset == 0 and not has_any):
-                records.append(
-                    RecordPassages(
-                        record=bundle.record, passages=await self._issue(bundle.record, drafts)
-                    )
-                )
+                passages = await self._issue(bundle.record, drafts)
+                records.append(RecordPassages(record=bundle.record, passages=passages))
         end = offset + len(page)
         return FetchPage(
             records=records,
-            not_found=not_found if offset == 0 else [],
+            not_found=loaded.missing if offset == 0 else [],
+            unavailable=sorted(loaded.failed) if offset == 0 else [],
             next_offset=end if end < len(flat) else None,
+            source_status=loaded.status,
         )
+
+    async def _with_entities(
+        self, bundles: dict[str, RecordBundle], status: dict[str, SourceStatusValue]
+    ) -> None:
+        """PubTator3 entities on PubMed title and abstract passages (in place)."""
+        pmids = [
+            b.record.ids.pmid
+            for k, b in bundles.items()
+            if k.startswith("pmid:") and b.record.ids.pmid
+        ]
+        if not pmids:
+            return
+        try:
+            documents = await self.pubtator.documents(pmids)
+        except UPSTREAM_FAILURES:
+            status["pubtator"] = "degraded"
+            return
+        status["pubtator"] = "ok"
+        for key, bundle in bundles.items():
+            if key.startswith("pmid:") and bundle.record.ids.pmid:
+                document = documents.get(bundle.record.ids.pmid)
+                bundles[key] = replace(bundle, passages=attach_entities(bundle.passages, document))
 
     async def resolve(self, locators: Sequence[Locator]) -> Mapping[Locator, Resolution]:
         """PassageResolver for the audit: current text, plus the text as issued when cached."""
         results: dict[Locator, Resolution] = {}
-        pubmed_locators = [loc for loc in locators if loc.scheme == "pmid"]
+        supported = [loc for loc in locators if loc.scheme in SUPPORTED_SCHEMES]
         for locator in locators:
-            if locator.scheme != "pmid":
+            if locator.scheme not in SUPPORTED_SCHEMES:
                 results[locator] = Unavailable(f"scheme {locator.scheme} is not supported yet")
-        if not pubmed_locators:
+        if not supported:
             return results
-        reason = f"no answer from PubMed within {self.resolve_budget_s:g}s"
-        outcome: FetchOutcome | None = None
+        refs = list(dict.fromkeys(RecordRef(loc.scheme, loc.id) for loc in supported))
+        full_text = any(loc.path.startswith("body.") for loc in supported)
+        loaded: _Loaded | None = None
         with anyio.move_on_after(self.resolve_budget_s):
-            try:
-                outcome = await self.pubmed.fetch([loc.id for loc in pubmed_locators])
-            except (UpstreamUnavailableError, UpstreamResponseError) as exc:
-                reason = str(exc)
-        if outcome is None:
-            for locator in pubmed_locators:
-                results[locator] = Unavailable(reason)
+            loaded = await self._load(refs, full_text=full_text)
+            await self._with_retractions(loaded.bundles, loaded.status)
+        if loaded is None:
+            reason = f"no answer from upstream within {self.resolve_budget_s:g}s"
+            results.update({loc: Unavailable(reason) for loc in supported})
             return results
-        issued = await self.cache.get_issued([str(loc) for loc in pubmed_locators])
-        for locator in pubmed_locators:
-            bundle = outcome.bundles.get(locator.id)
+        issued = await self.cache.get_issued([str(loc) for loc in supported])
+        for locator in supported:
+            key = RecordRef(locator.scheme, locator.id).key
+            if key in loaded.failed:
+                results[locator] = Unavailable(loaded.failed[key])
+                continue
+            bundle = loaded.bundles.get(key)
             if bundle is None:
                 results[locator] = Withdrawn("record not found upstream")
                 continue

@@ -46,6 +46,7 @@ def live_config(settings: Settings) -> RuntimeConfig:
         cache_path=cache_path,
         ncbi_api_key=settings.ncbi_api_key.get_secret_value() if settings.ncbi_api_key else None,
         ncbi_email=settings.ncbi_email,
+        crossref_mailto=settings.crossref_mailto,
         deadline_s=settings.tool_deadline_s,
     )
 
