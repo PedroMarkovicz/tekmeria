@@ -1,0 +1,477 @@
+{
+  "$defs": {
+    "AuditSummary": {
+      "properties": {
+        "by_verdict": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "enum": [
+              "malformed",
+              "forged",
+              "unavailable",
+              "withdrawn",
+              "quote_mismatch",
+              "ok"
+            ]
+          },
+          "title": "By Verdict",
+          "type": "object"
+        },
+        "citation_validity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Citation Validity"
+        },
+        "citations": {
+          "title": "Citations",
+          "type": "integer"
+        },
+        "cited_sentences": {
+          "title": "Cited Sentences",
+          "type": "integer"
+        },
+        "fabricated": {
+          "title": "Fabricated",
+          "type": "integer"
+        },
+        "invalid_only_sentences": {
+          "title": "Invalid Only Sentences",
+          "type": "integer"
+        },
+        "quote_accuracy": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quote Accuracy"
+        },
+        "quotes_checked": {
+          "title": "Quotes Checked",
+          "type": "integer"
+        },
+        "quotes_ok": {
+          "title": "Quotes Ok",
+          "type": "integer"
+        },
+        "retracted_cited": {
+          "title": "Retracted Cited",
+          "type": "integer"
+        },
+        "sentence_coverage": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Sentence Coverage"
+        },
+        "sentences": {
+          "title": "Sentences",
+          "type": "integer"
+        },
+        "uncited_sentences": {
+          "title": "Uncited Sentences",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sentences",
+        "cited_sentences",
+        "uncited_sentences",
+        "invalid_only_sentences",
+        "citations",
+        "by_verdict",
+        "quotes_checked",
+        "quotes_ok",
+        "citation_validity",
+        "sentence_coverage",
+        "quote_accuracy",
+        "fabricated",
+        "retracted_cited"
+      ],
+      "title": "AuditSummary",
+      "type": "object"
+    },
+    "CitationResult": {
+      "properties": {
+        "checked_against": {
+          "anyOf": [
+            {
+              "enum": [
+                "issued",
+                "current"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked Against"
+        },
+        "closest_match": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closest Match"
+        },
+        "flags": {
+          "items": {
+            "$ref": "#/$defs/Flag"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "handle": {
+          "title": "Handle",
+          "type": "string"
+        },
+        "passage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Passage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "resolved_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Version"
+        },
+        "similarity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Similarity"
+        },
+        "support": {
+          "const": "not_checked",
+          "default": "not_checked",
+          "title": "Support",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "malformed",
+            "forged",
+            "unavailable",
+            "withdrawn",
+            "quote_mismatch",
+            "ok"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "handle",
+        "verdict"
+      ],
+      "title": "CitationResult",
+      "type": "object"
+    },
+    "ClaimResult": {
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/CitationResult"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "sentence": {
+          "title": "Sentence",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "cited",
+            "uncited",
+            "invalid_only"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "sentence",
+        "status",
+        "citations"
+      ],
+      "title": "ClaimResult",
+      "type": "object"
+    },
+    "Entity": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "span": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Span",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "gene",
+            "disease",
+            "chemical",
+            "species",
+            "mutation",
+            "cell_line"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "text",
+        "span"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "Flag": {
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "name": {
+          "enum": [
+            "retracted",
+            "preprint",
+            "version_changed"
+          ],
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Flag",
+      "type": "object"
+    },
+    "Passage": {
+      "properties": {
+        "entities": {
+          "$ref": "#/$defs/Signal_list_Entity__"
+        },
+        "handle": {
+          "title": "Handle",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "record_id": {
+          "title": "Record Id",
+          "type": "string"
+        },
+        "section_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Label"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "handle",
+        "record_id",
+        "path",
+        "text"
+      ],
+      "title": "Passage",
+      "type": "object"
+    },
+    "Signal_list_Entity__": {
+      "properties": {
+        "sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "known",
+            "unknown",
+            "not_checked"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Entity"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "Signal[list[Entity]]",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "audited_at": {
+      "format": "date-time",
+      "title": "Audited At",
+      "type": "string"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/ClaimResult"
+      },
+      "title": "Claims",
+      "type": "array"
+    },
+    "contract_version": {
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "fail_on": {
+      "items": {
+        "enum": [
+          "malformed",
+          "forged",
+          "unavailable",
+          "withdrawn",
+          "quote_mismatch",
+          "uncited",
+          "retracted"
+        ],
+        "type": "string"
+      },
+      "title": "Fail On",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/AuditSummary"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail",
+        "incomplete"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_version",
+    "audited_at",
+    "claims",
+    "summary",
+    "verdict",
+    "fail_on"
+  ],
+  "title": "AuditReport",
+  "type": "object"
+}
