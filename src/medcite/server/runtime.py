@@ -17,9 +17,6 @@ from medcite.sources.pubmed import PubMedAdapter, ncbi_host
 from medcite.sources.pubtator import PubTatorAdapter, pubtator_host
 from medcite.sources.service import EvidenceService
 
-# Handle resolution gets most of the tool deadline; the rest is left for judging and output.
-RESOLVE_SHARE_OF_DEADLINE = 0.8
-
 
 @dataclass(frozen=True)
 class RuntimeConfig:
@@ -62,6 +59,6 @@ async def open_runtime(config: RuntimeConfig) -> AsyncIterator[AppContext]:
             europepmc=EuropePmcAdapter(upstream(europepmc_host())),
             pubtator=PubTatorAdapter(upstream(pubtator_host())),
             crossref=CrossrefAdapter(upstream(crossref_host(mailto=config.crossref_mailto))),
-            resolve_budget_s=config.deadline_s * RESOLVE_SHARE_OF_DEADLINE,
+            deadline_s=config.deadline_s,
         )
         yield AppContext(service=service, codec=codec, deadline_s=config.deadline_s)

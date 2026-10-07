@@ -3,12 +3,18 @@
 import json
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any
 
 from medcite.contract.models import StudyDesign
-from medcite.infra.http import HostConfig, Upstream, UpstreamResponseError
+from medcite.infra.http import (
+    HostConfig,
+    Upstream,
+    UpstreamNotFoundError,
+    UpstreamResponseError,
+    UpstreamUnavailableError,
+)
 from medcite.sources.base import FetchOutcome
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.europepmc_parse import parse_full_text, parse_result
@@ -17,6 +23,10 @@ from medcite.sources.pubmed import STUDY_DESIGN_FILTERS, LiteratureQuery
 SEARCH_TTL_S = 3600.0
 RECORD_TTL_S = 7 * 24 * 3600.0
 MAX_IDS_PER_QUERY = 50
+
+# Sources with a record_id scheme. Others (patents, theses, Agricola, ...) cannot be cited.
+CITABLE_SOURCES = ("MED", "PMC", "PPR")
+_FULL_TEXT_FAILURES = (UpstreamUnavailableError, UpstreamResponseError, UpstreamNotFoundError)
 
 # Europe PMC indexes MEDLINE publication types under PUB_TYPE.
 _PUB_TYPES: dict[StudyDesign, tuple[str, ...]] = {
@@ -47,7 +57,7 @@ def _date(value: str, *, end: bool) -> str:
 
 def build_query(query: LiteratureQuery) -> str:
     """The same filters as PubMed, in Europe PMC syntax."""
-    clauses = [f"({query.query})"]
+    clauses = [f"({query.query})", "(" + " OR ".join(f"SRC:{s}" for s in CITABLE_SOURCES) + ")"]
     if query.study_designs:
         unfilterable = [d for d in query.study_designs if d not in STUDY_DESIGN_FILTERS]
         if unfilterable:
@@ -69,6 +79,10 @@ def build_query(query: LiteratureQuery) -> str:
     if query.exclude_retracted:
         text += ' NOT PUB_TYPE:"Retracted Publication"'
     return text
+
+
+def is_citable(result: dict[str, Any]) -> bool:
+    return result.get("source") in CITABLE_SOURCES
 
 
 def _check_search(body: str) -> None:
@@ -102,6 +116,13 @@ class SearchPage:
     next_mark: str | None  # None when there is no further page
 
 
+@dataclass
+class LoadOutcome(FetchOutcome):
+    """Also lists the PMCIDs whose full text failed; their metadata passages are kept."""
+
+    full_text_failed: list[str] = field(default_factory=list[str])
+
+
 class EuropePmcAdapter:
     def __init__(
         self, upstream: Upstream, *, clock: Callable[[], datetime] = lambda: datetime.now(UTC)
@@ -133,19 +154,20 @@ class EuropePmcAdapter:
     async def search(self, query: LiteratureQuery, *, mark: str, size: int) -> SearchPage:
         return await self._search(build_query(query), mark=mark, size=size, ttl_s=SEARCH_TTL_S)
 
-    async def load(self, ids: Sequence[str], *, full_text: bool) -> FetchOutcome:
+    async def load(self, ids: Sequence[str], *, full_text: bool) -> LoadOutcome:
         """Records for `pmcid:` and `ppr:` ids (the bare ids, e.g. 'PMC123', 'PPR456').
 
-        Full text is fetched only for open-access PMC articles, as `body.*` passages.
+        Full text is fetched only for open-access PMC articles, as `body.*` passages. A PMCID
+        whose full text fails keeps its metadata passages and is listed in `full_text_failed`.
         """
-        outcome = FetchOutcome()
+        outcome = LoadOutcome()
         wanted = list(dict.fromkeys(ids))
         pmcids = [i for i in wanted if i.upper().startswith("PMC")]
         pprs = [i for i in wanted if i.upper().startswith("PPR")]
-        for field, group, scheme in (("PMCID", pmcids, "pmcid"), ("EXT_ID", pprs, "ppr")):
+        for id_field, group, scheme in (("PMCID", pmcids, "pmcid"), ("EXT_ID", pprs, "ppr")):
             for start in range(0, len(group), MAX_IDS_PER_QUERY):
                 batch = group[start : start + MAX_IDS_PER_QUERY]
-                clause = " OR ".join(f"{field}:{i}" for i in batch)
+                clause = " OR ".join(f"{id_field}:{i}" for i in batch)
                 query = f"({clause}) AND SRC:PPR" if scheme == "ppr" else f"({clause})"
                 page = await self._search(query, mark="*", size=len(batch) * 2, ttl_s=RECORD_TTL_S)
                 for result in page.results:
@@ -162,9 +184,13 @@ class EuropePmcAdapter:
                 oa = bundle.record.quality.open_access_full_text if bundle else None
                 if bundle is None or oa is None or oa.value is None or not oa.value.available:
                     continue
-                body = await self.upstream.get_text(
-                    f"{pmcid}/fullTextXML", {}, ttl_s=RECORD_TTL_S, validate=_check_full_text
-                )
+                try:
+                    body = await self.upstream.get_text(
+                        f"{pmcid}/fullTextXML", {}, ttl_s=RECORD_TTL_S, validate=_check_full_text
+                    )
+                except _FULL_TEXT_FAILURES:
+                    outcome.full_text_failed.append(pmcid)
+                    continue
                 outcome.bundles[pmcid] = replace(
                     bundle, passages=[*bundle.passages, *parse_full_text(body)]
                 )

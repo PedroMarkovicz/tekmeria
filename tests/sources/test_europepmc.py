@@ -25,7 +25,8 @@ def test_query_with_all_filters() -> None:
         )
     )
     assert query == (
-        '(mmr autism) AND (PUB_TYPE:"Meta-Analysis" OR PUB_TYPE:"Guideline" OR '
+        "(mmr autism) AND (SRC:MED OR SRC:PMC OR SRC:PPR) AND "
+        '(PUB_TYPE:"Meta-Analysis" OR PUB_TYPE:"Guideline" OR '
         'PUB_TYPE:"Practice Guideline") AND FIRST_PDATE:[2020-01-01 TO 2024-06-30] AND '
         'OPEN_ACCESS:y NOT SRC:PPR NOT PUB_TYPE:"Retracted Publication"'
     )
@@ -88,7 +89,7 @@ async def test_load_matches_ids_and_fetches_full_text_only_when_open() -> None:
     assert sum(path.endswith("/fullTextXML") for path in seen) == 1
 
 
-async def test_full_text_that_is_not_a_jats_article_is_an_upstream_error() -> None:
+async def test_full_text_that_is_not_a_jats_article_keeps_the_metadata() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/search"):
             body = _search_body(
@@ -99,9 +100,11 @@ async def test_full_text_that_is_not_a_jats_article_is_an_upstream_error() -> No
 
     async with Cache(":memory:") as cache:
         upstream = Upstream(europepmc_host(), cache=cache, transport=httpx.MockTransport(handler))
-        with pytest.raises(UpstreamResponseError):
-            await EuropePmcAdapter(upstream).load(["PMC1"], full_text=True)
+        outcome = await EuropePmcAdapter(upstream).load(["PMC1"], full_text=True)
         await upstream.aclose()
+    assert outcome.full_text_failed == ["PMC1"]
+    assert outcome.bundles["PMC1"].record.record_id == "pmcid:PMC1"
+    assert outcome.bundles["PMC1"].passages == []  # the search result has no title
 
 
 async def test_search_without_result_list_is_an_upstream_error() -> None:

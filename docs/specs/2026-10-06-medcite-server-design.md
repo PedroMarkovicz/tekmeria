@@ -554,6 +554,11 @@ Decisions made while implementing the project, stage by stage. Where they differ
   - **Paging.** The cursor records each source's position: an offset for PubMed, and a cursor mark plus items already consumed for Europe PMC.
   - **Counts.** `totals` gives the match count per source. `total` is the largest of them, because the sources overlap.
 - **6.2 Partial failure.** If one source fails, the other's hits are returned and `source_status` marks the failed source `unavailable`. Only when every requested source fails is the result an `upstream_unavailable` error.
+  - **Time budgets.** Sources are queried side by side, each within 40% of the tool deadline. Each follow-up step (fetching PubMed records for the hits, PMC companions, PubTator, Crossref) gets 15%. A source that overruns its share is reported like one that failed, so a hanging source never costs the others their results.
+  - **PubMed records.** If PubMed answers the search but its records cannot be fetched, PubMed is `unavailable` and the cursor does not advance past its hits, so nothing is skipped.
+  - **PubMed field tags.** A query with tags such as `[tiab]` or `[MeSH]` is sent to PubMed only, and Europe PMC is reported as `degraded`. With `sources=["europepmc"]` alone, such a query is `invalid_input`.
+  - **Citable sources only.** Europe PMC is searched with `(SRC:MED OR SRC:PMC OR SRC:PPR)`, and results from other sources (patents, theses, Agricola) are dropped, because no record id scheme can cite them.
+  - **Paging.** Europe PMC is read in fixed pages of 25. The cursor stores the page's `cursorMark` and the position within it.
 - **8 Who is the source of record.**
   - **`pmid:` records always come from PubMed,** including hits that Europe PMC found. If PubMed cannot be reached, such hits are still listed, with `title_handle: null`, because a `pmid:` passage is only citable with PubMed's text. Europe PMC's open-access status is copied onto these hits, since PubMed does not report it.
   - **`pmcid:` and `ppr:` records come from Europe PMC search metadata,** which supplies the title and abstract sections (split on `<h4>` and `<title>` headings).
@@ -561,10 +566,11 @@ Decisions made while implementing the project, stage by stage. Where they differ
 - **6.2 `fetch_passages`.**
   - **`full_text=true` on a `pmid:` record** adds its open-access PMC version as a second record (`pmcid:…`) right after it. It also copies Europe PMC's open-access status onto the `pmid:` record.
   - **The `unavailable` field** lists requested records whose source did not answer.
+  - **A full text that fails** (an error, or a body that is not a JATS article) leaves that record with its metadata passages and marks `europepmc` as `degraded`. The other records are unaffected. In an audit, a `body.*` citation of such a record is `unavailable`, not `withdrawn`.
   - **`source_status`** covers `pubmed`, `europepmc`, `pubtator` and `crossref`. An enrichment failure (entities or retraction status) is reported as `degraded`, and the affected fields stay `not_checked`.
 - **8 PubTator3.** Entities are attached only to PubMed title and abstract passages. Gene IDs become `NCBIGene:…` and species IDs `NCBITaxon:…`. Annotations without an identifier are skipped.
-- **8 Crossref.** A record is retracted when any Crossref notice updates its DOI with type `retraction`; the newest notice gives `notice_doi`. The status is merged with PubMed's, and `sources` lists both. Audits merge Crossref's status too, within the resolution deadline.
-- **11 Recording fixtures.** `medcite record-fixtures` refuses to save a run in which any source reported `degraded` or `unavailable`, so a transient upstream error is never recorded as a fixture. Re-run it.
+- **8 Crossref.** A record is retracted when any Crossref notice updates its DOI with type `retraction`; the newest notice gives `notice_doi`. The status is merged with PubMed's, and `sources` lists both. Audits merge Crossref's status too. DOIs are looked up side by side, and every answer that arrives within Crossref's share of the deadline is merged; Crossref is `degraded` if any is missing.
+- **11 Recording fixtures.** `medcite record-fixtures` fails if any source reported `degraded` or `unavailable`. The recorder has already written the responses it received by then, so delete the fixture files and re-run it; otherwise a transient upstream error could stay in the fixtures.
 - **15 Later stages.** The work is now delivered in five stages:
   1. Core server (done)
   2. Literature sources (this amendment)

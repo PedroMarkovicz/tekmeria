@@ -119,7 +119,13 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
     @server.tool(annotations=READ_ONLY_OPEN)
     async def search_literature(
         query: Annotated[
-            str, Field(min_length=1, max_length=500, description="PubMed syntax is accepted")
+            str,
+            Field(
+                min_length=1,
+                max_length=500,
+                description="Boolean terms. PubMed field tags such as [tiab] search "
+                "PubMed only; Europe PMC is then skipped and reported as degraded.",
+            ),
         ],
         ctx: Context[Any, Any],
         date_from: Annotated[

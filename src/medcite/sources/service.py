@@ -1,8 +1,11 @@
 """Routes requests to adapters, mints handles, and resolves handles for the audit."""
 
+import contextlib
 import math
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import Any
 
 import anyio
@@ -24,7 +27,7 @@ from medcite.infra.http import UpstreamResponseError, UpstreamUnavailableError
 from medcite.sources.base import PassageDraft, RecordBundle
 from medcite.sources.crossref import CrossrefAdapter, merge_retraction
 from medcite.sources.errors import InvalidInputError
-from medcite.sources.europepmc import EuropePmcAdapter
+from medcite.sources.europepmc import EuropePmcAdapter, is_citable
 from medcite.sources.europepmc_parse import parse_result, record_id_for
 from medcite.sources.merge import Candidate, identity_keys, interleave
 from medcite.sources.pubmed import LiteratureQuery, PubMedAdapter
@@ -33,12 +36,22 @@ from medcite.sources.pubtator import PubTatorAdapter, attach_entities
 SUPPORTED_SCHEMES = ("pmid", "pmcid", "ppr")
 LITERATURE_SOURCES = ("pubmed", "europepmc")
 PREVIEW_CHARS = 300
+EPMC_PAGE_SIZE = 25  # fixed, so deep paging never asks Europe PMC for an oversized page
+# Shares of the tool deadline. Sources run side by side, each within SOURCE_SHARE; each
+# follow-up step (companions, PubTator, Crossref, PubMed rendering) gets STEP_SHARE.
+SOURCE_SHARE = 0.4
+STEP_SHARE = 0.15
 UPSTREAM_FAILURES = (UpstreamUnavailableError, UpstreamResponseError)
+# PubMed field tags such as [tiab] or [MeSH Terms]; Europe PMC would search them as text.
+_PUBMED_TAG = re.compile(r"\[[A-Za-z][A-Za-z /:-]*\]")
 
 
 @dataclass(frozen=True)
 class SearchState:
-    """Where each source's results continue; serialized into the search cursor."""
+    """Where each source's results continue; serialized into the search cursor.
+
+    Europe PMC continues at item `europepmc_skip` of the page at `europepmc_mark`.
+    """
 
     pubmed: int = 0
     europepmc_mark: str = "*"
@@ -96,6 +109,14 @@ class _Loaded:
     missing: list[str] = field(default_factory=list[str])
     failed: dict[str, str] = field(default_factory=dict[str, str])  # record key -> reason
     status: dict[str, SourceStatusValue] = field(default_factory=dict[str, SourceStatusValue])
+    no_full_text: set[str] = field(default_factory=set[str])  # record keys whose body failed
+
+
+@dataclass(frozen=True)
+class _EuropePmcSlice:
+    items: list[tuple[str, int, dict[str, Any]]]  # (page mark, index in page, citable result)
+    end_mark: str | None  # the page after the last one fetched; None when there is none
+    total: int
 
 
 _SEVERITY: dict[SourceStatusValue, int] = {"ok": 0, "degraded": 1, "unavailable": 2}
@@ -126,6 +147,28 @@ def _record_ref(record_id: str) -> RecordRef:
     return ref
 
 
+def _require_any(status: Mapping[str, SourceStatusValue]) -> None:
+    if status and all(value == "unavailable" for value in status.values()):
+        raise UpstreamUnavailableError("no literature source answered: " + ", ".join(status))
+
+
+async def _concurrently(*calls: Callable[[], Awaitable[None]]) -> None:
+    """Run calls side by side; re-raise the first error as itself, not as an ExceptionGroup."""
+    errors: list[Exception] = []
+
+    async def guarded(call: Callable[[], Awaitable[None]]) -> None:
+        try:
+            await call()
+        except Exception as exc:
+            errors.append(exc)
+
+    async with anyio.create_task_group() as group:
+        for call in calls:
+            group.start_soon(guarded, call)
+    if errors:
+        raise errors[0]
+
+
 class EvidenceService:
     def __init__(
         self,
@@ -136,7 +179,7 @@ class EvidenceService:
         europepmc: EuropePmcAdapter,
         pubtator: PubTatorAdapter,
         crossref: CrossrefAdapter,
-        resolve_budget_s: float = math.inf,
+        deadline_s: float = math.inf,
     ) -> None:
         self.codec = codec
         self.cache = cache
@@ -144,9 +187,18 @@ class EvidenceService:
         self.europepmc = europepmc
         self.pubtator = pubtator
         self.crossref = crossref
-        # Resolution must finish inside the tool deadline, so a slow upstream yields
-        # `unavailable` citations in a full report instead of losing the whole audit.
-        self.resolve_budget_s = resolve_budget_s
+        # Every upstream step gets a share of the tool deadline, so a slow source yields
+        # an `unavailable` or `degraded` status in a full result instead of losing it all.
+        self.deadline_s = deadline_s
+
+    async def _within[T](self, share: float, call: Callable[[], Awaitable[T]]) -> T | None:
+        """`call`'s result, or None when its upstream fails or it overruns its share."""
+        with anyio.move_on_after(self.deadline_s * share):
+            try:
+                return await call()
+            except UPSTREAM_FAILURES:
+                return None
+        return None
 
     async def _issue(self, record: Record, drafts: Sequence[PassageDraft]) -> list[Passage]:
         """Mint handles for drafts and remember each text as issued."""
@@ -192,75 +244,129 @@ class EvidenceService:
             ids=record.ids,
         )
 
+    async def _europepmc_slice(
+        self, query: LiteratureQuery, mark: str, skip: int, want: int
+    ) -> _EuropePmcSlice:
+        """At least `want` citable results from (mark, skip) on, in fixed-size pages."""
+        items: list[tuple[str, int, dict[str, Any]]] = []
+        total = 0
+        current: str | None = mark
+        for _ in range(math.ceil(want / EPMC_PAGE_SIZE) + 1):
+            assert current is not None
+            page = await self.europepmc.search(query, mark=current, size=EPMC_PAGE_SIZE)
+            total = page.total
+            items.extend(
+                (current, index, result)
+                for index, result in enumerate(page.results)
+                if index >= skip and is_citable(result)
+            )
+            current, skip = page.next_mark, 0
+            if current is None or len(items) >= want:
+                break
+        return _EuropePmcSlice(items=items, end_mark=current, total=total)
+
     async def search_literature(
         self, query: LiteratureQuery, *, sources: Sequence[str], state: SearchState, limit: int
     ) -> SearchPage:
         status: dict[str, SourceStatusValue] = {}
         totals: dict[str, int] = {}
+        use_pubmed = "pubmed" in sources and not state.pubmed_done
+        use_europepmc = "europepmc" in sources and not state.europepmc_done
+        skip_europepmc = use_europepmc and _PUBMED_TAG.search(query.query) is not None
+        if skip_europepmc:
+            if "pubmed" not in sources:
+                raise InvalidInputError(
+                    "PubMed field tags such as [tiab] do not work on Europe PMC",
+                    hint="Search with sources=['pubmed'], or use Europe PMC syntax "
+                    "such as TITLE:aspirin.",
+                )
+            status["europepmc"], use_europepmc = "degraded", False
+
+        pubmed_page: tuple[int, list[str]] | None = None  # (total, pmids)
+        europepmc_slice: _EuropePmcSlice | None = None
+
+        async def from_pubmed() -> None:
+            nonlocal pubmed_page
+            pubmed_page = await self._within(
+                SOURCE_SHARE, partial(self.pubmed.search, query, offset=state.pubmed, limit=limit)
+            )
+            status["pubmed"] = "unavailable" if pubmed_page is None else "ok"
+
+        async def from_europepmc() -> None:
+            nonlocal europepmc_slice
+            europepmc_slice = await self._within(
+                SOURCE_SHARE,
+                partial(
+                    self._europepmc_slice,
+                    query,
+                    state.europepmc_mark,
+                    state.europepmc_skip,
+                    limit,
+                ),
+            )
+            status["europepmc"] = "unavailable" if europepmc_slice is None else "ok"
+
+        await _concurrently(
+            *([from_pubmed] if use_pubmed else []),
+            *([from_europepmc] if use_europepmc else []),
+        )
+        _require_any(status)
+
         pages: list[list[Candidate]] = []
         names: list[str] = []
-        pubmed_returned = 0
-        epmc_fetched = 0
-        epmc_next_mark: str | None = None
-        if "pubmed" in sources and not state.pubmed_done:
-            try:
-                total, pmids = await self.pubmed.search(query, offset=state.pubmed, limit=limit)
-            except UPSTREAM_FAILURES:
-                status["pubmed"] = "unavailable"
-            else:
-                status["pubmed"], totals["pubmed"] = "ok", total
-                pubmed_returned = len(pmids)
-                keys = [identity_keys(pmid=p, pmcid=None, doi=None, ppr=None) for p in pmids]
-                pages.append([Candidate(k, ("pmid", p)) for k, p in zip(keys, pmids, strict=True)])
-                names.append("pubmed")
-        if "europepmc" in sources and not state.europepmc_done:
-            try:
-                page = await self.europepmc.search(
-                    query, mark=state.europepmc_mark, size=state.europepmc_skip + limit
-                )
-            except UPSTREAM_FAILURES:
-                status["europepmc"] = "unavailable"
-            else:
-                status["europepmc"], totals["europepmc"] = "ok", page.total
-                epmc_fetched, epmc_next_mark = len(page.results), page.next_mark
-                pages.append(
-                    [
-                        Candidate(
-                            identity_keys(
-                                pmid=r.get("pmid"),
-                                pmcid=r.get("pmcid"),
-                                doi=r.get("doi"),
-                                ppr=r.get("id") if r.get("source") == "PPR" else None,
-                            ),
-                            ("europepmc", r),
-                        )
-                        for r in page.results[state.europepmc_skip :]
-                    ]
-                )
-                names.append("europepmc")
-        if status and all(value == "unavailable" for value in status.values()):
-            raise UpstreamUnavailableError("no literature source answered: " + ", ".join(status))
+        if pubmed_page is not None:
+            totals["pubmed"], pmids = pubmed_page
+            pages.append(
+                [
+                    Candidate(identity_keys(pmid=p, pmcid=None, doi=None, ppr=None), ("pmid", p))
+                    for p in pmids
+                ]
+            )
+            names.append("pubmed")
+        if europepmc_slice is not None:
+            totals["europepmc"] = europepmc_slice.total
+            pages.append(
+                [
+                    Candidate(
+                        identity_keys(
+                            pmid=r.get("pmid"),
+                            pmcid=r.get("pmcid"),
+                            doi=r.get("doi"),
+                            ppr=r.get("id") if r.get("source") == "PPR" else None,
+                        ),
+                        ("europepmc", r),
+                    )
+                    for _, _, r in europepmc_slice.items
+                ]
+            )
+            names.append("europepmc")
 
         chosen, consumed = interleave(pages, limit)
         used = dict(zip(names, consumed, strict=True))
         hits = await self._hits(chosen, status)
+        _require_any(status)
 
-        next_state = replace(state)
-        if "pubmed" in used:
+        next_state = state
+        # PubMed resumes where it was if its records could not be fetched: nothing skipped.
+        if pubmed_page is not None and status["pubmed"] == "ok":
+            total, pmids = pubmed_page
             offset = state.pubmed + used["pubmed"]
             next_state = replace(
-                next_state,
-                pubmed=offset,
-                pubmed_done=offset >= totals["pubmed"] or pubmed_returned == 0,
+                next_state, pubmed=offset, pubmed_done=offset >= total or not pmids
             )
-        if "europepmc" in used:
-            skip = state.europepmc_skip + used["europepmc"]
-            if skip < epmc_fetched:
-                next_state = replace(next_state, europepmc_skip=skip)
-            elif epmc_next_mark is not None:
-                next_state = replace(next_state, europepmc_mark=epmc_next_mark, europepmc_skip=0)
+        if europepmc_slice is not None:
+            taken = used["europepmc"]
+            if taken < len(europepmc_slice.items):
+                mark, index, _ = europepmc_slice.items[taken]
+                next_state = replace(next_state, europepmc_mark=mark, europepmc_skip=index)
+            elif europepmc_slice.end_mark is not None:
+                next_state = replace(
+                    next_state, europepmc_mark=europepmc_slice.end_mark, europepmc_skip=0
+                )
             else:
                 next_state = replace(next_state, europepmc_done=True)
+        if skip_europepmc:
+            next_state = replace(next_state, europepmc_done=True)
         finished = all(
             (name == "pubmed" and next_state.pubmed_done)
             or (name == "europepmc" and next_state.europepmc_done)
@@ -277,31 +383,36 @@ class EvidenceService:
     async def _hits(
         self, chosen: Sequence[Candidate], status: dict[str, SourceStatusValue]
     ) -> list[LiteratureHit]:
-        """PMID-bearing hits are rendered from PubMed, the source of record for `pmid:`."""
+        """PMID-bearing hits are rendered from PubMed, the source of record for `pmid:`.
+
+        If that fetch fails, PubMed's own hits are lost, so a searched PubMed becomes
+        `unavailable`; Europe PMC hits only lose their handles, so it is `degraded` otherwise.
+        """
         pmids: list[str] = []
         for candidate in chosen:
             kind, value = candidate.payload
             pmid = value if kind == "pmid" else value.get("pmid")
             if pmid:
                 pmids.append(str(pmid))
-        pubmed_bundles: dict[str, RecordBundle] = {}
-        if pmids:
-            try:
-                pubmed_bundles = (await self.pubmed.fetch(pmids)).bundles
-            except UPSTREAM_FAILURES:
-                status["pubmed"] = "unavailable"
+        bundles: dict[str, RecordBundle] = {}
+        if pmids and status.get("pubmed") != "unavailable":
+            outcome = await self._within(STEP_SHARE, partial(self.pubmed.fetch, pmids))
+            if outcome is not None:
+                bundles = outcome.bundles
+            else:
+                status["pubmed"] = "unavailable" if "pubmed" in status else "degraded"
         hits: list[LiteratureHit] = []
         for candidate in chosen:
             kind, value = candidate.payload
             if kind == "pmid":
-                bundle = pubmed_bundles.get(value)
+                bundle = bundles.get(value)
                 if bundle is not None:
                     hits.append(await self._hit(bundle, mint_title=True))
                 continue
             result: dict[str, Any] = value
             pmid = result.get("pmid")
-            if pmid and str(pmid) in pubmed_bundles:
-                hit = await self._hit(pubmed_bundles[str(pmid)], mint_title=True)
+            if pmid and str(pmid) in bundles:
+                hit = await self._hit(bundles[str(pmid)], mint_title=True)
                 # PubMed does not say whether full text is open; Europe PMC does.
                 epmc_record = parse_result(result, self.europepmc.now()).record
                 oa = epmc_record.quality.open_access_full_text
@@ -313,50 +424,78 @@ class EvidenceService:
             hits.append(await self._hit(bundle, mint_title=mint))
         return hits
 
-    async def _load(self, refs: Sequence[RecordRef], *, full_text: bool) -> _Loaded:
+    async def _load(
+        self, refs: Sequence[RecordRef], *, full_text: bool, share: float = SOURCE_SHARE
+    ) -> _Loaded:
+        """Records from PubMed and Europe PMC side by side, each within `share` of the deadline."""
         loaded = _Loaded()
         pmid_refs = [r for r in refs if r.scheme == "pmid"]
         epmc_refs = [r for r in refs if r.scheme in ("pmcid", "ppr")]
-        if pmid_refs:
-            try:
-                outcome = await self.pubmed.fetch([r.id for r in pmid_refs])
-            except UPSTREAM_FAILURES as exc:
-                loaded.status["pubmed"] = "unavailable"
-                loaded.failed.update({r.key: str(exc) for r in pmid_refs})
-            else:
+        budget = self.deadline_s * share
+
+        def fail(source: str, group: Sequence[RecordRef], reason: str) -> None:
+            loaded.status[source] = "unavailable"
+            loaded.failed.update({r.key: reason for r in group})
+
+        async def from_pubmed() -> None:
+            with anyio.move_on_after(budget) as scope:
+                try:
+                    outcome = await self.pubmed.fetch([r.id for r in pmid_refs])
+                except UPSTREAM_FAILURES as exc:
+                    fail("pubmed", pmid_refs, str(exc))
+                    return
                 loaded.status["pubmed"] = "ok"
                 loaded.bundles.update({f"pmid:{k}": b for k, b in outcome.bundles.items()})
                 loaded.missing.extend(f"pmid:{m}" for m in outcome.missing)
-        if epmc_refs:
-            try:
-                outcome = await self.europepmc.load([r.id for r in epmc_refs], full_text=full_text)
-            except UPSTREAM_FAILURES as exc:
-                loaded.status["europepmc"] = "unavailable"
-                loaded.failed.update({r.key: str(exc) for r in epmc_refs})
-            else:
-                loaded.status["europepmc"] = "ok"
+            if scope.cancelled_caught:
+                fail("pubmed", pmid_refs, f"no answer from PubMed within {budget:g}s")
+
+        async def from_europepmc() -> None:
+            with anyio.move_on_after(budget) as scope:
+                try:
+                    outcome = await self.europepmc.load(
+                        [r.id for r in epmc_refs], full_text=full_text
+                    )
+                except UPSTREAM_FAILURES as exc:
+                    fail("europepmc", epmc_refs, str(exc))
+                    return
+                loaded.status["europepmc"] = "degraded" if outcome.full_text_failed else "ok"
+                loaded.no_full_text.update(f"pmcid:{i}" for i in outcome.full_text_failed)
                 for ref in epmc_refs:
                     bundle = outcome.bundles.get(ref.id)
                     if bundle is None:
                         loaded.missing.append(ref.key)
                     else:
                         loaded.bundles[ref.key] = bundle
+            if scope.cancelled_caught:
+                fail("europepmc", epmc_refs, f"no answer from Europe PMC within {budget:g}s")
+
+        await _concurrently(
+            *([from_pubmed] if pmid_refs else []),
+            *([from_europepmc] if epmc_refs else []),
+        )
         return loaded
 
     async def _with_retractions(
         self, bundles: dict[str, RecordBundle], status: dict[str, SourceStatusValue]
     ) -> None:
-        """Merge Crossref's retraction status into every record that has a DOI (in place)."""
-        dois = {b.record.ids.doi for b in bundles.values() if b.record.ids.doi}
+        """Merge Crossref's retraction status into every record that has a DOI (in place).
+
+        DOIs are looked up side by side; the answers that arrive within the step's share
+        of the deadline are merged, and Crossref is `degraded` if any is missing.
+        """
+        dois = sorted({b.record.ids.doi for b in bundles.values() if b.record.ids.doi})
         if not dois:
             return
         found: dict[str, Retraction] = {}
-        for doi in sorted(dois):
-            try:
+
+        async def lookup(doi: str) -> None:
+            with contextlib.suppress(*UPSTREAM_FAILURES):
                 found[doi] = await self.crossref.retraction(doi)
-            except UPSTREAM_FAILURES:
-                status["crossref"] = "degraded"
-        status.setdefault("crossref", "ok")
+
+        with anyio.move_on_after(self.deadline_s * STEP_SHARE):
+            await _concurrently(*(partial(lookup, doi) for doi in dois))
+        status["crossref"] = "ok" if len(found) == len(dois) else "degraded"
         for key, bundle in bundles.items():
             doi = bundle.record.ids.doi
             if doi in found:
@@ -385,8 +524,10 @@ class EvidenceService:
                 and f"pmcid:{b.record.ids.pmcid}".lower() not in requested
             ]
             if extra:
-                more = await self._load(extra, full_text=True)
+                more = await self._load(extra, full_text=True, share=STEP_SHARE)
                 for name, value in more.status.items():
+                    # A missing companion only costs full text, not the requested record.
+                    value = "degraded" if value == "unavailable" else value
                     loaded.status[name] = _worse(loaded.status.get(name), value)
                 for key, bundle in list(loaded.bundles.items()):
                     pmcid = bundle.record.ids.pmcid
@@ -425,9 +566,11 @@ class EvidenceService:
                 passages = await self._issue(bundle.record, drafts)
                 records.append(RecordPassages(record=bundle.record, passages=passages))
         end = offset + len(page)
+        position = {r.key: i for i, r in enumerate(refs)}
+        not_found = sorted(loaded.missing, key=lambda key: position.get(key, len(position)))
         return FetchPage(
             records=records,
-            not_found=loaded.missing if offset == 0 else [],
+            not_found=not_found if offset == 0 else [],
             unavailable=sorted(loaded.failed) if offset == 0 else [],
             next_offset=end if end < len(flat) else None,
             source_status=loaded.status,
@@ -444,9 +587,8 @@ class EvidenceService:
         ]
         if not pmids:
             return
-        try:
-            documents = await self.pubtator.documents(pmids)
-        except UPSTREAM_FAILURES:
+        documents = await self._within(STEP_SHARE, partial(self.pubtator.documents, pmids))
+        if documents is None:
             status["pubtator"] = "degraded"
             return
         status["pubtator"] = "ok"
@@ -466,14 +608,8 @@ class EvidenceService:
             return results
         refs = list(dict.fromkeys(RecordRef(loc.scheme, loc.id) for loc in supported))
         full_text = any(loc.path.startswith("body.") for loc in supported)
-        loaded: _Loaded | None = None
-        with anyio.move_on_after(self.resolve_budget_s):
-            loaded = await self._load(refs, full_text=full_text)
-            await self._with_retractions(loaded.bundles, loaded.status)
-        if loaded is None:
-            reason = f"no answer from upstream within {self.resolve_budget_s:g}s"
-            results.update({loc: Unavailable(reason) for loc in supported})
-            return results
+        loaded = await self._load(refs, full_text=full_text)
+        await self._with_retractions(loaded.bundles, loaded.status)
         issued = await self.cache.get_issued([str(loc) for loc in supported])
         for locator in supported:
             key = RecordRef(locator.scheme, locator.id).key
@@ -485,6 +621,9 @@ class EvidenceService:
                 results[locator] = Withdrawn("record not found upstream")
                 continue
             draft = next((d for d in bundle.passages if d.path == locator.path), None)
+            if draft is None and key in loaded.no_full_text and locator.path.startswith("body."):
+                results[locator] = Unavailable("full text could not be fetched")
+                continue
             if draft is None:
                 results[locator] = Withdrawn(f"passage {locator.path} not found in record")
                 continue
