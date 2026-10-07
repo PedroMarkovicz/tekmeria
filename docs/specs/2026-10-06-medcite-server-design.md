@@ -530,3 +530,44 @@ Deleting the cache never changes a verdict when the upstream content is unchange
 2. **Spec 3: workspace retrieval.** A just-in-time corpus over fetched passages, with hybrid lexical and dense retrieval and graph retrieval over `links` and entities.
 3. **Spec 4: coverage.** Terminology normalization (ICD-10 and others), genomics sources, guidelines, and a diagnosis slice.
 4. **Hosting** a remote server, with auth and abuse protection.
+
+## 16. Amendments
+
+Decisions made while implementing the project, stage by stage. Where they differ from the sections above, these win.
+
+### 16.1 Core server
+
+- **7.1 Citation syntax.** Entries in a citation group may be separated by `;` or `,`. Backticks, asterisks and underscores around a handle are removed. A quote runs from the first quote mark after the handle to the last one, so it may contain straight quotes and brackets. A handle-shaped token outside any bracket group still counts as a citation, so no handle can vanish from the audit.
+- **7.2 Placement.** A citation group that opens a sentence (`Claim one. [h] Claim two.`) belongs to the previous sentence.
+- **7.3 Which text a quote is checked against.** A quote is verbatim if it matches the passage text as first issued or the passage as it is now. `checked_against` reports which one matched. The closest-match diagnostic uses the current text and is bounded: the first 200 characters of the quote, at most 120 windows.
+- **7.3 Deadline.** Handle resolution gets 80% of the tool deadline. When upstream does not answer in time, the affected citations are `unavailable` and the rest of the report is still returned.
+- **5.2 `peer_reviewed`.** This means "published in a journal, not a preprint". It does not promise that every article type (letters, editorials) was formally peer-reviewed.
+- **6.2 Limits.** An `answer_text` whose sentences exceed the claim limits (10 citations per sentence, 1,000-character quotes, 4,000-character sentences) returns `invalid_input` with a hint naming the limits.
+- **9.1 Response validation.** Each upstream response is validated before it is cached: the expected JSON shape, or the expected XML root such as `PubmedArticleSet` or a JATS `article`. An invalid body is an `upstream_error` and is never cached.
+- **9.3 Settings.** `MEDCITE_TOOL_DEADLINE_S` sets the tool deadline (default 45). An empty `MEDCITE_HANDLE_KEY` counts as unset.
+- **11 Testing tools.** Recorded responses are replayed by an httpx transport (`FixtureTransport`) and written by `RecordingTransport`, instead of `respx`. Parser tests use explicit assertions instead of syrupy snapshots.
+
+### 16.2 Literature sources
+
+- **6.2 `search_literature` sources.** `sources` defaults to both `pubmed` and `europepmc`.
+  - **Merging.** Results are interleaved one at a time from each source. An item sharing a PMID, PMCID, DOI or preprint ID with an item already chosen is skipped.
+  - **Paging.** The cursor records each source's position: an offset for PubMed, and a cursor mark plus items already consumed for Europe PMC.
+  - **Counts.** `totals` gives the match count per source. `total` is the largest of them, because the sources overlap.
+- **6.2 Partial failure.** If one source fails, the other's hits are returned and `source_status` marks the failed source `unavailable`. Only when every requested source fails is the result an `upstream_unavailable` error.
+- **8 Who is the source of record.**
+  - **`pmid:` records always come from PubMed,** including hits that Europe PMC found. If PubMed cannot be reached, such hits are still listed, with `title_handle: null`, because a `pmid:` passage is only citable with PubMed's text. Europe PMC's open-access status is copied onto these hits, since PubMed does not report it.
+  - **`pmcid:` and `ppr:` records come from Europe PMC search metadata,** which supplies the title and abstract sections (split on `<h4>` and `<title>` headings).
+  - **Full text** for open-access articles comes from the JATS `fullTextXML` endpoint, as `body.<section>[.<subsection>].pN` passages. A section's slug is its `sec-type`, or else up to three words of its title with numbering removed. Sibling sections with the same slug get `_2`, `_3` and so on.
+- **6.2 `fetch_passages`.**
+  - **`full_text=true` on a `pmid:` record** adds its open-access PMC version as a second record (`pmcid:…`) right after it. It also copies Europe PMC's open-access status onto the `pmid:` record.
+  - **The `unavailable` field** lists requested records whose source did not answer.
+  - **`source_status`** covers `pubmed`, `europepmc`, `pubtator` and `crossref`. An enrichment failure (entities or retraction status) is reported as `degraded`, and the affected fields stay `not_checked`.
+- **8 PubTator3.** Entities are attached only to PubMed title and abstract passages. Gene IDs become `NCBIGene:…` and species IDs `NCBITaxon:…`. Annotations without an identifier are skipped.
+- **8 Crossref.** A record is retracted when any Crossref notice updates its DOI with type `retraction`; the newest notice gives `notice_doi`. The status is merged with PubMed's, and `sources` lists both. Audits merge Crossref's status too, within the resolution deadline.
+- **11 Recording fixtures.** `medcite record-fixtures` refuses to save a run in which any source reported `degraded` or `unavailable`, so a transient upstream error is never recorded as a fixture. Re-run it.
+- **15 Later stages.** The work is now delivered in five stages:
+  1. Core server (done)
+  2. Literature sources (this amendment)
+  3. ClinicalTrials.gov and openFDA, with `search_trials` and `search_drug_labels`
+  4. The audit view, as an MCP App and on GitHub Pages
+  5. `CONTRACT.md`, the README, the licence and the manual acceptance checks
