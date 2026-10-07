@@ -1,0 +1,91 @@
+"""Compact text for clients that only pass text to the model: handle first, one line per item."""
+
+from medcite.contract.audit_models import AuditReport, HandleCheck
+from medcite.contract.models import Signal, ToolError
+from medcite.contract.tool_models import ContractDescription, FetchResult, LiteratureSearchResult
+
+
+def _signal(signal: Signal[bool]) -> str:
+    return "?" if signal.state != "known" else ("yes" if signal.value else "no")
+
+
+def render_search(result: LiteratureSearchResult) -> str:
+    lines = [f"{len(result.hits)} of {result.total} results"]
+    for hit in result.hits:
+        designs = (
+            ",".join(hit.study_designs.value or []) if hit.study_designs.state == "known" else "?"
+        )
+        retracted = hit.retraction.value is not None and hit.retraction.value.retracted
+        date = hit.published.date if hit.published else "n.d."
+        lines.append(
+            f"{hit.title_handle or hit.record_id}  {hit.title} ({hit.venue or 'unknown venue'}, "
+            f"{date}) designs={designs} peer_reviewed={_signal(hit.peer_reviewed)}"
+            + ("  RETRACTED" if retracted else "")
+        )
+    if result.next_cursor:
+        lines.append(f"next_cursor: {result.next_cursor}")
+    return "\n".join(lines)
+
+
+def render_fetch(result: FetchResult) -> str:
+    lines: list[str] = []
+    for item in result.records:
+        record = item.record
+        retracted = (
+            record.quality.retraction.value is not None
+            and record.quality.retraction.value.retracted
+        )
+        lines.append(f"# {record.record_id}  {record.title}" + ("  RETRACTED" if retracted else ""))
+        for passage in item.passages:
+            label = f"[{passage.section_label}] " if passage.section_label else ""
+            lines.append(f"{passage.handle}  {label}{passage.text}")
+    if result.not_found:
+        lines.append("not found: " + ", ".join(result.not_found))
+    if result.next_cursor:
+        lines.append(f"next_cursor: {result.next_cursor}")
+    return "\n".join(lines)
+
+
+def render_checks(checks: list[HandleCheck]) -> str:
+    lines: list[str] = []
+    for check in checks:
+        flags = "".join(f" [{flag.name}]" for flag in check.flags)
+        text = f"  {check.passage.text}" if check.passage else ""
+        lines.append(f"{check.handle}  {check.status}{flags}{text}")
+    return "\n".join(lines)
+
+
+def render_audit(report: AuditReport) -> str:
+    s = report.summary
+    counts = ", ".join(f"{count} {verdict}" for verdict, count in s.by_verdict.items() if count)
+    lines = [
+        f"verdict: {report.verdict.upper()}  ({s.citations} citations: {counts or 'none'})",
+        f"fabricated: {s.fabricated}  retracted cited: {s.retracted_cited}  "
+        f"cited sentences: {s.cited_sentences}/{s.sentences}  "
+        f"verbatim quotes: {s.quotes_ok}/{s.quotes_checked}",
+    ]
+    for claim in report.claims:
+        lines.append(f"[{claim.index + 1}] {claim.status}: {claim.sentence}")
+        for citation in claim.citations:
+            flags = "".join(f" [{flag.name}]" for flag in citation.flags)
+            quote = f' "{citation.quote}"' if citation.quote else ""
+            lines.append(f"    {citation.verdict:<14} {citation.handle}{quote}{flags}")
+            if citation.closest_match is not None:
+                lines.append(
+                    f'    {"":<14} closest: "{citation.closest_match}" ({citation.similarity})'
+                )
+    return "\n".join(lines)
+
+
+def render_contract(description: ContractDescription) -> str:
+    verdicts = "\n".join(f"  {t.name}: {t.meaning}" for t in description.verdicts)
+    return (
+        f"medcite contract {description.contract_version}\n"
+        f"handle pattern: {description.handle_pattern}\n"
+        f"verdicts (first failure wins):\n{verdicts}\n\n{description.instructions}"
+    )
+
+
+def render_error(error: ToolError) -> str:
+    hint = f"\nhint: {error.hint}" if error.hint else ""
+    return f"error {error.code}: {error.message}{hint}"
