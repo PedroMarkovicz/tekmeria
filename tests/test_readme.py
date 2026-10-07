@@ -1,0 +1,57 @@
+"""The README stays true to the code: tools, flags, settings, links and the demo output."""
+
+import re
+from pathlib import Path
+
+import pytest
+from mcp import Client
+
+from medcite.__main__ import main
+from medcite.demo.scenario import run_demo
+from medcite.infra.settings import Settings
+
+ROOT = Path(__file__).resolve().parents[1]
+README = (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.anyio
+async def test_every_tool_is_listed(client: Client) -> None:
+    for tool in (await client.list_tools()).tools:
+        assert f"| `{tool.name}` |" in README, f"{tool.name} is missing from the tools table"
+
+
+@pytest.mark.anyio
+async def test_the_demo_output_matches_the_demo(client: Client) -> None:
+    run = await run_demo(client)
+    audit = run.audit.content[0].text  # type: ignore[union-attr]
+    block = re.search(r"```text\n(verdict: .*?)\n```", README, flags=re.DOTALL)
+    assert block, "README has no demo audit block"
+    assert block.group(1) == audit.strip()
+
+
+def test_every_setting_is_documented() -> None:
+    for field in Settings.model_fields.values():
+        assert f"| `{field.alias}` |" in README, f"{field.alias} is missing from the README"
+
+
+def _help(argv: list[str], capsys: pytest.CaptureFixture[str]) -> str:
+    with pytest.raises(SystemExit):
+        main(argv)
+    return capsys.readouterr().out
+
+
+def test_every_flag_in_the_readme_exists(capsys: pytest.CaptureFixture[str]) -> None:
+    known = _help(["--help"], capsys) + _help(["demo", "--help"], capsys)
+    lines = [line for line in README.splitlines() if "medcite" in line and "--" in line]
+    flags = {flag for line in lines for flag in re.findall(r"(?<![\w-])--[a-z][a-z-]+", line)}
+    flags -= {"--from"}  # uvx's own flag
+    assert flags, "no medcite flags found in the README"
+    for flag in flags:
+        assert flag in known, f"{flag} is not a medcite flag"
+
+
+def test_linked_files_exist() -> None:
+    for target in re.findall(r"\]\(((?:docs|LICENSE|NOTICE)[^)#]*)\)", README):
+        assert (ROOT / target).exists(), f"README links to missing {target}"
+    assert "https://github.com/PedroMarkovicz/medcite" in README
+    assert "https://pedromarkovicz.github.io/medcite/" in README
