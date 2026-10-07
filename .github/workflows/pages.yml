@@ -1,9 +1,11 @@
 name: pages
 
 # Publishes the audit view with the offline demo's report (spec 10).
+# Manual only for now: Pages needs a public repository (or a paid plan). When the
+# repository is public and Pages is set to "GitHub Actions", restore:
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
       - run: uv python install 3.12

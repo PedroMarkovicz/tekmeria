@@ -4,7 +4,7 @@ Biomedical evidence over MCP, cited by handle. Every passage medcite returns com
 
 ![The audit view showing the offline demo's report](docs/assets/audit-view.png)
 
-Once GitHub Pages is enabled for the repository, `.github/workflows/pages.yml` publishes this view of the demo to <https://pedromarkovicz.github.io/medcite/>.
+Once GitHub Pages is enabled for the repository, running the `pages` workflow (`.github/workflows/pages.yml`) publishes this view of the demo to <https://pedromarkovicz.github.io/medcite/>.
 
 ## Why
 
