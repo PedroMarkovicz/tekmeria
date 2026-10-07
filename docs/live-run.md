@@ -110,7 +110,7 @@ fabricated: 1  retracted cited: 0  cited sentences: 11/19  verbatim quotes: 5/5
 
 - **Date:** 2026-10-07
 - **Host:** Claude Desktop 2.26454.2 (75afdd)
-- **Model:** not recorded
+- **Model:** Opus 5.5, medium effort
 - **Prompt:** the corrected `cite_by_handle` text (no example handle), pasted by hand
 - **Outcome:** the audit is **warn** with **0 fabricated**: 16 of 16 citations genuine, 4 of 4 quotes verbatim, no retracted source. It is `warn` rather than `pass` because 8 sentences are uncited. This meets acceptance criterion 7.
 - **Audit code used:** the server was still the one started before the section 16.6 changes. Its sentence counts (21 sentences, 8 uncited) match the code at that time, not the fixed one.
