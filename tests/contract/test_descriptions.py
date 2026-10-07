@@ -22,3 +22,11 @@ def test_description_carries_version_pattern_and_instructions() -> None:
 def test_trial_and_label_paths_are_described() -> None:
     paths = {t.name for t in contract_description().passage_paths}
     assert {"summary.1", "eligibility.inclusion.N", "results.outcome.N", "<section_key>.N"} <= paths
+
+
+def test_served_contract_matches_the_audit_and_the_paths() -> None:
+    description = contract_description()
+    metrics = {t.name: t.meaning for t in description.metrics}
+    assert "ok or quote_mismatch" in metrics["quote_accuracy"]
+    paths = {t.name for t in description.passage_paths}
+    assert {"results.outcome.N.values.M", "results.outcome.N.analysis.M"} <= paths

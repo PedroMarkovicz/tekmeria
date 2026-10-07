@@ -4,7 +4,7 @@ Biomedical evidence over MCP, cited by handle. Every passage medcite returns com
 
 ![The audit view showing the offline demo's report](docs/assets/audit-view.png)
 
-The demo's audit view is published at <https://pedromarkovicz.github.io/medcite/>.
+Once GitHub Pages is enabled for the repository, `.github/workflows/pages.yml` publishes this view of the demo to <https://pedromarkovicz.github.io/medcite/>.
 
 ## Why
 
@@ -12,8 +12,8 @@ The demo's audit view is published at <https://pedromarkovicz.github.io/medcite/
 - **Better retrieval barely helps.** Nourbakhsh et al. ([*When Retrieval Doesn't Help*](https://arxiv.org/abs/2606.04127)) found biomedical RAG improves on no retrieval by typically 1–2 points; the choice of model matters far more.
 - **Citations are where models fail.**
   - When explicitly asked to cite, the best model in Ahmed et al. ([arXiv 2604.17114](https://arxiv.org/abs/2604.17114)) produced 15.3% relevant PMIDs; most of the rest resolved to real papers in unrelated fields.
-  - In Chen et al. ([arXiv 2608.30676](https://arxiv.org/abs/2608.30676)), citation fabrication by a medical agent rose from 16.5% to 31.8% as reinforcement learning improved its accuracy.
-- **MCP now points this way.** The [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) makes servers stateless and says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
+  - In Chen et al. ([arXiv 2608.30676](https://arxiv.org/abs/2608.30676)), citation fabrication by a medical agent rose from 16.5% to 31.8% when reinforcement learning rewarded only correct answers, even as accuracy improved.
+- **MCP now points this way.** The [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) makes the protocol stateless and says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
 
 So medcite does not compete on coverage. It makes every citation checkable.
 
@@ -33,7 +33,7 @@ The audit checks integrity, not support: whether a passage actually backs the cl
 
 ## Quickstart
 
-You need [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 if needed). No API keys are required.
+You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. While the repository is private, `uvx --from git+https://...` needs your GitHub credentials (Git Credential Manager provides them); you can also point `--from` at a local clone.
 
 See the audit on the offline demo, in the terminal and in your browser:
 
@@ -56,7 +56,7 @@ Add this to `claude_desktop_config.json` (Settings, Developer, Edit Config) and 
 }
 ```
 
-Then start a chat with the `cite_by_handle` prompt. Hosts that support MCP Apps show `audit_answer` results as the audit view.
+Then start a chat with the `cite_by_handle` prompt. `audit_answer` also declares the audit view (`ui://medcite/audit-view`) as an MCP App, for hosts that support MCP Apps.
 
 ### VS Code
 
@@ -113,7 +113,7 @@ Everything is optional and read from the environment (or a `.env` file):
 | `search_drug_labels` | Finds every openFDA drug label naming a drug, newest first. |
 | `fetch_passages` | Fetches records (`pmid:`, `pmcid:`, `ppr:`, `nct:`, `setid:`) and their passages, each with a handle; adds entities and retraction status. |
 | `resolve_handles` | Looks up the passage behind each handle and says whether the handle is genuine. |
-| `audit_answer` | Audits an answer's citations and returns the report; MCP Apps hosts show it as the audit view. |
+| `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://medcite/audit-view`) as an MCP App. |
 | `describe_contract` | Returns the contract: handle grammar, verdicts, flags, metrics and the citing instructions. |
 
 There is also a prompt, `cite_by_handle`, and two resource templates, `evidence://record/{record_id}` and `evidence://passage/{handle}`.
@@ -186,7 +186,7 @@ After changing the report models, run `uv run python -m medcite.contract.schemas
 
 - **Not medical advice.** medcite retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance.
 - **Public data only.** It queries public biomedical APIs and is not built for patient data.
-- **Integrity, not support.** The audit proves a citation is genuine, current and quoted verbatim. Whether the passage supports the sentence is not checked.
+- **Integrity, not support.** The audit checks that a citation was issued by this server, that its passage still exists, and that any quote is verbatim (in the text as issued or as it is now). Whether the passage supports the sentence is not checked.
 - **Current versions only.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from medcite's cache.
 - **Handles are per installation.** A handle verifies only on the installation (key) that issued it.
 

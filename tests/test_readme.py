@@ -55,3 +55,16 @@ def test_linked_files_exist() -> None:
         assert (ROOT / target).exists(), f"README links to missing {target}"
     assert "https://github.com/PedroMarkovicz/medcite" in README
     assert "https://pedromarkovicz.github.io/medcite/" in README
+
+
+def _acceptance_status(row: int) -> str:
+    doc = (ROOT / "docs" / "ACCEPTANCE.md").read_text(encoding="utf-8")
+    line = next(line for line in doc.splitlines() if line.startswith(f"| {row} |"))
+    return line.rsplit("|", 2)[-2].strip()
+
+
+def test_claims_about_pages_and_hosts_wait_for_the_acceptance_checks() -> None:
+    if not _acceptance_status(5).startswith("Done"):
+        assert "is published at" not in README, "Pages is not deployed yet (criterion 5)"
+    if not _acceptance_status(6).startswith("Done"):
+        assert "results as the audit view" not in README, "no host render shown yet (criterion 6)"

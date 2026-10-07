@@ -19,13 +19,13 @@ The regular expression the server validates with:
 ^(pmid|pmcid|ppr|nct|setid):([A-Za-z0-9-]+)(?:@([A-Za-z0-9.-]+))?/([a-z0-9_]+(?:\.[a-z0-9_]+)*)~([0-9a-hjkmnp-tv-z]{5})$
 ```
 
-Examples (a check code depends on the installation's key, so these verify only under the key that issued them):
+Examples, issued under the public demo key: they resolve with `medcite --demo`, and their check codes fail under any other key.
 
 ```
 pmid:30831578/abstract.7~rbhq7
-pmcid:PMC13425182/body.methods.p3~m2c9x
-nct:NCT04368728@2026-03-25/results.outcome.55.analysis.1~a91tz
-setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~p0c8m
+pmcid:PMC13425182/body.methods.p2~83jtd
+nct:NCT04363697@2026-06-16/results.outcome.1.analysis.1~8m2ny
+setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~715pw
 ```
 
 ### 1.1 Schemes
@@ -56,7 +56,7 @@ Path segments are lower case; indices are 1-based and follow document order.
 |---|---|
 | `title` | Article title. |
 | `abstract.N` | Nth non-empty abstract section (an unlabelled abstract is `abstract.1`). |
-| `body.<section>[.<subsection>].pN` | Nth paragraph of an open-access full-text section (`pmcid:` records only). |
+| `body.<section>[.<subsection>].pN` | Nth paragraph of an open-access full-text section (`pmcid:` records only). Sections nest as deep as the article does, and paragraphs directly under the body are `body.pN`. |
 | `summary.1` | Brief summary of a trial. |
 | `eligibility.inclusion.N` | Nth inclusion criterion of a trial. |
 | `eligibility.exclusion.N` | Nth exclusion criterion of a trial. |
@@ -65,7 +65,7 @@ Path segments are lower case; indices are 1-based and follow document order.
 | `outcome.secondary.N` | Nth registered secondary outcome. |
 | `arm.N` | Nth trial arm, with its interventions. |
 | `results.outcome.N` | Nth posted outcome measure: what was measured and how many were analysed. Its values are in `results.outcome.N.values.M` (one row per category) and its statistical analyses in `results.outcome.N.analysis.M`. |
-| `<section_key>.N` | Nth chunk (about 1,000 characters at most, split at sentence ends) of a drug label section, keyed by the openFDA field name, for example `boxed_warning.1`. |
+| `<section_key>.N` | Nth chunk of a drug label section, keyed by the openFDA field name, for example `boxed_warning.1`. Chunks end at sentence ends and hold about 1,000 characters at most; a single longer sentence stays whole. |
 
 ## 3. Text normalization
 
@@ -73,16 +73,21 @@ Passage text is issued normalized, and quotes are normalized the same way before
 
 1. Unicode NFC.
 2. Every run of whitespace becomes one space, and the ends are trimmed.
-3. For comparison only, typographic variants are folded: curly quotes become straight quotes; en dash, em dash, non-breaking hyphen and minus sign become a hyphen; a non-breaking space becomes a space; an ellipsis becomes three dots.
+3. For comparison only, typographic variants are folded:
+   - U+2018, U+2019, U+201A and U+201B (single curly and low quotes) become `'`;
+   - U+201C, U+201D, U+201E and U+201F (double curly and low quotes) become `"`;
+   - U+2010 (hyphen), U+2011 (non-breaking hyphen), U+2013 (en dash), U+2014 (em dash) and U+2212 (minus sign) become `-`;
+   - U+00A0 (non-breaking space) becomes a space;
+   - U+2026 (ellipsis) becomes three dots.
 
 ## 4. Citing in an answer
 
 `audit_answer` takes either free text (`answer_text`) or structured claims (`claims`).
 
-- **Free text.** Citations go in square brackets after the claim they support: `[handle]`, several as `[handle; handle]` (a comma also works), and a verbatim quote as `[handle "exact words"]`. Backticks, asterisks and underscores around a handle are ignored. A bracket group is a citation group only if one of its entries looks like `scheme:...`, so `[1]` stays plain text. A handle written outside any brackets still counts as a citation, so none can slip past the audit.
+- **Free text.** Citations go in square brackets after the claim they support: `[handle]`, several as `[handle; handle]` (a comma also works), and a verbatim quote as `[handle "exact words"]`. Backticks, asterisks and underscores around a handle are ignored. A bracket group is a citation group only if one of its entries looks like `scheme:...`, so `[1]` stays plain text. A handle-shaped token written outside any brackets still counts as a citation, so a well-formed handle cannot slip past the audit.
 - **Sentences.** The text is split into sentences (pySBD, English, rule-based), and each sentence is one claim. A citation group that opens a sentence belongs to the sentence before it.
 - **Structured claims.** `claims` is a list of `{sentence, citations: [{handle, quote}]}` taken exactly as given.
-- **Limits.** At most 10 citations per sentence, quotes of at most 1,000 characters, and sentences of at most 4,000 characters. Larger input is `invalid_input`.
+- **Limits.** An `answer_text` of at most 20,000 characters, or at most 100 claims; at most 10 citations per sentence; handles of at most 300 characters; quotes of at most 1,000 characters; sentences of at most 4,000 characters. Larger input is `invalid_input`, except that an over-long handle in free text is cut to 300 characters (it then fails as `malformed` or `forged`).
 
 ## 5. Verdicts
 
@@ -97,7 +102,7 @@ Each citation gets exactly one verdict. The checks run in this order, and the fi
 | 5 | `quote_mismatch` | A quote was given and is not a substring of the passage after the normalization in section 3. |
 | 6 | `ok` | Every check passed. |
 
-A quote counts as verbatim if it matches the passage text as it was first issued or as it is now. `checked_against` (`issued` or `current`) says which one it matched. For a `quote_mismatch`, the report adds `closest_match`, the most similar window of the current text, and its `similarity` from 0 to 1; both are diagnostics and never change the verdict.
+A quote counts as verbatim if it matches the passage text as it was first issued or as it is now. The text as first issued is available only while the server's cache holds it. For a verbatim quote, `checked_against` says which text it matched (`issued` or `current`). Without a quote, or on a `quote_mismatch`, it says which text was available to check against: `issued` when the cache holds it, `current` otherwise. For a `quote_mismatch`, the report adds `closest_match`, the most similar window of the current text, and its `similarity` from 0 to 1; both are diagnostics and never change the verdict.
 
 Every citation also carries `support: "not_checked"`. Whether a passage supports the claim is a semantic question outside this contract.
 
@@ -107,7 +112,7 @@ Flags describe the cited record. They never change a verdict.
 
 | Flag | Meaning |
 |---|---|
-| `retracted` | The record has been retracted, according to PubMed or Crossref; `detail` is the retraction notice's DOI when known. |
+| `retracted` | The record has been retracted, according to PubMed, Europe PMC or Crossref; `detail` is the retraction notice's DOI when known. |
 | `preprint` | The record is not peer-reviewed. |
 | `version_changed` | The record's current version differs from the version in the handle; `detail` is the current version. |
 
@@ -125,7 +130,7 @@ Flags describe the cited record. They never change a verdict.
 |---|---|
 | `citation_validity` | `ok` citations / (citations - `unavailable` citations); `null` when the denominator is 0. |
 | `sentence_coverage` | `cited` sentences / sentences; `null` when there are no sentences. |
-| `quote_accuracy` | verbatim quotes / quotes checked, leaving out quotes on `unavailable` citations; `null` when no quote was checked. |
+| `quote_accuracy` | verbatim quotes / quotes on `ok` or `quote_mismatch` citations. Quotes on `malformed`, `forged`, `unavailable` or `withdrawn` citations never reach the quote check and are not counted. `null` when there are none. |
 | `fabricated` | The number of `forged` citations. |
 | `retracted_cited` | The number of `ok` citations whose record is retracted. |
 
@@ -146,6 +151,10 @@ The report's `verdict` is decided in this order:
 
 The contract follows semantic versioning, separately from the package version:
 
-- **Breaking changes** bump the major version, or the minor version while the contract is `0.x`. Breaking means removing or renaming a field, a verdict, a flag, a status or a `fail_on` value; changing the handle grammar, the check-code computation or an existing passage path; or changing a metric's definition.
-- **Additive changes** (a new optional field, a new scheme or a new kind of passage path) bump the patch version.
-- **The same input, handle key and upstream content always give the same report,** apart from `audited_at`.
+- **Breaking changes** bump the major version, or the minor version while the contract is `0.x`. Breaking means:
+  - removing or renaming a field;
+  - adding, removing or renaming a verdict, flag, claim status, overall verdict or `fail_on` value, because clients (and the audit view) treat these as closed sets;
+  - changing the handle grammar, including adding a scheme, or the check-code computation, or an existing passage path;
+  - changing a metric's definition.
+- **Additive changes** (a new optional field, a new tool, or a new kind of passage path for an existing scheme) bump the minor version, or the patch version while the contract is `0.x`.
+- **The same input, handle key, upstream content and cached issued text always give the same report,** apart from `audited_at`.

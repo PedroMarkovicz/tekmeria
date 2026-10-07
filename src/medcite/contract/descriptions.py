@@ -24,7 +24,8 @@ FLAG_MEANINGS: dict[str, str] = {
 METRIC_MEANINGS: dict[str, str] = {
     "citation_validity": "ok / (citations - unavailable); null when the denominator is 0.",
     "sentence_coverage": "cited sentences / sentences; null when there are no sentences.",
-    "quote_accuracy": "verbatim quotes / quotes checked; null when no quote was checked.",
+    "quote_accuracy": "verbatim quotes / quotes on ok or quote_mismatch citations (quotes on "
+    "other verdicts never reach the quote check); null when there are none.",
     "fabricated": "Number of forged citations.",
     "retracted_cited": "Number of ok citations whose record is retracted.",
 }
@@ -41,7 +42,10 @@ PASSAGE_PATHS: dict[str, str] = {
     "outcome.primary.N": "Nth registered primary outcome of a trial.",
     "outcome.secondary.N": "Nth registered secondary outcome of a trial.",
     "arm.N": "Nth trial arm, with its interventions.",
-    "results.outcome.N": "Nth outcome measure posted with a trial's results, with its values.",
+    "results.outcome.N": "Nth outcome measure posted with a trial's results: what was measured "
+    "and how many were analysed.",
+    "results.outcome.N.values.M": "Mth row of values per group for that outcome measure.",
+    "results.outcome.N.analysis.M": "Mth statistical analysis for that outcome measure.",
     "<section_key>.N": "Nth chunk of a drug label section, keyed by the openFDA field name "
     "(setid: records), e.g. boxed_warning.1.",
 }

@@ -23,3 +23,7 @@ def test_every_referenced_test_exists() -> None:
 def test_every_criterion_has_a_row() -> None:
     rows = re.findall(r"^\| (\d) \|", DOC, flags=re.MULTILINE)
     assert rows == [str(n) for n in range(1, 9)]
+
+
+def test_no_personal_local_paths() -> None:
+    assert not re.search(r"[A-Z]:/(?:Projects|Users)/", DOC)
