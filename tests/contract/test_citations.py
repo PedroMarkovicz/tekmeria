@@ -1,0 +1,78 @@
+from medcite.contract.citations import parse_answer_text
+
+H1 = "pmid:30831578/abstract.7~7hq3k"
+H2 = "pmid:9500320/abstract.3~p0c8m"
+
+
+def test_citation_group_attaches_to_its_sentence() -> None:
+    claims = parse_answer_text(f"MMR vaccination did not raise autism risk [{H1}]. It is safe.")
+    assert [c.sentence for c in claims] == [
+        "MMR vaccination did not raise autism risk.",
+        "It is safe.",
+    ]
+    assert [c.handle for c in claims[0].citations] == [H1]
+    assert claims[1].citations == []
+
+
+def test_multiple_handles_and_quotes() -> None:
+    text = f'Risk was unchanged [{H1} "hazard ratio, 0.93"; {H2}].'
+    (claim,) = parse_answer_text(text)
+    assert [(c.handle, c.quote) for c in claim.citations] == [
+        (H1, "hazard ratio, 0.93"),
+        (H2, None),
+    ]
+
+
+def test_curly_quotes_and_semicolon_inside_quote() -> None:
+    text = f"Risk was unchanged [{H1} \u201cdesign; setting\u201d]."
+    (claim,) = parse_answer_text(text)
+    assert claim.citations[0].quote == "design; setting"
+
+
+def test_numeric_brackets_are_plain_text() -> None:
+    (claim,) = parse_answer_text("Prior work [1] found nothing.")
+    assert claim.sentence == "Prior work [1] found nothing."
+    assert claim.citations == []
+
+
+def test_citation_after_full_stop_belongs_to_previous_sentence() -> None:
+    claims = parse_answer_text(f"First claim. [{H1}] Second claim.")
+    assert [c.sentence for c in claims] == ["First claim.", "Second claim."]
+    assert [c.handle for c in claims[0].citations] == [H1]
+    assert claims[1].citations == []
+
+
+def test_trailing_group_after_last_sentence() -> None:
+    claims = parse_answer_text(f"Only claim. [{H1}]")
+    assert len(claims) == 1
+    assert [c.handle for c in claims[0].citations] == [H1]
+
+
+def test_biomedical_abbreviations_do_not_split() -> None:
+    text = f"Smith et al. gave 2.5 mg vs. placebo [{H1}]. Nausea, e.g. mild, occurred [{H2}]."
+    claims = parse_answer_text(text)
+    assert len(claims) == 2
+
+
+def test_malformed_entry_is_kept_verbatim() -> None:
+    (claim,) = parse_answer_text("Claim [pmid:30831578-abstract].")
+    assert claim.citations[0].handle == "pmid:30831578-abstract"
+
+
+def test_empty_text() -> None:
+    assert parse_answer_text("") == []
+
+
+def test_comma_separated_handles() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{H1}, {H2}].")
+    assert [c.handle for c in claim.citations] == [H1, H2]
+
+
+def test_markdown_wrapped_handles_are_unwrapped() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [`{H1}`; **{H2}**].")
+    assert [c.handle for c in claim.citations] == [H1, H2]
+
+
+def test_repeated_sentences_stay_separate_claims() -> None:
+    claims = parse_answer_text(f"Risk was unchanged [{H1}]. Risk was unchanged [{H2}].")
+    assert [[c.handle for c in claim.citations] for claim in claims] == [[H1], [H2]]
