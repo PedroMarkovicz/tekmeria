@@ -34,6 +34,16 @@ PASSAGE_PATHS: dict[str, str] = {
     "abstract.N": "Nth non-empty abstract section, in document order (1-based).",
     "body.<section>[.<subsection>].pN": "Nth paragraph of an open-access full-text section "
     "(pmcid: records only).",
+    "summary.1": "Brief summary of a trial (nct: records).",
+    "eligibility.inclusion.N": "Nth inclusion criterion of a trial.",
+    "eligibility.exclusion.N": "Nth exclusion criterion of a trial.",
+    "eligibility.other.N": "Nth eligibility statement outside the inclusion and exclusion lists.",
+    "outcome.primary.N": "Nth registered primary outcome of a trial.",
+    "outcome.secondary.N": "Nth registered secondary outcome of a trial.",
+    "arm.N": "Nth trial arm, with its interventions.",
+    "results.outcome.N": "Nth outcome measure posted with a trial's results, with its values.",
+    "<section_key>.N": "Nth chunk of a drug label section, keyed by the openFDA field name "
+    "(setid: records), e.g. boxed_warning.1.",
 }
 
 CITE_BY_HANDLE_INSTRUCTIONS = """\

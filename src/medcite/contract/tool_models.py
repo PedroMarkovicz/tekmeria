@@ -42,6 +42,44 @@ class LiteratureSearchResult(BaseModel):
     source_status: dict[str, SourceStatusValue]
 
 
+class TrialHit(BaseModel):
+    record_id: str = Field(description="nct:<NCT ID>@<last update post date>")
+    title: str
+    status: str | None = Field(description="Overall recruitment status, e.g. COMPLETED")
+    phases: list[str] = Field(description="e.g. ['PHASE2', 'PHASE3']; empty when not given")
+    enrollment: int | None
+    conditions: list[str]
+    interventions: list[str]
+    has_results: bool = Field(description="Results are posted on ClinicalTrials.gov")
+    linked_pmids: list[str] = Field(description="PMIDs the registry lists as results publications")
+
+
+class TrialSearchResult(BaseModel):
+    hits: list[TrialHit]
+    total: int
+    next_cursor: str | None = None
+    source_status: dict[str, SourceStatusValue]
+
+
+class LabelHit(BaseModel):
+    record_id: str = Field(description="setid:<SPL set ID>@<label version>")
+    title: str
+    brand_names: list[str]
+    generic_names: list[str]
+    manufacturer: str | None
+    effective_date: str | None = Field(description="YYYY-MM-DD")
+    routes: list[str]
+    rxcui: list[str]
+    has_boxed_warning: bool
+
+
+class LabelSearchResult(BaseModel):
+    hits: list[LabelHit]
+    total: int
+    next_cursor: str | None = None
+    source_status: dict[str, SourceStatusValue]
+
+
 class RecordPassages(BaseModel):
     record: Record
     passages: list[Passage]

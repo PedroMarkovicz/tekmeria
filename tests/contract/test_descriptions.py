@@ -17,3 +17,8 @@ def test_description_carries_version_pattern_and_instructions() -> None:
     assert description.handle_pattern == HANDLE_PATTERN
     assert description.instructions == CITE_BY_HANDLE_INSTRUCTIONS
     assert "[handle" in CITE_BY_HANDLE_INSTRUCTIONS
+
+
+def test_trial_and_label_paths_are_described() -> None:
+    paths = {t.name for t in contract_description().passage_paths}
+    assert {"summary.1", "eligibility.inclusion.N", "results.outcome.N", "<section_key>.N"} <= paths
