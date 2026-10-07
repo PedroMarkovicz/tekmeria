@@ -21,7 +21,11 @@ export interface ToolResult {
 function isReport(value: unknown): value is AuditReport {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Record<string, unknown>;
-  return Array.isArray(candidate.claims) && typeof candidate.summary === "object";
+  return (
+    Array.isArray(candidate.claims) &&
+    typeof candidate.summary === "object" &&
+    candidate.summary !== null
+  );
 }
 
 /** The report embedded in `<script type="application/json" id="medcite-report">`. */

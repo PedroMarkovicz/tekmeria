@@ -40,7 +40,13 @@ describe("labels", () => {
     expect(Object.keys(VERDICTS).sort()).toEqual(
       ["forged", "malformed", "ok", "quote_mismatch", "unavailable", "withdrawn"],
     );
-    expect(Object.values(FLAGS)).toEqual(["Retracted", "Preprint", "Version changed"]);
+    expect(Object.values(FLAGS).map((f) => f.label)).toEqual([
+      "Retracted",
+      "Preprint",
+      "Version changed",
+    ]);
+    for (const flag of Object.values(FLAGS)) expect(flag.icon).not.toBe("");
+    expect(FLAGS.retracted.tone).toBe("bad");
   });
 
   it("shows undefined ratios as a dash", () => {

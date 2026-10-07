@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AuditView } from "./AuditView";
 import type { AuditReport } from "./report";
 import demo from "./test/fixtures/demo-report.json";
@@ -59,9 +59,12 @@ describe("citation chips", () => {
     [DEMO, "Retracted"],
     [EDGE, "Preprint"],
     [EDGE, "Version changed"],
-  ])("show the %# flag %s as a badge", (report, flag) => {
+  ])("show the %# flag %s as a badge with an icon", (report, flag) => {
     render(<AuditView report={report} />);
-    expect(screen.getAllByText(flag, { selector: ".badge" }).length).toBeGreaterThan(0);
+    const labels = screen.getAllByText(flag, { selector: ".badge-label" });
+    expect(labels.length).toBeGreaterThan(0);
+    const icon = labels[0].parentElement!.querySelector('[aria-hidden="true"]');
+    expect(icon?.textContent).not.toBe("");
   });
 
   it("are all reachable with the keyboard", async () => {
@@ -81,11 +84,48 @@ describe("citation chips", () => {
     const chip = chipFor("OK");
     expect(detailOf(chip)).not.toBeVisible();
     await user.hover(chip);
-    expect(chip).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(chip).toHaveAttribute("aria-expanded", "true"));
     const quote = DEMO.claims[0].citations[0].quote!;
     expect(detailOf(chip).querySelector("mark.mark-quote")).toHaveTextContent(quote);
     await user.unhover(chip);
+    await waitFor(() => expect(detailOf(chip)).not.toBeVisible());
+  });
+
+  it("stay open after a click on a hover-opened chip, and close on the next click", async () => {
+    const user = userEvent.setup();
+    render(<AuditView report={DEMO} />);
+    const chip = chipFor("OK");
+    await user.hover(chip);
+    await waitFor(() => expect(chip).toHaveAttribute("aria-expanded", "true"));
+    await user.click(chip);
+    await user.unhover(chip);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(chip).toHaveAttribute("aria-expanded", "true");
+    await user.click(chip);
+    expect(chip).toHaveAttribute("aria-expanded", "false");
     expect(detailOf(chip)).not.toBeVisible();
+  });
+
+  it("scroll the marked quote into view when opened", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const user = userEvent.setup();
+    render(<AuditView report={DEMO} />);
+    const chip = chipFor("OK");
+    await user.click(chip);
+    await waitFor(() => expect(scroll).toHaveBeenCalledWith({ block: "nearest" }));
+    expect(scroll.mock.contexts[0]).toBe(detailOf(chip).querySelector("mark"));
+  });
+
+  it("say so when a verified quote is not in the current text", async () => {
+    const user = userEvent.setup();
+    render(<AuditView report={EDGE} />);
+    const chip = chipFor("Version changed").closest("button")!;
+    await user.click(chip);
+    expect(detailOf(chip)).toHaveTextContent(
+      "The quote matched the text as first issued; the current text below has changed.",
+    );
+    expect(detailOf(chip).querySelector("mark")).toBeNull();
   });
 
   it("open with focus and Enter, and close with Escape", async () => {

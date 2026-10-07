@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Root } from "./Root";
 import type { AuditReport } from "./report";
 import type { ViewState } from "./source";
@@ -18,6 +18,15 @@ describe("Root", () => {
   it("shows an error as an alert", () => {
     render(<Root start={startWith({ kind: "error", message: "error invalid_input: nope" })} />);
     expect(screen.getByRole("alert")).toHaveTextContent("error invalid_input: nope");
+  });
+
+  it("shows an error, not a blank page, when a report cannot be displayed", () => {
+    const report = structuredClone(demo) as AuditReport;
+    (report.claims[0].citations[0] as { verdict: string }).verdict = "from_a_newer_server";
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<Root start={startWith({ kind: "report", report })} />);
+    quiet.mockRestore();
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not display this report");
   });
 
   it("explains an empty page and a wait", () => {

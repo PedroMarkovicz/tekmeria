@@ -24,19 +24,19 @@ interface Label {
 export const VERDICTS: Record<Verdict, Label & { explain: string }> = {
   ok: {
     label: "OK",
-    icon: "✓",
+    icon: "\u2713",
     tone: "good",
     explain: "Genuine handle; the record and passage exist, and any quote is verbatim.",
   },
   quote_mismatch: {
     label: "Quote mismatch",
-    icon: "≠",
+    icon: "\u2260",
     tone: "bad",
     explain: "The quote is not verbatim in the cited passage.",
   },
   withdrawn: {
     label: "Withdrawn",
-    icon: "⊘",
+    icon: "\u2298",
     tone: "bad",
     explain: "The record, or this passage of it, no longer exists upstream.",
   },
@@ -48,7 +48,7 @@ export const VERDICTS: Record<Verdict, Label & { explain: string }> = {
   },
   forged: {
     label: "Forged",
-    icon: "✗",
+    icon: "\u2717",
     tone: "bad",
     explain: "The check code is wrong: this server never issued the handle.",
   },
@@ -61,41 +61,42 @@ export const VERDICTS: Record<Verdict, Label & { explain: string }> = {
 };
 
 export const OVERALL: Record<OverallVerdict, Label> = {
-  pass: { label: "Pass", icon: "✓", tone: "good" },
+  pass: { label: "Pass", icon: "\u2713", tone: "good" },
   warn: { label: "Warn", icon: "!", tone: "warn" },
-  fail: { label: "Fail", icon: "✗", tone: "bad" },
+  fail: { label: "Fail", icon: "\u2717", tone: "bad" },
   incomplete: { label: "Incomplete", icon: "?", tone: "warn" },
 };
 
 export const STATUSES: Record<ClaimStatus, Label> = {
-  cited: { label: "Cited", icon: "✓", tone: "good" },
-  uncited: { label: "Uncited", icon: "∅", tone: "warn" },
-  invalid_only: { label: "No valid citation", icon: "✗", tone: "bad" },
+  cited: { label: "Cited", icon: "\u2713", tone: "good" },
+  uncited: { label: "Uncited", icon: "\u2205", tone: "warn" },
+  invalid_only: { label: "No valid citation", icon: "\u2717", tone: "bad" },
 };
 
-export const FLAGS: Record<Flag["name"], string> = {
-  retracted: "Retracted",
-  preprint: "Preprint",
-  version_changed: "Version changed",
+// Flags never change a verdict, but a retracted source must not read as a plain "OK".
+export const FLAGS: Record<Flag["name"], Label> = {
+  retracted: { label: "Retracted", icon: "\u26a0", tone: "bad" },
+  preprint: { label: "Preprint", icon: "\u25c7", tone: "warn" },
+  version_changed: { label: "Version changed", icon: "\u21bb", tone: "warn" },
 };
 
 // The same typographic folds the server applies before comparing a quote (spec 4.5).
 const FOLDS: Record<string, string> = {
-  "‘": "'",
-  "’": "'",
-  "‚": "'",
-  "‛": "'",
-  "“": '"',
-  "”": '"',
-  "„": '"',
-  "‟": '"',
-  "‐": "-",
-  "‑": "-",
-  "–": "-",
-  "—": "-",
-  "−": "-",
-  " ": " ",
-  "…": "...",
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u201a": "'",
+  "\u201b": "'",
+  "\u201c": '"',
+  "\u201d": '"',
+  "\u201e": '"',
+  "\u201f": '"',
+  "\u2010": "-",
+  "\u2011": "-",
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2212": "-",
+  "\u00a0": " ",
+  "\u2026": "...",
 };
 
 function fold(text: string): { folded: string; origin: number[] } {
@@ -137,5 +138,5 @@ export function findQuote(text: string, quote: string): [number, number] | null 
 
 /** A ratio as a whole percentage, or an em dash when it is undefined (null). */
 export function percent(value: number | null): string {
-  return value === null ? "—" : `${Math.round(value * 100)}%`;
+  return value === null ? "\u2014" : `${Math.round(value * 100)}%`;
 }

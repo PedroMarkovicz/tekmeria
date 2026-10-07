@@ -55,6 +55,7 @@ describe("embeddedReport", () => {
   it("reports bad JSON and non-reports as errors", () => {
     expect(embeddedReport(docWith("{nope"))?.kind).toBe("error");
     expect(embeddedReport(docWith('{"claims": 3}'))?.kind).toBe("error");
+    expect(embeddedReport(docWith('{"claims": [], "summary": null}'))?.kind).toBe("error");
   });
 });
 

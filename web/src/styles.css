@@ -188,6 +188,19 @@ h2 {
   background: var(--fg);
   color: var(--bg);
 }
+/* A flag's tone is shown as a solid badge, so a retracted source stands out on an OK chip. */
+.badge.tone-bad {
+  background: var(--bad);
+  color: var(--bg);
+}
+.badge.tone-warn {
+  background: var(--warn);
+  color: var(--bg);
+}
+.unmarked {
+  color: var(--warn);
+  font-size: 0.8rem;
+}
 
 .detail {
   display: block;
