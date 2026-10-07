@@ -76,3 +76,31 @@ def test_markdown_wrapped_handles_are_unwrapped() -> None:
 def test_repeated_sentences_stay_separate_claims() -> None:
     claims = parse_answer_text(f"Risk was unchanged [{H1}]. Risk was unchanged [{H2}].")
     assert [[c.handle for c in claim.citations] for claim in claims] == [[H1], [H2]]
+
+
+def test_quote_containing_brackets_keeps_its_citation() -> None:
+    text = f'Mean age was six [{H1} "12 children (mean age 6 years [range 3-10], 11 boys)"].'
+    (claim,) = parse_answer_text(text)
+    assert [(c.handle, c.quote) for c in claim.citations] == [
+        (H1, "12 children (mean age 6 years [range 3-10], 11 boys)")
+    ]
+
+
+def test_bare_handle_outside_brackets_is_still_a_citation() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged {H1}.")
+    assert [c.handle for c in claim.citations] == [H1]
+
+
+def test_straight_quotes_inside_a_quote() -> None:
+    (claim,) = parse_answer_text(f'Risk was unchanged [{H1} "a "short" quote"].')
+    assert [(c.handle, c.quote) for c in claim.citations] == [(H1, 'a "short" quote')]
+
+
+def test_backticks_with_a_quote() -> None:
+    (claim,) = parse_answer_text(f'Risk was unchanged [`{H1}` "hazard ratio, 0.93"].')
+    assert [(c.handle, c.quote) for c in claim.citations] == [(H1, "hazard ratio, 0.93")]
+
+
+def test_unparseable_long_entry_does_not_raise() -> None:
+    (claim,) = parse_answer_text("Claim [pmid:1 " + "x" * 400 + "].")
+    assert len(claim.citations) == 1 and len(claim.citations[0].handle) <= 300

@@ -11,12 +11,16 @@ with warnings.catch_warnings():
     import pysbd  # pyright: ignore[reportMissingTypeStubs]
 
 _OPEN, _CLOSE = "\u27e6", "\u27e7"
-_GROUP_RE = re.compile(r"\[([^\[\]]*)\]")
+# A bracket group may contain quoted spans, and a quote may contain brackets: "(range [3-10])".
+_GROUP_RE = re.compile(r'\[((?:[^\[\]"“”]|["“][^"“”]*["”])*)\]')
 # Entries are separated by ";" or "," outside quotes (models often use commas).
 _ENTRY_SPLIT_RE = re.compile(r'(?:[^;,"\u201c\u201d]|["\u201c][^"\u201c\u201d]*["\u201d])+')
-_WRAPPING = "`*_ "
-_ENTRY_RE = re.compile(
-    r'^(?P<handle>[^\s"\u201c\u201d]+)(?:\s+["\u201c](?P<quote>[^"\u201c\u201d]*)["\u201d])?$'
+_WRAPPING = "`*_"
+_QUOTE_OPENERS, _QUOTE_CLOSERS = '"\u201c', '"\u201d'
+_MAX_HANDLE = 300
+# Backstop: a handle-shaped token outside any bracket group is still a citation.
+_BARE_HANDLE_RE = re.compile(
+    r"(?<![\w:/~])(?:pmid|pmcid|ppr|nct|setid):[A-Za-z0-9@./_-]+~[0-9a-hjkmnp-tv-z]{5}(?![0-9a-z])"
 )
 _CITE_TOKEN_RE = re.compile(r"^[a-z]+:\S+")
 _PLACEHOLDER_RE = re.compile(_OPEN + r"(\d+)" + _CLOSE)
@@ -27,16 +31,28 @@ _SEGMENTER = pysbd.Segmenter(language="en", clean=False)
 
 
 def _entries(group_body: str) -> list[str]:
-    """Split a bracket group into entries, unwrapping markdown such as `code` or **bold**."""
-    entries = (entry.strip().strip(_WRAPPING) for entry in _ENTRY_SPLIT_RE.findall(group_body))
+    entries = (entry.strip() for entry in _ENTRY_SPLIT_RE.findall(group_body))
     return [entry for entry in entries if entry]
 
 
+def _first_token(entry: str) -> str:
+    """The handle part of an entry, unwrapped from markdown such as `code` or **bold**."""
+    return entry.split(maxsplit=1)[0].strip(_WRAPPING)
+
+
 def _citation(entry: str) -> CitationIn:
-    match = _ENTRY_RE.match(entry)
-    if not match:
-        return CitationIn(handle=entry)
-    return CitationIn(handle=match["handle"], quote=match["quote"])
+    """Handle first, then an optional quote running from the first to the last quote mark.
+
+    Never raises: an entry that cannot be read becomes a (malformed) handle.
+    """
+    parts = entry.split(maxsplit=1)
+    handle = _first_token(entry)[:_MAX_HANDLE]
+    rest = parts[1].strip() if len(parts) > 1 else ""
+    if not rest:
+        return CitationIn(handle=handle)
+    if len(rest) >= 2 and rest[0] in _QUOTE_OPENERS and rest[-1] in _QUOTE_CLOSERS:
+        return CitationIn(handle=handle, quote=rest[1:-1])
+    return CitationIn(handle=entry[:_MAX_HANDLE])
 
 
 def _clean_sentence(text: str) -> str:
@@ -49,7 +65,8 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
     """Split text into sentences and attach each citation group to its sentence.
 
     A bracket group is a citation group when any of its entries starts like
-    `scheme:...`; other brackets such as `[1]` stay as plain text. Placeholders
+    `scheme:...`; other brackets such as `[1]` stay as plain text. A handle-shaped
+    token outside any group still counts, so no handle can vanish. Placeholders
     that open a sentence (citations written after the full stop) belong to the
     previous sentence.
     """
@@ -57,12 +74,16 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
 
     def mask(match: re.Match[str]) -> str:
         entries = _entries(match.group(1))
-        if not any(_CITE_TOKEN_RE.match(entry) for entry in entries):
+        if not any(_CITE_TOKEN_RE.match(_first_token(entry)) for entry in entries):
             return match.group(0)
         groups.append([_citation(entry) for entry in entries])
         return f"{_OPEN}{len(groups) - 1}{_CLOSE}"
 
-    masked = _GROUP_RE.sub(mask, text)
+    def mask_bare(match: re.Match[str]) -> str:
+        groups.append([CitationIn(handle=match.group(0))])
+        return f"{_OPEN}{len(groups) - 1}{_CLOSE}"
+
+    masked = _BARE_HANDLE_RE.sub(mask_bare, _GROUP_RE.sub(mask, text))
     claims: list[ClaimIn] = []
     segments = cast("list[str]", _SEGMENTER.segment(masked))  # pyright: ignore[reportUnknownMemberType]
     for raw in segments:

@@ -3,6 +3,8 @@
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+import anyio
+import httpx
 import pytest
 from jsonschema import Draft202012Validator
 from mcp import Client
@@ -112,3 +114,40 @@ async def test_prompt_and_resource_templates(offline: Client) -> None:
 
 async def test_server_identity(offline: Client) -> None:
     assert offline.server_info is not None and offline.server_info.name == "medcite"
+
+
+class Hanging(httpx.AsyncBaseTransport):
+    """An upstream that never answers."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        await anyio.sleep(3600)
+        raise AssertionError("unreachable")
+
+
+async def test_audit_survives_an_upstream_that_never_answers() -> None:
+    config = RuntimeConfig(
+        handle_key=KEY,
+        cache_path=":memory:",
+        transport=Hanging(),
+        sleep=_no_sleep,
+        rate_override=1000.0,
+        deadline_s=2.0,
+    )
+    genuine = CODEC.issue(Locator("pmid", "1", None, "title"))
+    forged = genuine[:-1] + ("0" if genuine[-1] != "0" else "1")
+    async with Client(create_server(config)) as client:
+        result = await client.call_tool(
+            "audit_answer", {"answer_text": f"One [{genuine}]. Two [{forged}]."}
+        )
+    report = structured(result)
+    verdicts = [c["citations"][0]["verdict"] for c in report["claims"]]
+    assert verdicts == ["unavailable", "forged"]
+    assert report["verdict"] == "fail"
+
+
+async def test_answer_over_the_limits_is_invalid_input_with_a_hint(offline: Client) -> None:
+    group = "; ".join(f"pmid:{i}/title~abcde" for i in range(11))
+    result = await offline.call_tool("audit_answer", {"answer_text": f"Claim [{group}]."})
+    assert result.is_error and result.structured_content is not None
+    assert result.structured_content["code"] == "invalid_input"
+    assert "10 citations" in (result.structured_content["hint"] or "")

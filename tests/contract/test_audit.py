@@ -35,6 +35,7 @@ RETRACTED_LOC = Locator("pmid", "2", None, "abstract.1")
 GONE_LOC = Locator("pmid", "3", None, "abstract.1")
 DOWN_LOC = Locator("pmid", "4", None, "abstract.1")
 TRIAL_LOC = Locator("nct", "NCT1", "2025-01-01", "summary.1")
+REVISED_LOC = Locator("pmid", "5", None, "abstract.1")
 
 
 def _record(record_id: str, *, retracted: bool = False, version: str | None = None) -> Record:
@@ -74,6 +75,9 @@ class FakeResolver:
             RETRACTED_LOC: _resolved(RETRACTED_LOC, _record("pmid:2", retracted=True)),
             GONE_LOC: Withdrawn("record deleted"),
             DOWN_LOC: Unavailable("timeout"),
+            REVISED_LOC: _resolved(
+                REVISED_LOC, _record("pmid:5"), issued="An older wording of this abstract."
+            ),
             TRIAL_LOC: _resolved(
                 TRIAL_LOC, _record("nct:NCT1@2025-06-01", version="2025-06-01"), issued=TEXT
             ),
@@ -217,3 +221,24 @@ async def test_check_handles_reports_status_per_handle() -> None:
     )
     assert [r.status for r in results] == ["ok", "forged", "malformed"]
     assert results[0].passage is not None and results[0].passage.text == TEXT
+
+
+async def test_quote_of_the_current_text_after_a_revision_is_ok() -> None:
+    claim = ClaimIn(
+        sentence="s",
+        citations=[CitationIn(handle=CODEC.issue(REVISED_LOC), quote="did not increase the risk")],
+    )
+    report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
+    citation = report.claims[0].citations[0]
+    assert citation.verdict == "ok"
+    assert citation.checked_against == "current"
+
+
+async def test_quote_of_the_issued_text_after_a_revision_is_ok() -> None:
+    claim = ClaimIn(
+        sentence="s",
+        citations=[CitationIn(handle=CODEC.issue(REVISED_LOC), quote="older wording")],
+    )
+    report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
+    citation = report.claims[0].citations[0]
+    assert (citation.verdict, citation.checked_against) == ("ok", "issued")

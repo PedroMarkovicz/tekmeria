@@ -73,3 +73,13 @@ def test_every_substring_of_a_passage_matches(text: str, data: st.DataObject) ->
     quote = passage[start:end]
     if quote.strip():
         assert quote_in_passage(quote, passage)
+
+
+def test_closest_match_stays_fast_for_long_quotes() -> None:
+    import time
+
+    passage = " ".join(f"word{i} value {i * 7} units" for i in range(120))  # ~2,700 chars
+    quote = " ".join(f"other{i} thing {i}" for i in range(60))  # ~1,000 chars
+    started = time.perf_counter()
+    closest_match(quote, passage)
+    assert time.perf_counter() - started < 1.0

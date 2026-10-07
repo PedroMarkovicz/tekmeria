@@ -98,7 +98,7 @@ def _judge(
     if isinstance(resolution, Withdrawn):
         return CitationResult(handle=citation.handle, quote=citation.quote, verdict="withdrawn")
     issued = resolution.issued_text
-    text = issued if issued is not None else resolution.passage.text
+    current = resolution.passage.text
     result = CitationResult(
         handle=citation.handle,
         quote=citation.quote,
@@ -108,12 +108,18 @@ def _judge(
         resolved_version=resolution.record.provenance.upstream_version,
         passage=resolution.passage,
     )
-    if citation.quote is not None and not quote_in_passage(citation.quote, text):
-        window, similarity = closest_match(citation.quote, text)
-        result = result.model_copy(
-            update={"verdict": "quote_mismatch", "closest_match": window, "similarity": similarity}
-        )
-    return result
+    if citation.quote is None:
+        return result
+    # A verbatim quote of either the text as first issued or the text as it is now is
+    # honest: the model may have been handed either one (spec 7.3, checked_against).
+    if issued is not None and quote_in_passage(citation.quote, issued):
+        return result
+    if quote_in_passage(citation.quote, current):
+        return result.model_copy(update={"checked_against": "current"})
+    window, similarity = closest_match(citation.quote, current)
+    return result.model_copy(
+        update={"verdict": "quote_mismatch", "closest_match": window, "similarity": similarity}
+    )
 
 
 def _claim_status(citations: Sequence[CitationResult]) -> ClaimStatus:

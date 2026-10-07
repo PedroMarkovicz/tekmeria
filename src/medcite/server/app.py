@@ -9,7 +9,7 @@ import anyio
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from medcite import __version__
 from medcite.contract.audit import audit, check_handles
@@ -43,6 +43,10 @@ INSTRUCTIONS = (
     "each claim, and check drafts with audit_answer. See the cite_by_handle prompt."
 )
 DATE = r"^\d{4}(-\d{2}-\d{2})?$"
+AUDIT_LIMITS_HINT = (
+    "Limits: at most 10 citations per sentence, quotes up to 1000 characters, sentences up "
+    "to 4000 characters. Split long sentences or shorten quotes."
+)
 READ_ONLY = ToolAnnotations(read_only_hint=True)
 READ_ONLY_OPEN = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 READ_ONLY_IDEMPOTENT = ToolAnnotations(read_only_hint=True, idempotent_hint=True)
@@ -239,7 +243,12 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
                     "provide exactly one of answer_text or claims",
                     hint="Use answer_text for prose with [handle] citations.",
                 )
-            parsed = parse_answer_text(answer_text) if answer_text is not None else claims or []
+            try:
+                parsed = parse_answer_text(answer_text) if answer_text is not None else claims or []
+            except ValidationError as exc:
+                raise InvalidInputError(
+                    f"answer exceeds a limit: {exc.errors()[0]['msg']}", hint=AUDIT_LIMITS_HINT
+                ) from exc
             report = await audit(parsed, codec=app.codec, resolver=app.service, fail_on=fail_on)
             return report, render.render_audit(report)
 

@@ -71,3 +71,27 @@ async def test_unparseable_success_body_is_an_upstream_error(path: str, body: st
             else:
                 await adapter.fetch(["1"])
         await upstream.aclose()
+
+
+@pytest.mark.anyio
+async def test_well_formed_error_xml_is_an_upstream_error_not_a_missing_record() -> None:
+    body = "<eFetchResult><ERROR>Empty id list - nothing todo</ERROR></eFetchResult>"
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=body))
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(ncbi_host(api_key=None, email=None), cache=cache, transport=transport)
+        with pytest.raises(UpstreamResponseError):
+            await PubMedAdapter(upstream).fetch(["1"])
+        await upstream.aclose()
+
+
+@pytest.mark.anyio
+async def test_bad_search_body_is_retried_on_the_next_call() -> None:
+    bodies = ["<html>busy</html>", '{"esearchresult": {"count": "1", "idlist": ["7"]}}']
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=bodies.pop(0)))
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(ncbi_host(api_key=None, email=None), cache=cache, transport=transport)
+        adapter = PubMedAdapter(upstream)
+        with pytest.raises(UpstreamResponseError):
+            await adapter.search(LiteratureQuery(query="x"), offset=0, limit=1)
+        assert await adapter.search(LiteratureQuery(query="x"), offset=0, limit=1) == (1, ["7"])
+        await upstream.aclose()

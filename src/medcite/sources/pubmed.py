@@ -86,6 +86,30 @@ def _date_params(query: LiteratureQuery) -> dict[str, str]:
     }
 
 
+def _check_esearch(body: str) -> None:
+    """Reject anything but an ESearch JSON result before it is cached."""
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise UpstreamResponseError(200, "ESearch returned a body that is not JSON") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("esearchresult"), dict):
+        raise UpstreamResponseError(200, "ESearch response has no esearchresult")
+
+
+def _check_efetch(body: str) -> None:
+    """Reject anything but a PubmedArticleSet, e.g. <eFetchResult><ERROR>, before caching.
+
+    Otherwise an error page that happens to be valid XML would read as "no such
+    article" and turn genuine handles into `withdrawn`.
+    """
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError as exc:
+        raise UpstreamResponseError(200, "EFetch returned a body that is not XML") from exc
+    if root.tag != "PubmedArticleSet":
+        raise UpstreamResponseError(200, f"EFetch returned <{root.tag}>, not PubmedArticleSet")
+
+
 class PubMedAdapter:
     def __init__(
         self, upstream: Upstream, *, clock: Callable[[], datetime] = lambda: datetime.now(UTC)
@@ -105,11 +129,10 @@ class PubMedAdapter:
             "sort": "relevance",
             **_date_params(query),
         }
-        body = await self.upstream.get_text("esearch.fcgi", params, ttl_s=SEARCH_TTL_S)
-        try:
-            result = json.loads(body).get("esearchresult", {})
-        except (json.JSONDecodeError, AttributeError) as exc:
-            raise UpstreamResponseError(200, "ESearch returned a body that is not JSON") from exc
+        body = await self.upstream.get_text(
+            "esearch.fcgi", params, ttl_s=SEARCH_TTL_S, validate=_check_esearch
+        )
+        result = json.loads(body)["esearchresult"]
         if "ERROR" in result:
             raise InvalidInputError(
                 f"PubMed rejected the query: {result['ERROR']}",
@@ -123,12 +146,10 @@ class PubMedAdapter:
         for start in range(0, len(wanted), EFETCH_BATCH):
             batch = wanted[start : start + EFETCH_BATCH]
             params = {"db": "pubmed", "id": ",".join(batch), "retmode": "xml"}
-            body = await self.upstream.get_text("efetch.fcgi", params, ttl_s=RECORD_TTL_S)
-            try:
-                bundles = parse_efetch(body, self._clock())
-            except ET.ParseError as exc:
-                raise UpstreamResponseError(200, "EFetch returned a body that is not XML") from exc
-            for bundle in bundles:
+            body = await self.upstream.get_text(
+                "efetch.fcgi", params, ttl_s=RECORD_TTL_S, validate=_check_efetch
+            )
+            for bundle in parse_efetch(body, self._clock()):
                 outcome.bundles[bundle.record.ids.pmid or ""] = bundle
         outcome.missing = [pmid for pmid in wanted if pmid not in outcome.bundles]
         return outcome

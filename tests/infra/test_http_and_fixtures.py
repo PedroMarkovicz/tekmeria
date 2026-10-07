@@ -106,3 +106,20 @@ async def test_record_then_replay(tmp_path: Path) -> None:
         assert response.text == "<xml/>"
         with pytest.raises(httpx.ConnectError):
             await client.get("https://e.org/p", params={"id": "2"})
+
+
+async def test_body_rejected_by_the_validator_is_not_cached() -> None:
+    transport, seen = scripted(
+        httpx.Response(200, text="<html>busy</html>"), httpx.Response(200, text="good")
+    )
+
+    def must_be_good(body: str) -> None:
+        if body != "good":
+            raise UpstreamResponseError(200, "unexpected body")
+
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(HOST, cache=cache, transport=transport, sleep=Sleeps())
+        with pytest.raises(UpstreamResponseError):
+            await upstream.get_text("x", {}, ttl_s=60, validate=must_be_good)
+        assert await upstream.get_text("x", {}, ttl_s=60, validate=must_be_good) == "good"
+    assert len(seen) == 2

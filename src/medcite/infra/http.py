@@ -76,8 +76,20 @@ class Upstream:
     async def aclose(self) -> None:
         await self.client.aclose()
 
-    async def get_text(self, path: str, params: Mapping[str, str], *, ttl_s: float) -> str:
-        """GET with cache, rate limit and retries. Returns the body of a 2xx response."""
+    async def get_text(
+        self,
+        path: str,
+        params: Mapping[str, str],
+        *,
+        ttl_s: float,
+        validate: Callable[[str], None] | None = None,
+    ) -> str:
+        """GET with cache, rate limit and retries. Returns the body of a 2xx response.
+
+        `validate` runs before caching and raises UpstreamResponseError for a body the
+        caller cannot use (e.g. an HTML error page sent with status 200), so a bad body
+        is never cached and the next call asks upstream again.
+        """
         merged = {**(self.config.default_params or {}), **params}
         request = self.client.build_request("GET", path, params=merged)
         key = f"{self.config.name}:{request_key('GET', request.url)}"
@@ -90,6 +102,8 @@ class Upstream:
         if response.status_code >= 400:
             raise UpstreamResponseError(response.status_code, response.text[:300])
         body = response.text
+        if validate is not None:
+            validate(body)
         await self.cache.put_response(
             key,
             CachedResponse(

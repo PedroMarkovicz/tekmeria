@@ -1,7 +1,10 @@
 """Routes requests to adapters, mints handles, and resolves handles for the audit."""
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+
+import anyio
 
 from medcite.contract.audit import Resolution, Resolved, Unavailable, Withdrawn
 from medcite.contract.handles import HandleCodec, Locator, RecordRef, parse_record_id
@@ -9,7 +12,7 @@ from medcite.contract.models import Passage, Record
 from medcite.contract.tool_models import LiteratureHit, RecordPassages
 from medcite.infra.cache import Cache
 from medcite.infra.http import UpstreamResponseError, UpstreamUnavailableError
-from medcite.sources.base import RecordBundle
+from medcite.sources.base import FetchOutcome, RecordBundle
 from medcite.sources.errors import InvalidInputError
 from medcite.sources.pubmed import LiteratureQuery, PubMedAdapter
 
@@ -53,10 +56,20 @@ def _record_ref(record_id: str) -> RecordRef:
 
 
 class EvidenceService:
-    def __init__(self, *, codec: HandleCodec, cache: Cache, pubmed: PubMedAdapter) -> None:
+    def __init__(
+        self,
+        *,
+        codec: HandleCodec,
+        cache: Cache,
+        pubmed: PubMedAdapter,
+        resolve_budget_s: float = math.inf,
+    ) -> None:
         self.codec = codec
         self.cache = cache
         self.pubmed = pubmed
+        # Resolution must finish inside the tool deadline, so a slow upstream yields
+        # `unavailable` citations in a full report instead of losing the whole audit.
+        self.resolve_budget_s = resolve_budget_s
 
     async def _issue(
         self, record: Record, drafts: Sequence[tuple[str, str, str | None]]
@@ -170,11 +183,16 @@ class EvidenceService:
                 results[locator] = Unavailable(f"scheme {locator.scheme} is not supported yet")
         if not pubmed_locators:
             return results
-        try:
-            outcome = await self.pubmed.fetch([loc.id for loc in pubmed_locators])
-        except (UpstreamUnavailableError, UpstreamResponseError) as exc:
+        reason = f"no answer from PubMed within {self.resolve_budget_s:g}s"
+        outcome: FetchOutcome | None = None
+        with anyio.move_on_after(self.resolve_budget_s):
+            try:
+                outcome = await self.pubmed.fetch([loc.id for loc in pubmed_locators])
+            except (UpstreamUnavailableError, UpstreamResponseError) as exc:
+                reason = str(exc)
+        if outcome is None:
             for locator in pubmed_locators:
-                results[locator] = Unavailable(str(exc))
+                results[locator] = Unavailable(reason)
             return results
         issued = await self.cache.get_issued([str(loc) for loc in pubmed_locators])
         for locator in pubmed_locators:

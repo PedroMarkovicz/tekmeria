@@ -4,6 +4,8 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 
+MAX_DIAGNOSTIC_CHARS = 200
+MAX_DIAGNOSTIC_WINDOWS = 120
 _WHITESPACE = re.compile(r"\s+")
 _WORD_START = re.compile(r"(?<=\s)\S")
 _FOLDS = str.maketrans(
@@ -47,17 +49,28 @@ def closest_match(quote: str, passage: str) -> tuple[str, float]:
     """The passage window of quote length most similar to the quote, and its ratio (0-1).
 
     Windows start at each word boundary. Diagnostic only: never decides a verdict.
+    Bounded cost: only the first MAX_DIAGNOSTIC_CHARS of the quote are compared, at most
+    MAX_DIAGNOSTIC_WINDOWS windows are tried, and windows that cannot beat the best so far
+    are skipped with cheap upper bounds.
     """
-    folded_quote = fold_for_compare(quote)
+    folded_quote = fold_for_compare(quote)[:MAX_DIAGNOSTIC_CHARS]
     folded_passage = fold_for_compare(passage)
     if not folded_quote or not folded_passage:
         return "", 0.0
     width = len(folded_quote)
     starts = [0, *(match.start() for match in _WORD_START.finditer(folded_passage))]
+    if len(starts) > MAX_DIAGNOSTIC_WINDOWS:  # long passages: evenly spaced word starts
+        step = len(starts) / MAX_DIAGNOSTIC_WINDOWS
+        starts = [starts[int(i * step)] for i in range(MAX_DIAGNOSTIC_WINDOWS)]
     best_window, best_ratio = "", -1.0
+    matcher = SequenceMatcher(None, autojunk=False)
+    matcher.set_seq2(folded_quote)
     for start in starts:
         window = folded_passage[start : start + width]
-        ratio = SequenceMatcher(None, folded_quote, window, autojunk=False).ratio()
+        matcher.set_seq1(window)
+        if matcher.real_quick_ratio() <= best_ratio or matcher.quick_ratio() <= best_ratio:
+            continue
+        ratio = matcher.ratio()
         if ratio > best_ratio:
             best_window, best_ratio = window, ratio
     return best_window, round(best_ratio, 4)
