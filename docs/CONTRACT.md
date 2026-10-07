@@ -1,0 +1,151 @@
+# The medcite citation contract
+
+Contract version: `0.1.0`
+
+This document is the reference for everything a client relies on: the handle grammar, passage paths, how citations are written in an answer, the audit's verdicts and flags, its metrics, and the versioning policy. The server reports the same contract version in `describe_contract` and in every audit report. A test (`tests/contract/test_contract_doc.py`) fails if a verdict, flag, scheme, path, status, metric or `fail_on` value in the code is missing here.
+
+## 1. Handles
+
+Every passage the server returns has a handle. An answer cites handles, and the audit checks them.
+
+```
+handle   = locator "~" check
+locator  = scheme ":" id [ "@" version ] "/" path
+```
+
+The regular expression the server validates with:
+
+```
+^(pmid|pmcid|ppr|nct|setid):([A-Za-z0-9-]+)(?:@([A-Za-z0-9.-]+))?/([a-z0-9_]+(?:\.[a-z0-9_]+)*)~([0-9a-hjkmnp-tv-z]{5})$
+```
+
+Examples (a check code depends on the installation's key, so these verify only under the key that issued them):
+
+```
+pmid:30831578/abstract.7~rbhq7
+pmcid:PMC13425182/body.methods.p3~m2c9x
+nct:NCT04368728@2026-03-25/results.outcome.55.analysis.1~a91tz
+setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~p0c8m
+```
+
+### 1.1 Schemes
+
+| Scheme | Record | Source | Version in the handle |
+|---|---|---|---|
+| `pmid` | Journal article | PubMed | none |
+| `pmcid` | Open-access article in PubMed Central | Europe PMC | none |
+| `ppr` | Preprint | Europe PMC | none |
+| `nct` | Trial registration | ClinicalTrials.gov | the last-update post date, `YYYY-MM-DD` |
+| `setid` | Drug label | openFDA | the SPL label version, an integer |
+
+The registries serve only their current version. A version in a handle records what was cited; it does not promise that the same text can still be fetched. When the current version differs, the citation gets the `version_changed` flag.
+
+### 1.2 Check code
+
+The check code is the first 25 bits of HMAC-SHA256 over the locator, under the installation's handle key, written as five lower-case Crockford base32 characters. It covers the locator only, not the passage text.
+
+- **What it proves:** this server issued this handle. A guessed check code passes about once in 33.5 million tries, which is enough to catch fabrication; it is not designed to stop a determined attacker.
+- **What it does not prove:** that the cited text still says the same thing. The content checks in section 4 answer that.
+- **Keys are per installation:** a handle issued by one installation does not verify on another. The offline demo uses a fixed public key, accepted only in demo mode.
+
+## 2. Passage paths
+
+Path segments are lower case; indices are 1-based and follow document order.
+
+| Path | Passage |
+|---|---|
+| `title` | Article title. |
+| `abstract.N` | Nth non-empty abstract section (an unlabelled abstract is `abstract.1`). |
+| `body.<section>[.<subsection>].pN` | Nth paragraph of an open-access full-text section (`pmcid:` records only). |
+| `summary.1` | Brief summary of a trial. |
+| `eligibility.inclusion.N` | Nth inclusion criterion of a trial. |
+| `eligibility.exclusion.N` | Nth exclusion criterion of a trial. |
+| `eligibility.other.N` | Nth eligibility statement outside the inclusion and exclusion lists. |
+| `outcome.primary.N` | Nth registered primary outcome. |
+| `outcome.secondary.N` | Nth registered secondary outcome. |
+| `arm.N` | Nth trial arm, with its interventions. |
+| `results.outcome.N` | Nth posted outcome measure: what was measured and how many were analysed. Its values are in `results.outcome.N.values.M` (one row per category) and its statistical analyses in `results.outcome.N.analysis.M`. |
+| `<section_key>.N` | Nth chunk (about 1,000 characters at most, split at sentence ends) of a drug label section, keyed by the openFDA field name, for example `boxed_warning.1`. |
+
+## 3. Text normalization
+
+Passage text is issued normalized, and quotes are normalized the same way before they are compared:
+
+1. Unicode NFC.
+2. Every run of whitespace becomes one space, and the ends are trimmed.
+3. For comparison only, typographic variants are folded: curly quotes become straight quotes; en dash, em dash, non-breaking hyphen and minus sign become a hyphen; a non-breaking space becomes a space; an ellipsis becomes three dots.
+
+## 4. Citing in an answer
+
+`audit_answer` takes either free text (`answer_text`) or structured claims (`claims`).
+
+- **Free text.** Citations go in square brackets after the claim they support: `[handle]`, several as `[handle; handle]` (a comma also works), and a verbatim quote as `[handle "exact words"]`. Backticks, asterisks and underscores around a handle are ignored. A bracket group is a citation group only if one of its entries looks like `scheme:...`, so `[1]` stays plain text. A handle written outside any brackets still counts as a citation, so none can slip past the audit.
+- **Sentences.** The text is split into sentences (pySBD, English, rule-based), and each sentence is one claim. A citation group that opens a sentence belongs to the sentence before it.
+- **Structured claims.** `claims` is a list of `{sentence, citations: [{handle, quote}]}` taken exactly as given.
+- **Limits.** At most 10 citations per sentence, quotes of at most 1,000 characters, and sentences of at most 4,000 characters. Larger input is `invalid_input`.
+
+## 5. Verdicts
+
+Each citation gets exactly one verdict. The checks run in this order, and the first one that fails decides:
+
+| Order | Verdict | Meaning |
+|---|---|---|
+| 1 | `malformed` | The text does not match the handle grammar. Copy errors land here, so they are never counted as fabrication. |
+| 2 | `forged` | The grammar matches but the check code is wrong: this server never issued the handle. This is fabrication. |
+| 3 | `unavailable` | A genuine handle whose source could not be reached in time. Retryable, and never counted as fabrication. |
+| 4 | `withdrawn` | The record, or the passage path within it, no longer exists upstream. |
+| 5 | `quote_mismatch` | A quote was given and is not a substring of the passage after the normalization in section 3. |
+| 6 | `ok` | Every check passed. |
+
+A quote counts as verbatim if it matches the passage text as it was first issued or as it is now. `checked_against` (`issued` or `current`) says which one it matched. For a `quote_mismatch`, the report adds `closest_match`, the most similar window of the current text, and its `similarity` from 0 to 1; both are diagnostics and never change the verdict.
+
+Every citation also carries `support: "not_checked"`. Whether a passage supports the claim is a semantic question outside this contract.
+
+## 6. Flags
+
+Flags describe the cited record. They never change a verdict.
+
+| Flag | Meaning |
+|---|---|
+| `retracted` | The record has been retracted, according to PubMed or Crossref; `detail` is the retraction notice's DOI when known. |
+| `preprint` | The record is not peer-reviewed. |
+| `version_changed` | The record's current version differs from the version in the handle; `detail` is the current version. |
+
+## 7. Claim status
+
+| Status | Meaning |
+|---|---|
+| `cited` | At least one citation is `ok`. |
+| `uncited` | The sentence has no citations. |
+| `invalid_only` | The sentence has citations, but none is `ok`. |
+
+## 8. Metrics
+
+| Metric | Definition |
+|---|---|
+| `citation_validity` | `ok` citations / (citations - `unavailable` citations); `null` when the denominator is 0. |
+| `sentence_coverage` | `cited` sentences / sentences; `null` when there are no sentences. |
+| `quote_accuracy` | verbatim quotes / quotes checked, leaving out quotes on `unavailable` citations; `null` when no quote was checked. |
+| `fabricated` | The number of `forged` citations. |
+| `retracted_cited` | The number of `ok` citations whose record is retracted. |
+
+The summary also counts sentences by status and citations by verdict (`by_verdict`).
+
+## 9. Overall verdict
+
+The report's `verdict` is decided in this order:
+
+1. `fail` if anything listed in `fail_on` occurs.
+2. Otherwise `incomplete` if any citation is `unavailable`.
+3. Otherwise `warn` if any sentence is uncited or any `ok` citation is retracted.
+4. Otherwise `pass`.
+
+`fail_on` may list any of `malformed`, `forged`, `unavailable`, `withdrawn`, `quote_mismatch`, `uncited` and `retracted`. The default is `forged` and `malformed`, the two signs that a model invented or mangled a citation.
+
+## 10. Versioning
+
+The contract follows semantic versioning, separately from the package version:
+
+- **Breaking changes** bump the major version, or the minor version while the contract is `0.x`. Breaking means removing or renaming a field, a verdict, a flag, a status or a `fail_on` value; changing the handle grammar, the check-code computation or an existing passage path; or changing a metric's definition.
+- **Additive changes** (a new optional field, a new scheme or a new kind of passage path) bump the patch version.
+- **The same input, handle key and upstream content always give the same report,** apart from `audited_at`.
