@@ -21,3 +21,26 @@ jobs:
       - run: uv run pytest
       - name: Offline demo must catch every planted case
         run: uv run medcite demo
+      - name: The wheel ships the audit view
+        run: |
+          uv build --wheel --out-dir dist
+          uv run python -c "import glob, sys, zipfile; names = zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist(); sys.exit(0 if 'medcite/ui/audit-view.html' in names else 'the wheel has no medcite/ui/audit-view.html')"
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: The committed audit view must match the build
+        run: git diff --exit-code -- ../src/medcite/ui/audit-view.html

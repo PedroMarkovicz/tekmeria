@@ -18,6 +18,9 @@ build/
 node_modules/
 web/dist/
 
+# GitHub Pages build (pages workflow)
+site/
+
 # Local config and secrets
 .env
 *.key
