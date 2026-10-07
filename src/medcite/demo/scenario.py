@@ -51,6 +51,17 @@ OPEN_ACCESS_SEARCH: dict[str, Any] = {
 }
 
 
+# Registry calls. The trial and label found live go to scenario.json.
+TRIAL_SEARCH: dict[str, Any] = {
+    "condition": "heart failure",
+    "intervention": "dapagliflozin",
+    "has_results": True,
+    "limit": 10,
+}
+LABEL_SEARCH: dict[str, Any] = {"drug": "warfarin", "limit": 3}
+NO_LABEL_SEARCH: dict[str, Any] = {"drug": "zzzqqq not a drug"}
+
+
 class DemoError(RuntimeError):
     pass
 
@@ -156,6 +167,38 @@ async def _first_hit(client: Client, args: dict[str, Any], *, want: str) -> dict
     raise DemoError(f"no {want} record found for {args['query']!r}")
 
 
+async def _two_pages(client: Client, tool: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Record a search and, when there is one, its second page; return the first page."""
+    first = _recorded(await client.call_tool(tool, args))
+    if first["next_cursor"]:
+        _recorded(await client.call_tool(tool, {**args, "cursor": first["next_cursor"]}))
+    return first
+
+
+def _version(record_id: str) -> int:
+    return int(record_id.rsplit("@", 1)[1])
+
+
+async def _record_registries(client: Client) -> dict[str, str]:
+    """A trial with posted results and a results publication, and a label with a boxed
+    warning and earlier versions, each searched for and then fetched."""
+    trials = await _two_pages(client, "search_trials", TRIAL_SEARCH)
+    trial = next((h for h in trials["hits"] if h["has_results"] and h["linked_pmids"]), None)
+    if trial is None:
+        raise DemoError("no trial with posted results and a linked PMID in the search")
+    labels = await _two_pages(client, "search_drug_labels", LABEL_SEARCH)
+    label = next(
+        (h for h in labels["hits"] if h["has_boxed_warning"] and _version(h["record_id"]) > 1),
+        None,
+    )
+    if label is None:
+        raise DemoError("no label with a boxed warning and an earlier version in the search")
+    _recorded(await client.call_tool("search_drug_labels", NO_LABEL_SEARCH))
+    for record_id in (trial["record_id"], label["record_id"]):
+        _recorded(await client.call_tool("fetch_passages", {"record_ids": [record_id]}))
+    return {"trial_record_id": trial["record_id"], "label_record_id": label["record_id"]}
+
+
 async def record_scenario(client: Client) -> None:
     """Make every call the demo and the tests replay. Run against the live network.
 
@@ -200,4 +243,5 @@ async def record_scenario(client: Client) -> None:
                 "fetch_passages", {"record_ids": record_ids, "full_text": full_text}
             )
         )
+    scenario.update(await _record_registries(client))
     SCENARIO_FILE.write_text(json.dumps(scenario, indent=1), encoding="utf-8")

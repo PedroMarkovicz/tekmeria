@@ -1,0 +1,6 @@
+{
+ "url": "https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22zzzqqq+not+a+drug%22+OR+openfda.generic_name%3A%22zzzqqq+not+a+drug%22+OR+openfda.substance_name%3A%22zzzqqq+not+a+drug%22&limit=10&skip=0&sort=effective_time%3Adesc",
+ "status": 404,
+ "content_type": "application/json; charset=utf-8",
+ "body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"No matches found!\"\n  }\n}"
+}
