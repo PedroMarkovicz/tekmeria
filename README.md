@@ -158,38 +158,48 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 
 ## Evaluation
 
-`tekmerion evaluate` measures the audit itself. It plants citations whose correct verdict is known in advance, in 17 categories:
+`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 17 categories:
 - genuine citations, with verbatim or reformatted quotes;
 - quotes with a changed number, an inserted "not" or a swapped word;
 - forged check codes, paths and record IDs, and malformed handles;
-- passages and records that no longer exist, and a source that is down;
+- passages and records that do not exist, and a source that is down;
 - retracted papers, preprints and older record versions;
 - a forged handle hidden inside an unclosed quote.
 
-Each case cites a real passage from the demo's recorded responses and is audited twice: as structured claims, and as answer text in one of the citation styles a model might write. A case passes only when every citation gets its planted verdict and exactly its planted flags. CI runs the evaluation on every push. This is its output:
+**How the cases are built.**
+- They rest on 7 real records (178 passages) from the demo's recorded responses.
+- The withdrawn and unavailable cases cite made-up paths, made-up records, and a record treated as unreachable.
+- What each case plants is decided by a reference oracle, written from the spec and sharing no code with the audit.
+
+**How they are scored.**
+- Each case is audited as structured claims and, except the hidden-handle case, also as answer text in one of the citation styles a model might write. The two audits of a case use the same planted citations, so they are not independent observations.
+- A case passes only when every citation gets its planted verdict and exactly its planted flags.
+- CI runs the evaluation on every push.
+
+This is its output:
 
 <!-- evaluation:start -->
 planted cases: 825/825 correct (seed 0, 25 per category; 7 records, 178 passages)
 
-| Category | Structured claims | Answer text |
-|---|---|---|
-| `ok_plain` | 25/25 | 25/25 |
-| `ok_quote` | 25/25 | 25/25 |
-| `ok_quote_reformatted` | 25/25 | 25/25 |
-| `quote_number_changed` | 25/25 | 25/25 |
-| `quote_negated` | 25/25 | 25/25 |
-| `quote_word_swapped` | 25/25 | 25/25 |
-| `forged_check_code` | 25/25 | 25/25 |
-| `forged_path_swap` | 25/25 | 25/25 |
-| `forged_record_id` | 25/25 | 25/25 |
-| `malformed` | 25/25 | 25/25 |
-| `withdrawn_path` | 25/25 | 25/25 |
-| `withdrawn_record` | 25/25 | 25/25 |
-| `unavailable` | 25/25 | 25/25 |
-| `retracted_cited` | 25/25 | 25/25 |
-| `preprint_cited` | 25/25 | 25/25 |
-| `version_changed` | 25/25 | 25/25 |
-| `hidden_in_quote` | - | 25/25 |
+| Category | Distinct cases | Structured claims | Answer text |
+|---|---|---|---|
+| `ok_plain` | 25 | 25/25 | 25/25 |
+| `ok_quote` | 25 | 25/25 | 25/25 |
+| `ok_quote_reformatted` | 25 | 25/25 | 25/25 |
+| `quote_number_changed` | 25 | 25/25 | 25/25 |
+| `quote_negated` | 25 | 25/25 | 25/25 |
+| `quote_word_swapped` | 25 | 25/25 | 25/25 |
+| `forged_check_code` | 25 | 25/25 | 25/25 |
+| `forged_path_swap` | 25 | 25/25 | 25/25 |
+| `forged_record_id` | 25 | 25/25 | 25/25 |
+| `malformed` | 25 | 25/25 | 25/25 |
+| `withdrawn_path` | 25 | 25/25 | 25/25 |
+| `withdrawn_record` | 25 | 25/25 | 25/25 |
+| `unavailable` | 9 | 25/25 | 25/25 |
+| `retracted_cited` | 5 | 25/25 | 25/25 |
+| `preprint_cited` | 2 | 25/25 | 25/25 |
+| `version_changed` | 25 | 25/25 | 25/25 |
+| `hidden_in_quote` | 25 | - | 25/25 |
 
 | Verdict | Planted | Given | Precision | Recall |
 |---|---|---|---|---|
@@ -199,9 +209,25 @@ planted cases: 825/825 correct (seed 0, 25 per category; 7 records, 178 passages
 | `withdrawn` | 100 | 100 | 1.000 | 1.000 |
 | `quote_mismatch` | 175 | 175 | 1.000 | 1.000 |
 | `ok` | 300 | 300 | 1.000 | 1.000 |
+
+| Record | Planted citations |
+|---|---|
+| nct:NCT04363697 | 94 |
+| outside the snapshot | 75 |
+| pmcid:PMC13425182 | 16 |
+| pmid:30831578 | 15 |
+| pmid:42530928 | 2 |
+| pmid:9500320 | 25 |
+| ppr:PPR1297067 | 25 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 198 |
 <!-- evaluation:end -->
 
-`--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix. The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
+**Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.
+
+**How to read it.**
+- Small pools are drawn from more than once: see "Distinct cases".
+- The drug label and the trial supply most planted citations: see the last table.
+- The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
 
 ## Architecture
 

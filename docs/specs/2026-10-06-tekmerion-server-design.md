@@ -716,36 +716,54 @@ The project was called medcite until the cleanup pass (16.7). A paper of the sam
 
 - **4.4 The key file.** The handle key and its temporary file are created readable by their owner only (mode `0o600` on POSIX), also on a drive without hard links. Before, the fallback used the default permissions, and the temporary file was briefly readable by others.
 - **9.3 What the logs keep.** A `tool_error` line keeps the error's message only for `upstream_unavailable`, `deadline_exceeded` and `internal`. Other messages can echo the request (a query, a record ID) or an upstream URL, so their lines keep only the code.
-- **CI.** The dormant Pages trigger deploys only after CI passed on a push to `main`, and checks out the commit CI tested. The old-name guard (16.8) reads every tracked file and skips binary ones.
+- **CI.** The dormant Pages trigger deploys only after CI passed on a push to `main`, and checks out the commit CI tested. The old-name guard (16.8) reads every tracked file and skips binary ones. Every CI job has a 20-minute time limit, so a hung step fails instead of running for hours.
 
 ### 16.10 Planted-error evaluation
 
 `tekmerion evaluate` measures the audit's decisions offline and reproducibly, for the technical note.
 
-- **Records.** Seven real records, with 178 passages: a cohort study, a retracted paper, an open-access article with its full text, a preprint, a trial and a drug label.
+- **Records.** Seven real records: a cohort study, a retracted paper, an open-access article with its full text, a preprint, a trial and a drug label.
+  - They hold 178 passages: the drug label has 101, the trial 49 and the literature records 28.
   - They are fetched once through the evidence service from the demo's recorded responses, then served from memory, so every case is independent of how the audit batches its lookups.
-  - The service's own resolution is covered by the server tests and the demo.
+- **Ground truth.** A reference oracle, `evaluation/oracle.py`, decides what each case plants. It is written from sections 4.1, 4.4 and 4.5 and shares no code with the audit:
+  - it issues and forges handles;
+  - it checks the grammar;
+  - it decides whether a planted quote is in its passage.
+
+  A bug in the audit's comparator or codec therefore cannot reshape the cases that would expose it. A misreading of the spec itself would be shared by both.
 - **Cases.** 17 categories, each planting one kind of error or none, generated from a seed:
   - genuine citations, with verbatim quotes and with quotes reformatted (extra spaces, typographic dashes);
   - quotes with a changed number, an inserted "not" or a swapped word;
   - forged check codes, paths and record IDs;
   - malformed handles;
-  - passages and records that no longer exist, and a source that is down;
+  - passages and records that do not exist, and a source that is down;
   - retracted papers, preprints and older record versions;
   - a forged handle hidden inside an unclosed quote.
 
-  Before the audit sees a case, the tests check that what it plants is real: a forged handle fails verification, a malformed one breaks the grammar, and a planted mismatch is absent from the passage.
-- **Two modes.** Each case is audited as structured claims, and as answer text in a random citation style from section 7.2: brackets, quote styles, Markdown wrapping, citations after the full stop. The hidden-handle case runs on answer text only.
+  **How draws work.** Draws go through each pool without replacement, so a category repeats a case only when its pool is smaller than the number of cases. With 25 per category:
+  - the preprint has 2 distinct cases;
+  - the retracted paper has 5;
+  - the unavailable source has 9.
+
+  **Made-up citations.** The withdrawn and unavailable cases cite made-up paths, made-up records and a record treated as unreachable (`pmid:40881072`).
+- **Two modes.** Each case is audited as structured claims, and as answer text in a random citation style from section 7.2: brackets, quote styles, Markdown wrapping, citations after the full stop.
+  - The hidden-handle case runs on answer text only.
+  - The two audits of a case use the same planted citations, so they are not independent observations.
 - **Scoring.**
   - A case is correct only when every citation gets its planted verdict and exactly its planted flags.
-  - The report gives the results per category, and a confusion matrix of planted against given verdicts. Its column "missed" counts planted citations the audit never reported; its row "unplanted" counts citations the audit invented.
-  - It also gives precision and recall per verdict.
+  - The report gives, per category, the results and the number of distinct cases.
+  - Its confusion matrix sets planted against given verdicts. The column "missed" counts planted citations the audit never reported; the row "unplanted" counts citations the audit invented.
+  - It also gives precision and recall per verdict, and the planted citations per record.
   - The command exits 1 if any case fails, and CI runs it.
-- **Unavailable.** A replay cannot take a source down, so one record (`pmid:40881072`) counts as unreachable for the whole run.
-- **What it shows.** It shows that the deterministic audit decides correctly on planted errors in real passages. It says nothing about how often models make these errors, and nothing about support; those need model runs.
-- **Sensitivity.** Tests check that the evaluation can fail:
-  - a resolver whose sources never answer is caught;
-  - an audit that drops citations is caught, through the "missed" column.
+- **What it does not exercise.**
+  - **Resolution.** The withdrawn and unavailable categories get their resolution from the evaluation's own resolver. They check only how the audit maps a resolution to a verdict. The evidence service's own resolution is covered by the server tests and the demo.
+  - **Text as first issued.** Quotes are checked against the current passage text only: the resolver gives no text as first issued, so `checked_against: issued` is never reached.
+  - **Support and model behaviour.** Nothing here measures support, or how often models make these errors; those need model runs.
+- **Sensitivity.** Tests break the audit as a real bug would, and require the evaluation to fail:
+  - a comparator that reads only the first 40 characters of a quote, also put where the generator could share it;
+  - a check code that ignores the path;
+  - dropped flags;
+  - a resolver whose sources never answer;
+  - an audit that loses a citation.
 
-  While the evaluation was being built, removing the cleanup-pass fix for handles hidden in quotes dropped forged recall to 0.857.
-
+  A category that cannot be planted at all stops the run with an error instead of looping. Before the reference oracle, the shared comparator bug scored 825/825.

@@ -74,3 +74,9 @@ def test_the_evaluation_output_matches_the_evaluation(capsys: pytest.CaptureFixt
     main(["evaluate"])
     block = README.split("<!-- evaluation:start -->", 1)[1].split("<!-- evaluation:end -->", 1)[0]
     assert block.strip() == capsys.readouterr().out.strip()
+
+
+def test_the_evaluation_section_claims_only_what_it_shows() -> None:
+    section = README.split("## Evaluation", 1)[1].split("\n## ", 1)[0]
+    assert "Each case cites a real passage" not in section  # withdrawn cases cite made-up ones
+    assert "reference oracle" in section and "not independent" in section

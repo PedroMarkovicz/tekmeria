@@ -74,3 +74,13 @@ async def test_a_category_that_cannot_be_planted_fails_fast(
     monkeypatch.setattr(cases._Builder, "_genuine", lambda self, handle: True)
     with pytest.raises(RuntimeError, match="forged_path_swap: no case found"):
         generate_cases(snapshot, DEMO_KEY, seed=0, per_category=1)
+
+
+async def test_a_category_uses_every_passage_of_its_pool_before_repeating_one(
+    snapshot: Snapshot,
+) -> None:
+    generated = generate_cases(snapshot, DEMO_KEY, seed=0, per_category=20)
+    plain = [case.citations[0].handle for case in generated if case.category == "ok_plain"]
+    assert len(set(plain)) == 20  # the pool has far more than 20 passages
+    preprints = Counter(c.citations[0].handle for c in generated if c.category == "preprint_cited")
+    assert sorted(preprints.values()) == [10, 10]  # two passages, used in turn

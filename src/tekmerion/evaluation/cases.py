@@ -70,9 +70,15 @@ class _Builder:
         ]
         self.numbered = [(r, p) for r, p in self.clean if _TRAILING_DIGITS.search(p.path)]
         self.records = snapshot.records
+        self._queues: dict[int, list[tuple[Record, Passage]]] = {}
 
     def pick(self, pool: list[tuple[Record, Passage]]) -> tuple[Record, Passage]:
-        return pool[self.rng.randrange(len(pool))]
+        """The next passage of a shuffled pass through `pool`: no passage repeats until every
+        passage of the pool has been used, so small pools are spread evenly."""
+        queue = self._queues.get(id(pool))
+        if not queue:
+            queue = self._queues[id(pool)] = self.rng.sample(pool, len(pool))
+        return queue.pop()
 
     def window(self, text: str, *, digits: bool = False) -> str:
         options = [w for w in _windows(text) if _has_digit(w) or not digits]

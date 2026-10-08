@@ -1,6 +1,8 @@
 """Run the planted cases through the audit and score the verdicts (spec section 16.9)."""
 
 import random
+import re
+from collections import Counter
 from collections.abc import Sequence
 
 from pydantic import BaseModel
@@ -13,6 +15,14 @@ from tekmerion.evaluation.cases import CATEGORIES, MODES, Case, Mode, render_tex
 
 MAX_FAILURES_SHOWN = 20
 MISSED, UNPLANTED = "missed", "unplanted"
+OUTSIDE = "outside the snapshot"
+_RECORD = re.compile(r"^[a-z]+:[A-Za-z0-9-]+")  # a handle's record, without any version
+
+
+def _record_of(handle: str, snapshot_records: Sequence[str]) -> str:
+    match = _RECORD.match(handle)
+    record = match.group(0) if match else ""
+    return record if record in snapshot_records else OUTSIDE
 
 
 class CategoryScore(BaseModel):
@@ -20,6 +30,7 @@ class CategoryScore(BaseModel):
     mode: Mode
     cases: int
     correct: int
+    distinct: int  # different cases: a small pool is drawn from more than once
 
 
 class Failure(BaseModel):
@@ -51,6 +62,8 @@ class EvaluationReport(BaseModel):
     # planted verdict -> the audit's verdict -> citations. Column "missed": a planted citation
     # the audit never reported; row "unplanted": a citation the audit found but none was planted.
     confusion: dict[str, dict[str, int]]
+    # planted citations per record, once per case (each case is audited in up to two modes)
+    records: dict[str, int]
     failures: list[Failure]
 
 
@@ -93,8 +106,12 @@ async def run_evaluation(
         row: dict.fromkeys((*VERDICTS, MISSED), 0) for row in (*VERDICTS, UNPLANTED)
     }
     failures: list[Failure] = []
+    distinct: dict[str, set[Case]] = {}
+    records: Counter[str] = Counter()
     total = correct = 0
     for case in cases:
+        distinct.setdefault(case.category, set()).add(case)
+        records.update(_record_of(p.handle, snapshot_records) for p in case.citations)
         expected = [(p.verdict, sorted(p.flags)) for p in case.citations]
         for mode in case.modes:
             answer, got = await _audit_case(case, mode, codec=codec, resolver=resolver, rng=rng)
@@ -141,12 +158,13 @@ async def run_evaluation(
         cases=total,
         correct=correct,
         categories=[
-            CategoryScore(category=c, mode=m, cases=n, correct=k)
+            CategoryScore(category=c, mode=m, cases=n, correct=k, distinct=len(distinct[c]))
             for (c, m), (n, k) in scores.items()
             if n
         ],
         verdicts=verdicts,
         confusion=confusion,
+        records=dict(sorted(records.items())),
         failures=failures,
     )
 
@@ -156,7 +174,8 @@ def _ratio(value: float | None) -> str:
 
 
 def render_report(report: EvaluationReport) -> str:
-    """The report as Markdown: per-category results, then per-verdict precision and recall."""
+    """The report as Markdown: per-category results, per-verdict precision and recall, and
+    how the planted citations spread over the records."""
     by_category: dict[str, dict[str, CategoryScore]] = {}
     for score in report.categories:
         by_category.setdefault(score.category, {})[score.mode] = score
@@ -169,11 +188,15 @@ def render_report(report: EvaluationReport) -> str:
         f"(seed {report.seed}, {report.per_category} per category; "
         f"{len(report.snapshot_records)} records, {report.snapshot_passages} passages)",
         "",
-        "| Category | Structured claims | Answer text |",
-        "|---|---|---|",
+        "| Category | Distinct cases | Structured claims | Answer text |",
+        "|---|---|---|---|",
     ]
     for category, modes in by_category.items():
-        lines.append(f"| `{category}` | {cell(modes.get('claims'))} | {cell(modes.get('text'))} |")
+        first = next(iter(modes.values()))
+        lines.append(
+            f"| `{category}` | {first.distinct} | {cell(modes.get('claims'))} | "
+            f"{cell(modes.get('text'))} |"
+        )
     lines += [
         "",
         "| Verdict | Planted | Given | Precision | Recall |",
@@ -184,6 +207,8 @@ def render_report(report: EvaluationReport) -> str:
             f"| `{score.verdict}` | {score.expected} | {score.predicted} | "
             f"{_ratio(score.precision)} | {_ratio(score.recall)} |"
         )
+    lines += ["", "| Record | Planted citations |", "|---|---|"]
+    lines += [f"| {record} | {count} |" for record, count in report.records.items()]
     for failure in report.failures:
         lines.append(
             f"FAILED {failure.category} ({failure.mode}): expected {failure.expected}, "
