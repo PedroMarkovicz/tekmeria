@@ -27,3 +27,11 @@ def test_pages_deploys_the_commit_ci_tested_after_a_push() -> None:
 def test_ci_runs_the_planted_error_evaluation() -> None:
     text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
     assert "run: uv run tekmerion evaluate" in text
+
+
+def test_every_ci_job_has_a_time_limit() -> None:
+    # A hung job would otherwise run for GitHub's default of six hours.
+    text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+    jobs = text.split("\njobs:\n", 1)[1].splitlines()
+    names = [line for line in jobs if line.startswith("  ") and line[2] != " "]
+    assert names and text.count("    timeout-minutes: ") == len(names)

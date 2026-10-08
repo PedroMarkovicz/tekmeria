@@ -10,6 +10,7 @@ from tekmerion.contract.handles import (
     MalformedHandleError,
 )
 from tekmerion.contract.normalize import quote_in_passage
+from tekmerion.evaluation import cases
 from tekmerion.evaluation.cases import CATEGORIES, Planted, generate_cases, render_text
 from tekmerion.evaluation.snapshot import Snapshot, record_key
 from tekmerion.infra.keys import DEMO_KEY
@@ -70,3 +71,12 @@ async def test_a_rendered_answer_cites_exactly_the_planted_citations(snapshot: S
         claims = parse_answer_text(render_text(case, rng))
         cited = [(c.handle, c.quote) for claim in claims for c in claim.citations]
         assert cited == [(p.handle, p.quote) for p in case.citations], case.category
+
+
+async def test_a_category_that_cannot_be_planted_fails_fast(
+    snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # As if the check code ignored the path: every path swap would then be genuine.
+    monkeypatch.setattr(cases._Builder, "_genuine", lambda self, handle: True)
+    with pytest.raises(RuntimeError, match="forged_path_swap: no case found"):
+        generate_cases(snapshot, CODEC, seed=0, per_category=1)

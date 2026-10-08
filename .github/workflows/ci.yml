@@ -11,6 +11,7 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v10.2.0
@@ -33,6 +34,7 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: web

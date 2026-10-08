@@ -29,6 +29,8 @@ MODES: tuple[Mode, ...] = ("claims", "text")
 _QUOTE_MARKS = frozenset("\"'" + chr(0x2018) + chr(0x2019) + chr(0x201C) + chr(0x201D))
 _EN_DASH, _NBSP = chr(0x2013), chr(0x00A0)
 _TRAILING_DIGITS = re.compile(r"(\d+)$")
+# Redraws per case: a category that cannot be planted means a bug, so fail instead of looping.
+_ATTEMPTS = 1000
 
 
 @dataclass(frozen=True)
@@ -94,13 +96,26 @@ class _Builder:
         quote = quote.replace("-", _EN_DASH)  # typographic variants are folded before comparing
         return Case("ok_quote_reformatted", (Planted(passage.handle, quote, "ok"),))
 
+    def _draw(self, category: str, attempt: Callable[[], Case | None]) -> Case:
+        """Call `attempt` until it plants a case. A category that can never be planted (for
+        example, a check code that ignores the path) is a bug: fail fast, never loop."""
+        for _ in range(_ATTEMPTS):
+            case = attempt()
+            if case is not None:
+                return case
+        raise RuntimeError(f"{category}: no case found in {_ATTEMPTS} draws")
+
     def _mismatch(self, category: str, edit: Callable[[str], str], *, digits: bool) -> Case:
         pool = self.numeric if digits else self.quotable
-        while True:
+
+        def attempt() -> Case | None:
             _, passage = self.pick(pool)
             quote = edit(self.window(passage.text, digits=digits))
-            if not quote_in_passage(quote, passage.text):
-                return Case(category, (Planted(passage.handle, quote, "quote_mismatch"),))
+            if quote_in_passage(quote, passage.text):
+                return None
+            return Case(category, (Planted(passage.handle, quote, "quote_mismatch"),))
+
+        return self._draw(category, attempt)
 
     def quote_number_changed(self) -> Case:
         def edit(quote: str) -> str:
@@ -143,25 +158,31 @@ class _Builder:
         return body + code[:at] + new + code[at + 1 :]
 
     def forged_path_swap(self) -> Case:
-        while True:
+        def attempt() -> Case | None:
             record, passage = self.pick(self.multi)
             others = self.records[record_key(record.record_id)].passages
             other = self.rng.choice([p for p in others if p.path != passage.path])
             locator, code = parse_handle(passage.handle)
             moved = f"{locator.record}/{other.path}~{code}"
-            if not self._genuine(moved):  # a chance collision would be a genuine handle
-                return Case("forged_path_swap", (Planted(moved, None, "forged"),))
+            if self._genuine(moved):  # a chance collision would be a genuine handle
+                return None
+            return Case("forged_path_swap", (Planted(moved, None, "forged"),))
+
+        return self._draw("forged_path_swap", attempt)
 
     def forged_record_id(self) -> Case:
-        while True:
+        def attempt() -> Case | None:
             _, passage = self.pick(self.clean)
             locator, code = parse_handle(passage.handle)
             ident = locator.id
             at = max(i for i, ch in enumerate(ident) if ch.isdigit())
             changed = ident[:at] + str((int(ident[at]) + 1) % 10) + ident[at + 1 :]
             moved = f"{Locator(locator.scheme, changed, locator.version, locator.path)}~{code}"
-            if not self._genuine(moved):
-                return Case("forged_record_id", (Planted(moved, None, "forged"),))
+            if self._genuine(moved):
+                return None
+            return Case("forged_record_id", (Planted(moved, None, "forged"),))
+
+        return self._draw("forged_record_id", attempt)
 
     def malformed(self) -> Case:
         _, passage = self.pick(self.clean)
@@ -183,13 +204,16 @@ class _Builder:
             [(r, p) for r, p in self.clean if _TRAILING_DIGITS.search(p.path)]
         )
         paths = {p.path for p in self.records[record_key(record.record_id)].passages}
-        while True:
-            number = self.rng.randrange(900, 1000)
-            path = _TRAILING_DIGITS.sub(str(number), passage.path)
-            if path not in paths:
-                break
-        locator = parse_record_id(record.record_id).at(path)
-        return Case("withdrawn_path", (Planted(self.codec.issue(locator), None, "withdrawn"),))
+
+        def attempt() -> Case | None:
+            path = _TRAILING_DIGITS.sub(str(self.rng.randrange(900, 1000)), passage.path)
+            if path in paths:
+                return None
+            locator = parse_record_id(record.record_id).at(path)
+            planted = Planted(self.codec.issue(locator), None, "withdrawn")
+            return Case("withdrawn_path", (planted,))
+
+        return self._draw("withdrawn_path", attempt)
 
     def withdrawn_record(self) -> Case:
         ident = str(90_000_000 + self.rng.randrange(9_000_000))
