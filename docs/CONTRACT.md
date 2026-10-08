@@ -84,11 +84,11 @@ Passage text is issued normalized, and quotes are normalized the same way before
 
 `audit_answer` takes either free text (`answer_text`) or structured claims (`claims`).
 
-- **Free text.** Citations go in square brackets after the claim they support: `[handle]`, several as `[handle; handle]` (a comma also works), and a verbatim quote as `[handle "exact words"]`. Backticks, asterisks and underscores around a handle are ignored. A bracket group is a citation group only if one of its entries looks like `scheme:...`, so `[1]` stays plain text. A handle-shaped token written outside any brackets still counts as a citation, so a well-formed handle cannot slip past the audit.
+- **Free text.** Citations go in square brackets after the claim they support: `[handle]`, several as `[handle; handle]` (a comma also works), and a verbatim quote as `[handle "exact words"]`. Single or curly quotes also work, and the quote may follow the handle without a space. Backticks, asterisks and underscores around a handle are ignored, and so is punctuation right after it (`[handle.]`). A bracket group is a citation group only if one of its entries looks like `scheme:...`, so `[1]` stays plain text, and so does a bracketed web address such as `[https://example.org]`. A handle-shaped token written outside any brackets still counts as a citation, so a well-formed handle cannot slip past the audit.
 - **Sentences.** The text is split into sentences (pySBD, English, rule-based), and each sentence is one claim. A citation group that opens a sentence belongs to the sentence before it.
 - **Markdown.** Headings (`#` lines) and bold runs that open a line (`**Results.**` before the text, or `**Safety**` alone) are sentences of their own, so they never merge with the text after them. Like any sentence, they are uncited unless they carry a citation: nothing is dropped, so no text can hide from the audit. The `#`, `**` and `__` markers are removed. A line break also ends a sentence, which keeps list items apart.
 - **Structured claims.** `claims` is a list of `{sentence, citations: [{handle, quote}]}` taken exactly as given.
-- **Limits.** An `answer_text` of at most 20,000 characters, or at most 100 claims; at most 10 citations per sentence; handles of at most 300 characters; quotes of at most 1,000 characters; sentences of at most 4,000 characters. Larger input is `invalid_input`, except that an over-long handle in free text is cut to 300 characters (it then fails as `malformed` or `forged`).
+- **Limits.** An `answer_text` of at most 20,000 characters, or at most 100 claims; at most 10 citations per sentence, counting citations written after its full stop; handles of at most 300 characters; quotes of at most 1,000 characters; sentences of at most 4,000 characters. Larger input is `invalid_input`, except that an over-long handle in free text is cut to 300 characters (it then fails as `malformed` or `forged`). An answer with no sentences is `invalid_input` too: there is nothing to audit.
 
 ## 5. Verdicts
 
@@ -114,7 +114,7 @@ Flags describe the cited record. They never change a verdict.
 | Flag | Meaning |
 |---|---|
 | `retracted` | The record has been retracted, according to PubMed, Europe PMC or Crossref; `detail` is the retraction notice's DOI when known. |
-| `preprint` | The record is not peer-reviewed. |
+| `preprint` | The record is a preprint, so not peer-reviewed. A record's `peer_reviewed` signal means published in a journal rather than as a preprint; it does not promise that a letter or an editorial was formally reviewed. |
 | `version_changed` | The record's current version differs from the version in the handle; `detail` is the current version. |
 
 ## 7. Claim status

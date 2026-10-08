@@ -35,9 +35,11 @@ Both checks use Claude Desktop with medcite installed from GitHub. They need net
    }
    ```
 
-3. Restart Claude Desktop. medcite's seven tools should appear in the tools menu.
+3. Run `uvx --from git+https://github.com/PedroMarkovicz/medcite medcite --help` once in a terminal. The first run downloads and installs medcite, which can take longer than Claude Desktop waits for a server to start.
 
    While the repository is private, `uvx` needs your GitHub credentials to fetch it (Git Credential Manager provides them on Windows). Alternatively, point `--from` at a local checkout, for example `"args": ["--from", "C:/path/to/medcite", "medcite"]`.
+
+4. Restart Claude Desktop. medcite's seven tools should appear in the tools menu.
 
 ### A. The audit view inside the host (criterion 6)
 

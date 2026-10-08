@@ -655,3 +655,46 @@ The first live run of acceptance check B (`docs/live-run.md`) failed its audit w
   - **The cost.** Answers with headings get `warn` more often; that is the conservative side. On the first run's answer, the result is 19 sentences, 7 uncited and 14 citations, now cleanly split.
   - **Line breaks.** A line break also ends a sentence, as before, which keeps list items apart.
 - **Contract version.** It stays `0.1.0`: nothing has been released, and both changes narrow what counts as a claim without changing any field, verdict or metric definition.
+
+### 16.7 Cleanup pass
+
+This pass closed the minor findings that the reviews of 16.1 to 16.5 deferred.
+
+- **7.2 Reading free text.**
+  - Citations written after a full stop now count towards the earlier sentence's limit of 10; before, they could exceed it.
+  - A quote may be in single or curly quotes, or follow the handle without a space. Punctuation right after a handle is ignored.
+  - A bracketed web address is plain text, not a `malformed` citation.
+  - An answer with no sentences is `invalid_input`; before, it audited as `pass`.
+- **6.2 Text output.**
+  - Search and fetch text names any source that is not `ok`.
+  - A search hit without a handle says to fetch it before citing.
+  - A record requested twice, in another case or version, comes back once.
+  - A PubMed record's full-text companion adds only body passages; title and abstract come once, from PubMed.
+- **8 Registries.**
+  - A query ClinicalTrials.gov rejects (HTTP 400) is `invalid_input`, with the registry's own message.
+  - Set IDs are lower case everywhere.
+  - A malformed study entry is an `upstream_error`, not `internal`.
+- **9 Infrastructure.**
+  - Two first runs racing to create the handle key agree on one key.
+  - Settings come from the environment only. A `.env` file made the key depend on the starting folder, so handles issued under another key would read as `forged`.
+  - The cache uses WAL with a 5-second busy timeout, and purges expired responses when it opens; passages as issued are kept.
+  - Each tool call logs one line with its upstream calls (host, status, cache hit) and `source_status`, as 9.3 always asked. Errors carry their traceback.
+  - Logs go to stderr even before configuration.
+- **10 Audit view.**
+  - Percentages show 100% or 0% only when exact.
+  - Quote highlighting uses Python's whitespace set and works on text not stored in NFC.
+  - A cancelled audit says so instead of waiting.
+  - The verdict is the page's `h1`. An empty `fail_on` reads "nothing", and a report without sentences says so.
+  - `--open` says when no browser opened.
+- **CI.**
+  - Every workflow declares `contents: read`.
+  - The `pages` workflow never cancels a deployment mid-way. When it is turned back on, it runs after CI passes on `main` (`workflow_run`), not on every push (this replaces 16.4).
+- **Not changed, by decision.**
+  - **Cross-page duplicates.** The cursor would have to carry every key already shown. Documented in the README's limits.
+  - **PubMed book chapters.** They need a new record kind, a contract change for a later spec. Documented in the README's limits.
+  - **`peer_reviewed` for letters and editorials.** Its meaning was settled in 16.1 and is now stated in `docs/CONTRACT.md`.
+  - **Documentation tests.** They already pin table rows and quoted values; stricter placement checks would cost more than they catch.
+- **Already fixed earlier.**
+  - PMCID and preprint ID case (`canonical`, 16.3).
+  - The `checked_against` wording and the `results.outcome` paths (16.5).
+- **Contract version.** It stays `0.1.0`: nothing has been released, and no field, verdict or metric changed meaning.

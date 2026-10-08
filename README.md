@@ -91,15 +91,15 @@ npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarko
 
 ### Configuration
 
-Everything is optional and read from the environment (or a `.env` file):
+Everything is optional and read from environment variables; a `.env` file is not read:
 
 | Variable | Use |
 |---|---|
 | `NCBI_API_KEY` | Raises the PubMed limit from 3 to 10 requests per second. |
 | `NCBI_EMAIL` | Contact address NCBI asks for; sent only when set. |
-| `OPENFDA_API_KEY` | Lifts openFDA's 1,000 requests per day limit. |
+| `OPENFDA_API_KEY` | Raises openFDA's daily limit from 1,000 to 120,000 requests. |
 | `CROSSREF_MAILTO` | Puts Crossref requests in its polite pool; sent only when set. |
-| `MEDCITE_HANDLE_KEY` | The handle key, in hex. By default a random key is created on first run and stored in your user data folder. |
+| `MEDCITE_HANDLE_KEY` | The handle key, in hex: at least 32 bytes (64 hex digits). By default a random key is created on first run and stored in your user data folder. |
 | `MEDCITE_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
 | `MEDCITE_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
 | `MEDCITE_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
@@ -116,7 +116,7 @@ Everything is optional and read from the environment (or a `.env` file):
 | `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://medcite/audit-view`) as an MCP App. |
 | `describe_contract` | Returns the contract: handle grammar, verdicts, flags, metrics and the citing instructions. |
 
-There is also a prompt, `cite_by_handle`, and two resource templates, `evidence://record/{record_id}` and `evidence://passage/{handle}`.
+There is also a prompt, `cite_by_handle`, and two resource templates, `evidence://record/{+record_id}` and `evidence://passage/{+handle}` (the `+` lets the slashes in a handle through).
 
 ## The demo
 
@@ -171,7 +171,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 ```
 
 - `src/medcite/contract/` is pure and fully typed: the handle codec, the evidence and report models, citation parsing and the audit. The JSON Schema in `schemas/` is exported from these models.
-- `src/medcite/sources/` has one adapter and one parser per upstream, and `service.py`, which routes requests, merges sources and resolves handles for the audit.
+- `src/medcite/sources/` has one adapter per upstream, a parser for each record source (PubMed, Europe PMC, ClinicalTrials.gov and openFDA), and `service.py`, which routes requests, merges sources and resolves handles for the audit.
 - `src/medcite/infra/` holds settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports.
 - `src/medcite/server/` is the thin MCP layer; `src/medcite/ui/audit-view.html` is the audit view, built from `web/` (React and TypeScript) and committed, so running medcite never needs Node.
 
@@ -206,6 +206,8 @@ After changing the report models, run `uv run python -m medcite.contract.schemas
 - **Integrity, not support.** The audit checks that a citation was issued by this server, that its passage still exists, and that any quote is verbatim (in the text as issued or as it is now). Whether the passage supports the sentence is not checked.
 - **Current versions only.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from medcite's cache.
 - **Handles are per installation.** A handle verifies only on the installation (key) that issued it.
+- **No PubMed book chapters yet.** Records such as StatPearls or GeneReviews chapters are left out of searches, and fetching one reports it as not found.
+- **Duplicates are merged page by page.** `search_literature` never shows the same record twice on one page, but a record can reappear on a later page.
 
 ## License
 
