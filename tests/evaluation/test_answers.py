@@ -58,3 +58,33 @@ def test_the_expected_result_follows_the_contract() -> None:
         "fabricated": 2,
         "retracted_cited": 1,
     }
+
+
+# A category's own effect on the overall verdict, with the default fail_on: forged and
+# malformed citations fail; an unavailable source makes the answer incomplete; a retracted
+# source warns; everything else (a mismatch, a withdrawn record, a flag) still passes.
+PAIRED_VERDICT = {
+    "forged_check_code": "fail",
+    "forged_path_swap": "fail",
+    "forged_record_id": "fail",
+    "forged_bare": "fail",
+    "hidden_in_quote": "fail",
+    "malformed": "fail",
+    "malformed_with_note": "fail",
+    "unavailable": "incomplete",
+    "retracted_cited": "warn",
+}
+
+
+async def test_a_paired_answer_shows_its_category_on_its_own(snapshot: Snapshot) -> None:
+    cases = generate_cases(snapshot, DEMO_KEY, seed=0, per_category=2)
+    paired = [a for a in compose_answers(cases, seed=0) if a.kind == "paired"]
+    text_categories = {case.category for case in cases if "text" in case.modes}
+    assert len(paired) == len(text_categories)
+    for answer in paired:
+        (category,) = {
+            case.category
+            for case in cases
+            if case.citations == answer.sentences[1] and "text" in case.modes
+        }
+        assert expected_result(answer).verdict == PAIRED_VERDICT.get(category, "pass"), category

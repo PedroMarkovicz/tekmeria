@@ -92,12 +92,13 @@ async def test_the_report_reads_as_markdown_tables(snapshot: Snapshot) -> None:
     text = render_report(await _evaluate(snapshot, SnapshotResolver(snapshot)))
     lines = text.splitlines()
     assert lines[0].startswith("planted cases: 255/255 correct (seed 0, 5 per category;")
-    assert lines[1] == "whole answers: 38/38 correct"
+    assert lines[1] == "whole answers: 64/64 correct"
     assert "| `hidden_in_quote` | 5 | - | 5/5 |" in lines
     assert "| `ok_quote_double_marks` | 5 | 5/5 | - |" in lines
     assert "| `preprint_cited` | 2 | 5/5 | 5/5 |" in lines
     assert "| `forged` | 40 | 40 | 1.000 | 1.000 |" in lines
     assert "| clean | 5/5 | `pass` 5 |" in lines
+    assert "| paired | 26/26 | `fail` 7, `incomplete` 1, `pass` 17, `warn` 1 |" in lines
     assert "| outside the snapshot | 15 |" in lines
 
 
