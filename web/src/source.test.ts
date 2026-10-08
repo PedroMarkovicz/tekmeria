@@ -37,6 +37,9 @@ class FakeApp implements HostApp {
   send(result: ToolResult): void {
     (this.handlers.toolresult as (r: ToolResult) => void)(result);
   }
+  cancel(reason?: string): void {
+    (this.handlers.toolcancelled as (p: { reason?: string }) => void)({ reason });
+  }
 }
 
 const top = { get parent() { return this; } } as unknown as Window;
@@ -101,6 +104,25 @@ describe("startSource", () => {
     expect(app.connected).toBe(true);
     app.send({ structuredContent: demo });
     expect(states).toEqual([{ kind: "waiting" }, { kind: "report", report: demo }]);
+  });
+
+  it("says so when the host cancels the audit", async () => {
+    const states: ViewState[] = [];
+    const app = new FakeApp();
+    startSource((s) => states.push(s), { doc: docWith(null), win: framed, createApp: () => app });
+    await Promise.resolve();
+    app.cancel("user action");
+    expect(states.at(-1)).toEqual({ kind: "cancelled", reason: "user action" });
+  });
+
+  it("keeps a report already shown when a cancel notice comes late", async () => {
+    const states: ViewState[] = [];
+    const app = new FakeApp();
+    startSource((s) => states.push(s), { doc: docWith(null), win: framed, createApp: () => app });
+    await Promise.resolve();
+    app.send({ structuredContent: demo });
+    app.cancel("timeout");
+    expect(states.at(-1)).toEqual({ kind: "report", report: demo });
   });
 
   it("shows a connection failure", async () => {

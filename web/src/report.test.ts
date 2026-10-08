@@ -25,6 +25,24 @@ describe("findQuote", () => {
     expect("It rose… then fell.".slice(start, end)).toBe("rose… then");
   });
 
+  it("finds a quote in text that is not stored in NFC", () => {
+    const decomposed = "cafe\u0301 au lait";
+    const [start, end] = findQuote(decomposed, "caf\u00e9 au")!;
+    expect(decomposed.slice(start, end)).toBe("cafe\u0301 au");
+  });
+
+  it("treats exactly the characters Python treats as whitespace as spaces", () => {
+    const [start, end] = findQuote("risk\u0085ratio", "risk ratio")!;
+    expect("risk\u0085ratio".slice(start, end)).toBe("risk\u0085ratio");
+    expect(findQuote("risk\ufeffratio", "risk ratio")).toBeNull();
+  });
+
+  it("maps characters outside the basic plane back correctly", () => {
+    const text = "\u{1F489} risk ratio";
+    const [start, end] = findQuote(text, "risk ratio")!;
+    expect(text.slice(start, end)).toBe("risk ratio");
+  });
+
   it("returns null for a quote that is not there, or empty", () => {
     expect(findQuote(text, "strongly increases")).toBeNull();
     expect(findQuote(text, "   ")).toBeNull();
@@ -52,5 +70,12 @@ describe("labels", () => {
   it("shows undefined ratios as a dash", () => {
     expect(percent(null)).toBe("—");
     expect(percent(0.666)).toBe("67%");
+  });
+
+  it("shows 100% and 0% only when they are exact", () => {
+    expect(percent(199 / 200)).toBe("99%");
+    expect(percent(1 / 300)).toBe("1%");
+    expect(percent(1)).toBe("100%");
+    expect(percent(0)).toBe("0%");
   });
 });

@@ -29,6 +29,13 @@ describe("Root", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Could not display this report");
   });
 
+  it("explains a cancelled audit instead of waiting forever", () => {
+    render(<Root start={startWith({ kind: "cancelled", reason: "user action" })} />);
+    expect(screen.getByText(/The audit was cancelled/)).toHaveTextContent(
+      "The audit was cancelled (user action). Run audit_answer again to see its report.",
+    );
+  });
+
   it("explains an empty page and a wait", () => {
     const { unmount } = render(<Root start={startWith({ kind: "empty" })} />);
     expect(screen.getByText(/No audit report here/)).toBeInTheDocument();

@@ -33,6 +33,17 @@ describe("summary", () => {
     expect(screen.getByLabelText("Citations by verdict")).toHaveTextContent("Forged: 1");
   });
 
+  it("puts the verdict in the page's only top-level heading", () => {
+    render(<AuditView report={DEMO} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Audit verdict: Fail");
+  });
+
+  it("says so when there is nothing to fail on, or no sentence", () => {
+    render(<AuditView report={{ ...EDGE, claims: [], fail_on: [] }} />);
+    expect(screen.getByText(/Fails on:/)).toHaveTextContent("Fails on: nothing");
+    expect(screen.getByText("No sentences were audited.")).toBeInTheDocument();
+  });
+
   it("shows an incomplete verdict and undefined ratios", () => {
     render(<AuditView report={EDGE} />);
     expect(screen.getByText(/Audit verdict:/)).toHaveTextContent("Incomplete");

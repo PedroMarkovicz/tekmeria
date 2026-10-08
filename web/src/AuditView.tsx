@@ -31,9 +31,9 @@ function Summary({ report }: { report: AuditReport }) {
   ];
   return (
     <header className="summary">
-      <p className={`verdict tone-${overall.tone}`}>
+      <h1 className={`verdict tone-${overall.tone}`}>
         <span aria-hidden="true">{overall.icon}</span> Audit verdict: <strong>{overall.label}</strong>
-      </p>
+      </h1>
       <dl className="numbers">
         {numbers.map(([term, value]) => (
           <div key={term}>
@@ -49,7 +49,7 @@ function Summary({ report }: { report: AuditReport }) {
           </li>
         ))}
       </ul>
-      <p className="fail-on">Fails on: {report.fail_on.join(", ")}</p>
+      <p className="fail-on">Fails on: {report.fail_on.join(", ") || "nothing"}</p>
     </header>
   );
 }
@@ -75,11 +75,15 @@ export function AuditView({ report }: { report: AuditReport }) {
     <main className="audit">
       <Summary report={report} />
       <h2>Answer, sentence by sentence</h2>
-      <ol className="claims">
-        {report.claims.map((claim) => (
-          <Claim key={claim.index} claim={claim} />
-        ))}
-      </ol>
+      {report.claims.length ? (
+        <ol className="claims">
+          {report.claims.map((claim) => (
+            <Claim key={claim.index} claim={claim} />
+          ))}
+        </ol>
+      ) : (
+        <p className="notice">No sentences were audited.</p>
+      )}
       <footer className="meta">
         Contract {report.contract_version} {"·"} audited {report.audited_at}
       </footer>

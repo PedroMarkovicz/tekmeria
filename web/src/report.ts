@@ -99,44 +99,64 @@ const FOLDS: Record<string, string> = {
   "\u2026": "...",
 };
 
-function fold(text: string): { folded: string; origin: number[] } {
-  // `origin[i]` is the index in `text` of the character that produced folded[i].
+// Exactly the characters Python's re module counts as whitespace (\s), which is what the
+// server collapses. JavaScript's \s differs: it adds U+FEFF and lacks U+001C-U+001F, U+0085.
+const SPACE = /^[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$/;
+// A base character with its combining marks (or stray marks): the unit normalized to NFC.
+const CLUSTER = /\P{M}\p{M}*|\p{M}+/gu;
+
+function fold(text: string): { folded: string; start: number[]; end: number[] } {
+  // folded[i] (a UTF-16 code unit) comes from text.slice(start[i], end[i]). Each cluster is
+  // normalized to NFC on its own, so this holds even for text not stored in NFC.
   let folded = "";
-  const origin: number[] = [];
+  const start: number[] = [];
+  const end: number[] = [];
   let lastWasSpace = true; // trims leading whitespace
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const out = /\s/.test(char) ? " " : (FOLDS[char] ?? char);
-    for (const piece of out) {
-      if (piece === " ") {
-        if (lastWasSpace) continue;
-        lastWasSpace = true;
-      } else {
-        lastWasSpace = false;
+  for (const match of text.matchAll(CLUSTER)) {
+    const from = match.index;
+    const to = from + match[0].length;
+    for (const char of match[0].normalize("NFC")) {
+      const out = SPACE.test(char) ? " " : (FOLDS[char] ?? char);
+      for (const piece of out) {
+        if (piece === " ") {
+          if (lastWasSpace) continue;
+          lastWasSpace = true;
+        } else {
+          lastWasSpace = false;
+        }
+        folded += piece;
+        for (let unit = 0; unit < piece.length; unit++) {
+          start.push(from);
+          end.push(to);
+        }
       }
-      folded += piece;
-      origin.push(i);
     }
   }
   if (folded.endsWith(" ")) {
     folded = folded.slice(0, -1);
-    origin.pop();
+    start.pop();
+    end.pop();
   }
-  return { folded, origin };
+  return { folded, start, end };
 }
 
 /** Where `quote` sits in `text` as [start, end) indices into `text`, matching the way the
- * audit compares them (whitespace collapsed, typographic variants folded), or null. */
+ * audit compares them (NFC, whitespace collapsed, typographic variants folded), or null. */
 export function findQuote(text: string, quote: string): [number, number] | null {
-  const needle = fold(quote.normalize("NFC")).folded;
+  const needle = fold(quote).folded;
   if (!needle) return null;
-  const { folded, origin } = fold(text.normalize("NFC"));
+  const { folded, start, end } = fold(text);
   const at = folded.indexOf(needle);
   if (at < 0) return null;
-  return [origin[at], origin[at + needle.length - 1] + 1];
+  return [start[at], end[at + needle.length - 1]];
 }
 
-/** A ratio as a whole percentage, or an em dash when it is undefined (null). */
+/** A ratio as a whole percentage, or an em dash when it is undefined (null). 100% and 0%
+ * appear only when exact: 199 of 200 is 99%, not a rounded-up 100%. */
 export function percent(value: number | null): string {
-  return value === null ? "\u2014" : `${Math.round(value * 100)}%`;
+  if (value === null) return "\u2014";
+  const rounded = Math.round(value * 100);
+  if (rounded === 100 && value < 1) return "99%";
+  if (rounded === 0 && value > 0) return "1%";
+  return `${rounded}%`;
 }

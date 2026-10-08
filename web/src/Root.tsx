@@ -52,6 +52,15 @@ export function Root({ start = startSource }: { start?: typeof startSource }) {
           </p>
         </main>
       );
+    case "cancelled":
+      return (
+        <main className="audit">
+          <p className="notice">
+            The audit was cancelled{state.reason ? ` (${state.reason})` : ""}. Run audit_answer
+            again to see its report.
+          </p>
+        </main>
+      );
     case "waiting":
       return (
         <main className="audit">

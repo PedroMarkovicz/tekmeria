@@ -9,6 +9,7 @@ export type ViewState =
   | { kind: "waiting" }
   | { kind: "report"; report: AuditReport }
   | { kind: "error"; message: string }
+  | { kind: "cancelled"; reason?: string }
   | { kind: "empty" };
 
 /** The subset of a CallToolResult the view reads. */
@@ -56,6 +57,7 @@ export function stateFromToolResult(result: ToolResult): ViewState {
 /** The parts of the ext-apps App the view uses, so tests can pass a fake. */
 export interface HostApp {
   addEventListener(event: "toolresult", handler: (result: ToolResult) => void): void;
+  addEventListener(event: "toolcancelled", handler: (params: { reason?: string }) => void): void;
   addEventListener(
     event: "hostcontextchanged",
     handler: (context: { theme?: "light" | "dark" }) => void,
@@ -65,7 +67,8 @@ export interface HostApp {
 }
 
 export function createHostApp(): HostApp {
-  return new App({ name: "medcite audit view", version: "0.1.0" }, {}, { autoResize: true }) as HostApp;
+  // No cast: the compiler checks the library's App against HostApp.
+  return new App({ name: "medcite audit view", version: "0.1.0" }, {}, { autoResize: true });
 }
 
 /** Start the view: an embedded report wins; inside a frame, wait for the host's tool result;
@@ -89,7 +92,14 @@ export function startSource(
   }
   update({ kind: "waiting" });
   const app = env.createApp();
-  app.addEventListener("toolresult", (result) => update(stateFromToolResult(result)));
+  let answered = false; // a late cancel notice must not hide a result already shown
+  app.addEventListener("toolresult", (result) => {
+    answered = true;
+    update(stateFromToolResult(result));
+  });
+  app.addEventListener("toolcancelled", (params) => {
+    if (!answered) update({ kind: "cancelled", reason: params.reason });
+  });
   app.addEventListener("hostcontextchanged", (context) => {
     if (context.theme) applyDocumentTheme(context.theme);
   });
