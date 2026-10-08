@@ -41,3 +41,12 @@ def test_demo_open_without_a_path_uses_a_temporary_file(monkeypatch: pytest.Monk
     main(["demo", "--open"])
     (url,) = opened
     assert url.startswith("file:") and url.endswith("/demo-report.html")
+
+
+def test_demo_open_says_so_when_no_browser_opens(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("webbrowser.open", lambda url: False)  # e.g. no browser on a server
+    page_path = tmp_path / "view.html"
+    main(["demo", "--open", "--html-out", str(page_path)])
+    assert f"could not open a browser; open {page_path} yourself" in capsys.readouterr().out

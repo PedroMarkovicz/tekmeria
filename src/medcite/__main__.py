@@ -85,8 +85,8 @@ async def _demo(json_out: Path | None, html_out: Path | None, open_page: bool) -
         page = html_out or Path(tempfile.mkdtemp(prefix="medcite-")) / "demo-report.html"
         _write(page, standalone_page(report))
         print(f"audit view written to {page}")
-        if open_page:
-            webbrowser.open(page.resolve().as_uri())
+        if open_page and not webbrowser.open(page.resolve().as_uri()):
+            print(f"could not open a browser; open {page} yourself")
 
 
 async def _record(settings: Settings) -> None:
