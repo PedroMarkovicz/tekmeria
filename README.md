@@ -246,7 +246,13 @@ whole answers: 188/188 correct
 - The drug label and the trial supply most planted citations: see the last table.
 - The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
 
-**How much of the audit it exercises.** `python -m tekmerion.evaluation.mutants` changes one operator or constant at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each change. The evaluation catches 74 of 81 changes. Two of the other seven change nothing. The remaining five are faults it misses: a `preprint` flag that would wrongly need both preprint signals, which the snapshot's one preprint happens to have; `checked_against`, which it does not score; an empty quote (two changes); and the text of a plain `[1]` bracket. The diagnostic `closest_match`, the `check_handles` tool, the key-length check and the cursor signature are outside its scope, so they are not changed.
+**How much of the audit it exercises.** `python -m tekmerion.evaluation.mutants` makes one small change at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each one. A change negates a comparison or moves it across its boundary, swaps `and` and `or`, removes a `not`, flips a boolean, or adds one to an integer; other kinds of change are not tried. A change counts as caught when the evaluation reports a wrong result or crashes.
+- The evaluation catches 72 of 79 changes.
+- Three of the other seven change nothing for any record the sources can build: two in the `preprint` rule, whose two signals the sources always set together, and a bold marker that is removed later anyway.
+- The remaining four are faults it misses: `checked_against`, which it does not score; an empty quote (two changes); and the text of a plain `[1]` bracket.
+- Outside its scope, so never changed: the diagnostic `closest_match`, the `check_handles` tool, the key-length check, the cursor signature, and the record-ID parsing that only the evidence service uses.
+
+Some categories rest on few passages: one passage has an accented letter, so the decomposed-accent category tests a single character.
 
 ## Architecture
 

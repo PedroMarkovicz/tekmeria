@@ -777,7 +777,7 @@ A review of the technical note found that the 16.10 evaluation missed two kinds 
   - Verbatim quotes written in typographic variants that section 4.5 folds back: the other apostrophe, other double quote marks (structured claims only, since answer text cannot carry them inside a quote), and accents in decomposed form.
   - A forged handle written outside brackets (answer text only), and a note written inside a citation entry (`[handle (Table 2)]`), which is not a handle and so is `malformed`.
 
-  The ten categories rest on the same seven records. Their pools are smaller than the older categories': 19 passages carry an apostrophe, 18 a comparison sign, and only 2 an accent.
+  The ten categories rest on the same seven records. Their pools are smaller than the older categories': 13 passages carry an apostrophe, 10 double quote marks and 13 a comparison sign. Only one passage has an accented letter (the "ï" of "naïve" in the trial record), so the decomposed-accent category rests on that single character.
 - **Whole answers.** The cases that can be written as text are also put, four at a time, into multi-sentence answers. An answer may open with a Markdown heading, give a claim a bold lead-in, and end with an uncited sentence. Answers of genuine citations only, without that layout, also cover the `pass` verdict.
   - The oracle derives the expected result from the contract's sections 7 to 9: each sentence's status, every citation's verdict and flags, the five metrics and the overall verdict (with the default `fail_on`).
   - An answer is correct only when all of these match. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them. Tests show three such faults (an overall verdict that never warns, a wrong claim status, a wrong metric) that pass every planted case and fail whole answers.
@@ -785,15 +785,15 @@ A review of the technical note found that the 16.10 evaluation missed two kinds 
 - **Mutation score.** `python -m tekmerion.evaluation.mutants` measures how much of the audit the evaluation exercises.
   - It changes one thing at a time inside the functions of `contract/audit.py`, `citations.py`, `handles.py` and `normalize.py`: a comparison negated or moved across its boundary, `and` and `or` swapped, a `not` removed, a boolean flipped, an integer increased by one.
   - It runs the evaluation against each change in its own process. A change is killed when the evaluation then fails.
-  - Out of scope, so never changed: the diagnostic `closest_match`, the `check_handles` tool, the key-length check and the cursor signature.
-  - Result: 74 of 81 changes killed. Two survivors change nothing:
-    - a `peer_reviewed` value of `False` already implies the signal is known;
+  - Out of scope, so never changed: the diagnostic `closest_match`, the `check_handles` tool, the key-length check, the cursor signature, and `parse_record_id` and `RecordRef.at`. The last two serve only the evidence service when it issues handles; a change there breaks the loading of the snapshot, not a planted case.
+  - A change counts as killed whether the evaluation reports a wrong result or crashes inside the audit.
+  - Result: 72 of 79 changes killed. Three survivors change nothing for any record the sources can build:
+    - two changes to the `preprint` rule (`record.kind == "preprint" or peer_reviewed is known False`): one turns the `or` into `and`, the other makes its second half unsatisfiable. Both parsers set the kind and `peer_reviewed` from the same fact, so the two signals never disagree. Both changes would be faults only for a record whose signals disagree;
     - a bold marker that is removed later anyway.
-  - The five others are faults the evaluation misses, and they are listed as such:
-    - `preprint` flagged only when a record is both a preprint and not peer-reviewed (the snapshot's one preprint is both);
+  - The four others are faults the evaluation misses, and they are listed as such:
     - `checked_against`, which it does not score (16.10);
     - an empty quote (two changes);
     - the sentence text around a plain `[1]` bracket.
   - The `mutants` workflow runs it on request; at about 80 runs of the evaluation, it is too slow for every push.
-- **Check codes against OpenSSL.** A test recomputes the four documented check codes with the `openssl` command. That way the oracle's reading of section 4.1 is confirmed by an implementation that shares neither code nor author with this project. The test is skipped where `openssl` is missing.
+- **Check codes against OpenSSL.** A test computes the HMAC-SHA256 of the four documented locators with the `openssl` command, then takes the first 25 bits as five base-32 digits, and compares the result with the documented check codes and the oracle's. The HMAC comes from an implementation that shares no code with this project. The truncation and encoding of section 4.4 are written again in the test, by the same author, so they are confirmed only against the documented examples. The test is skipped where `openssl` is missing.
 - **Contract wording.** Section 5 said copy errors land in `malformed`, so they are never counted as fabrication. That holds only for a copy error that breaks the grammar. A copy error that keeps it, such as one changed check-code character, reads as `forged`: the server cannot tell it from a made-up handle. Section 5 now says so. Behavior is unchanged.

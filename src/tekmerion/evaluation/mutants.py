@@ -33,11 +33,13 @@ TARGETS = (
     "tekmerion.contract.normalize",
 )
 # Functions the evaluation does not score, so their mutants say nothing about it: the
-# closest-match diagnostic (never a verdict), the check_handles tool, the key-length check
-# and the cursor signature.
+# closest-match diagnostic (never a verdict), the check_handles tool, the key-length check,
+# the cursor signature, and the record-ID parsing and passage addressing that only the
+# evidence service uses to issue handles (a mutant there breaks loading the snapshot, not a
+# planted case).
 OUT_OF_SCOPE = {
     "tekmerion.contract.audit": {"check_handles"},
-    "tekmerion.contract.handles": {"__init__", "sign"},
+    "tekmerion.contract.handles": {"__init__", "sign", "parse_record_id", "at"},
     "tekmerion.contract.normalize": {"closest_match"},
 }
 TIMEOUT_SECONDS = 300  # a mutant that hangs the evaluation counts as killed

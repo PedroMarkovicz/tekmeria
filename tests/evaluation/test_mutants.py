@@ -93,3 +93,18 @@ def test_a_mutant_that_hangs_counts_as_killed(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(mutants.subprocess, "run", hangs)
     assert mutants.is_killed("tekmerion.contract.normalize", 0, 1)
+
+
+def test_handle_parsing_only_the_service_uses_is_out_of_scope() -> None:
+    # parse_record_id and RecordRef.at build handles for the evidence service; the audit
+    # never calls them. Their mutants would break the snapshot's loading, not a planted case.
+    module = "tekmerion.contract.handles"
+    tree = mutants.parse(module)
+    service_only = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name in {"parse_record_id", "at"}
+    ]
+    lines = {n for f in service_only for n in range(f.lineno, (f.end_lineno or f.lineno) + 1)}
+    assert len(service_only) == 2
+    assert not {site.line for site in sites(tree, module)} & lines
