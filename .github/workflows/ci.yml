@@ -24,6 +24,8 @@ jobs:
       - run: uv run pytest
       - name: Offline demo must catch every planted case
         run: uv run tekmerion demo
+      - name: The audit must give every planted case its verdict
+        run: uv run tekmerion evaluate
       - name: The wheel ships the audit view
         run: |
           uv build --wheel --out-dir dist

@@ -156,6 +156,53 @@ fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
 
 Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
 
+## Evaluation
+
+`tekmerion evaluate` measures the audit itself. It plants citations whose correct verdict is known in advance, in 17 categories:
+- genuine citations, with verbatim or reformatted quotes;
+- quotes with a changed number, an inserted "not" or a swapped word;
+- forged check codes, paths and record IDs, and malformed handles;
+- passages and records that no longer exist, and a source that is down;
+- retracted papers, preprints and older record versions;
+- a forged handle hidden inside an unclosed quote.
+
+Each case cites a real passage from the demo's recorded responses and is audited twice: as structured claims, and as answer text in one of the citation styles a model might write. A case passes only when every citation gets its planted verdict and exactly its planted flags. CI runs the evaluation on every push. This is its output:
+
+<!-- evaluation:start -->
+planted cases: 825/825 correct (seed 0, 25 per category; 7 records, 178 passages)
+
+| Category | Structured claims | Answer text |
+|---|---|---|
+| `ok_plain` | 25/25 | 25/25 |
+| `ok_quote` | 25/25 | 25/25 |
+| `ok_quote_reformatted` | 25/25 | 25/25 |
+| `quote_number_changed` | 25/25 | 25/25 |
+| `quote_negated` | 25/25 | 25/25 |
+| `quote_word_swapped` | 25/25 | 25/25 |
+| `forged_check_code` | 25/25 | 25/25 |
+| `forged_path_swap` | 25/25 | 25/25 |
+| `forged_record_id` | 25/25 | 25/25 |
+| `malformed` | 25/25 | 25/25 |
+| `withdrawn_path` | 25/25 | 25/25 |
+| `withdrawn_record` | 25/25 | 25/25 |
+| `unavailable` | 25/25 | 25/25 |
+| `retracted_cited` | 25/25 | 25/25 |
+| `preprint_cited` | 25/25 | 25/25 |
+| `version_changed` | 25/25 | 25/25 |
+| `hidden_in_quote` | - | 25/25 |
+
+| Verdict | Planted | Given | Precision | Recall |
+|---|---|---|---|---|
+| `malformed` | 50 | 50 | 1.000 | 1.000 |
+| `forged` | 175 | 175 | 1.000 | 1.000 |
+| `unavailable` | 50 | 50 | 1.000 | 1.000 |
+| `withdrawn` | 100 | 100 | 1.000 | 1.000 |
+| `quote_mismatch` | 175 | 175 | 1.000 | 1.000 |
+| `ok` | 300 | 300 | 1.000 | 1.000 |
+<!-- evaluation:end -->
+
+`--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix. The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
+
 ## Architecture
 
 ```

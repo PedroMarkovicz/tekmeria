@@ -22,3 +22,8 @@ def test_pages_deploys_the_commit_ci_tested_after_a_push() -> None:
     text = (WORKFLOWS / "pages.yml").read_text(encoding="utf-8")
     assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in text
     assert "github.event.workflow_run.event == 'push'" in text
+
+
+def test_ci_runs_the_planted_error_evaluation() -> None:
+    text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+    assert "run: uv run tekmerion evaluate" in text

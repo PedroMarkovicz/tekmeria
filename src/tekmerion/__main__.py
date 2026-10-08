@@ -16,13 +16,17 @@ from mcp import Client
 from platformdirs import user_cache_dir
 from pydantic import SecretStr
 
+from tekmerion.contract.handles import HandleCodec
 from tekmerion.demo.scenario import FIXTURES_DIR, record_scenario, run_demo
+from tekmerion.evaluation.cases import generate_cases
+from tekmerion.evaluation.run import render_report, run_evaluation
+from tekmerion.evaluation.snapshot import SnapshotResolver, load_snapshot
 from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport
 from tekmerion.infra.keys import DEMO_KEY, load_handle_key
 from tekmerion.infra.logging import configure_logging
 from tekmerion.infra.settings import Settings
 from tekmerion.server.app import create_server
-from tekmerion.server.runtime import RuntimeConfig
+from tekmerion.server.runtime import RuntimeConfig, open_runtime
 from tekmerion.ui import standalone_page
 
 
@@ -89,6 +93,35 @@ async def _demo(json_out: Path | None, html_out: Path | None, open_page: bool) -
             print(f"could not open a browser; open {page} yourself")
 
 
+async def _evaluate(seed: int, per_category: int, json_out: Path | None) -> bool:
+    """Audit the planted cases offline and print the report; True when every case passed."""
+    config = demo_config()
+    async with open_runtime(config) as app:
+        snapshot = await load_snapshot(app.service)
+    codec = HandleCodec(config.handle_key)
+    report = await run_evaluation(
+        generate_cases(snapshot, codec, seed=seed, per_category=per_category),
+        codec=codec,
+        resolver=SnapshotResolver(snapshot),
+        seed=seed,
+        per_category=per_category,
+        snapshot_records=sorted(snapshot.records),
+        snapshot_passages=len(snapshot.passages()),
+    )
+    print(render_report(report))
+    if json_out is not None:
+        _write(json_out, report.model_dump_json(indent=2))
+        print(f"\nreport written to {json_out}")
+    return report.correct == report.cases
+
+
+def _at_least_one(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return value
+
+
 async def _record(settings: Settings) -> None:
     config = RuntimeConfig(
         handle_key=DEMO_KEY,
@@ -117,6 +150,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--html-out", type=Path, default=None, help="write the audit view with the report"
     )
     demo.add_argument("--open", action="store_true", help="open the audit view in a browser")
+    evaluate = commands.add_parser(
+        "evaluate", help="audit planted citation errors offline and score the verdicts"
+    )
+    evaluate.add_argument("--seed", type=int, default=0, help="seed for the planted cases")
+    evaluate.add_argument(
+        "--per-category", type=_at_least_one, default=25, help="cases per category"
+    )
+    evaluate.add_argument("--json-out", type=Path, default=None, help="write the report as JSON")
     commands.add_parser("record-fixtures", help="(maintainers) re-record demo fixtures live")
     args = parser.parse_args(argv)
 
@@ -124,6 +165,10 @@ def main(argv: Sequence[str] | None = None) -> None:
     configure_logging(settings.log_level)
     if args.command == "demo":
         anyio.run(_demo, args.json_out, args.html_out, args.open)
+        return
+    if args.command == "evaluate":
+        if not anyio.run(_evaluate, args.seed, args.per_category, args.json_out):
+            sys.exit(1)
         return
     if args.command == "record-fixtures":
         anyio.run(_record, settings)

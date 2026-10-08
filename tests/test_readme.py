@@ -68,3 +68,9 @@ def test_claims_about_pages_and_hosts_wait_for_the_acceptance_checks() -> None:
         assert "is published at" not in README, "Pages is not deployed yet (criterion 5)"
     if not _acceptance_status(6).startswith("Done"):
         assert "results as the audit view" not in README, "no host render shown yet (criterion 6)"
+
+
+def test_the_evaluation_output_matches_the_evaluation(capsys: pytest.CaptureFixture[str]) -> None:
+    main(["evaluate"])
+    block = README.split("<!-- evaluation:start -->", 1)[1].split("<!-- evaluation:end -->", 1)[0]
+    assert block.strip() == capsys.readouterr().out.strip()

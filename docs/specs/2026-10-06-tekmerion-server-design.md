@@ -711,3 +711,41 @@ The project was called medcite until the cleanup pass (16.7). A paper of the sam
 - **What did not change.** The handle grammar, the verdicts, the flags, the metrics and the contract version (`0.1.0`).
 - **History kept as written.** The transcripts in `docs/live-run.md` keep the old name. A test checks that it appears nowhere else.
 - **Existing installations.** A key created under the old name sits in the old folder. Move the folder (the user data folder named medcite, for example `%LOCALAPPDATA%\medcite` on Windows) to the new name, or handles issued before the rename read as `forged`.
+
+### 16.9 Pre-release pass
+
+- **4.4 The key file.** The handle key and its temporary file are created readable by their owner only (mode `0o600` on POSIX), also on a drive without hard links. Before, the fallback used the default permissions, and the temporary file was briefly readable by others.
+- **9.3 What the logs keep.** A `tool_error` line keeps the error's message only for `upstream_unavailable`, `deadline_exceeded` and `internal`. Other messages can echo the request (a query, a record ID) or an upstream URL, so their lines keep only the code.
+- **CI.** The dormant Pages trigger deploys only after CI passed on a push to `main`, and checks out the commit CI tested. The old-name guard (16.8) reads every tracked file and skips binary ones.
+
+### 16.10 Planted-error evaluation
+
+`tekmerion evaluate` measures the audit's decisions offline and reproducibly, for the technical note.
+
+- **Records.** Seven real records, with 178 passages: a cohort study, a retracted paper, an open-access article with its full text, a preprint, a trial and a drug label.
+  - They are fetched once through the evidence service from the demo's recorded responses, then served from memory, so every case is independent of how the audit batches its lookups.
+  - The service's own resolution is covered by the server tests and the demo.
+- **Cases.** 17 categories, each planting one kind of error or none, generated from a seed:
+  - genuine citations, with verbatim quotes and with quotes reformatted (extra spaces, typographic dashes);
+  - quotes with a changed number, an inserted "not" or a swapped word;
+  - forged check codes, paths and record IDs;
+  - malformed handles;
+  - passages and records that no longer exist, and a source that is down;
+  - retracted papers, preprints and older record versions;
+  - a forged handle hidden inside an unclosed quote.
+
+  Before the audit sees a case, the tests check that what it plants is real: a forged handle fails verification, a malformed one breaks the grammar, and a planted mismatch is absent from the passage.
+- **Two modes.** Each case is audited as structured claims, and as answer text in a random citation style from section 7.2: brackets, quote styles, Markdown wrapping, citations after the full stop. The hidden-handle case runs on answer text only.
+- **Scoring.**
+  - A case is correct only when every citation gets its planted verdict and exactly its planted flags.
+  - The report gives the results per category, and a confusion matrix of planted against given verdicts. Its column "missed" counts planted citations the audit never reported; its row "unplanted" counts citations the audit invented.
+  - It also gives precision and recall per verdict.
+  - The command exits 1 if any case fails, and CI runs it.
+- **Unavailable.** A replay cannot take a source down, so one record (`pmid:40881072`) counts as unreachable for the whole run.
+- **What it shows.** It shows that the deterministic audit decides correctly on planted errors in real passages. It says nothing about how often models make these errors, and nothing about support; those need model runs.
+- **Sensitivity.** Tests check that the evaluation can fail:
+  - a resolver whose sources never answer is caught;
+  - an audit that drops citations is caught, through the "missed" column.
+
+  While the evaluation was being built, removing the cleanup-pass fix for handles hidden in quotes dropped forged recall to 0.857.
+
