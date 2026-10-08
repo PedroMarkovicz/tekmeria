@@ -5,7 +5,15 @@ import pytest
 from tekmerion.contract import audit as audit_module
 from tekmerion.contract import normalize
 from tekmerion.contract.audit import PassageResolver, Resolution, Unavailable
-from tekmerion.contract.audit_models import ClaimIn
+from tekmerion.contract.audit_models import (
+    AuditSummary,
+    CitationResult,
+    ClaimIn,
+    ClaimResult,
+    ClaimStatus,
+    FailOn,
+    OverallVerdict,
+)
 from tekmerion.contract.citations import parse_answer_text
 from tekmerion.contract.handles import HandleCodec, Locator
 from tekmerion.evaluation import cases as cases_module
@@ -49,6 +57,14 @@ async def test_the_audit_gives_every_planted_case_its_verdict(snapshot: Snapshot
     assert report.cases == 5 * (24 * 2 + 3)
     assert (report.correct, report.failures) == (report.cases, [])
     assert all(score.precision == score.recall == 1.0 for score in report.verdicts)
+    assert report.passed()
+
+
+async def test_whole_answers_reach_every_overall_verdict(snapshot: Snapshot) -> None:
+    report = await _evaluate(snapshot, SnapshotResolver(snapshot))
+    assert all(score.correct == score.answers for score in report.answers)
+    planted = {verdict for score in report.answers for verdict in score.planted}
+    assert planted == {"fail", "incomplete", "warn", "pass"}
 
 
 async def test_a_broken_audit_is_caught(snapshot: Snapshot) -> None:
@@ -76,10 +92,12 @@ async def test_the_report_reads_as_markdown_tables(snapshot: Snapshot) -> None:
     text = render_report(await _evaluate(snapshot, SnapshotResolver(snapshot)))
     lines = text.splitlines()
     assert lines[0].startswith("planted cases: 255/255 correct (seed 0, 5 per category;")
+    assert lines[1] == "whole answers: 38/38 correct"
     assert "| `hidden_in_quote` | 5 | - | 5/5 |" in lines
     assert "| `ok_quote_double_marks` | 5 | 5/5 | - |" in lines
     assert "| `preprint_cited` | 2 | 5/5 | 5/5 |" in lines
     assert "| `forged` | 40 | 40 | 1.000 | 1.000 |" in lines
+    assert "| clean | 5/5 | `pass` 5 |" in lines
     assert "| outside the snapshot | 15 |" in lines
 
 
@@ -138,6 +156,64 @@ async def test_a_case_blind_comparator_is_caught(
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
     failed = {score.category for score in report.categories if score.correct < score.cases}
     assert failed == {"quote_case_changed"}
+
+
+def test_metrics_compare_by_value_and_a_missing_one_only_matches_a_missing_one() -> None:
+    assert run._same(0.1 + 0.2, 0.3) and run._same(2, 2)
+    assert not run._same(None, 0.0) and not run._same(0, None)
+    assert run._same(None, None)
+
+
+# Faults in claim status, metrics and the overall verdict leave every citation's verdict
+# right, so only whole answers can catch them.
+
+
+async def test_an_overall_verdict_that_never_warns_is_caught_by_whole_answers(
+    snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = audit_module.overall_verdict
+
+    def never_warns(summary: AuditSummary, fail_on: Sequence[FailOn]) -> OverallVerdict:
+        verdict = real(summary, fail_on)
+        return "pass" if verdict == "warn" else verdict
+
+    monkeypatch.setattr(audit_module, "overall_verdict", never_warns)
+    report = await _evaluate(snapshot, SnapshotResolver(snapshot))
+    assert report.correct == report.cases
+    assert not report.passed()
+
+
+async def test_a_wrong_claim_status_is_caught_by_whole_answers(
+    snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = audit_module._claim_status
+
+    def invalid_as_uncited(citations: Sequence[CitationResult]) -> ClaimStatus:
+        status = real(citations)
+        return "uncited" if status == "invalid_only" else status
+
+    monkeypatch.setattr(audit_module, "_claim_status", invalid_as_uncited)
+    report = await _evaluate(snapshot, SnapshotResolver(snapshot))
+    assert report.correct == report.cases
+    assert not report.passed()
+
+
+async def test_a_wrong_metric_is_caught_by_whole_answers(
+    snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = audit_module.summarize
+
+    def counts_unavailable(claims: Sequence[ClaimResult]) -> AuditSummary:
+        summary = real(claims)
+        ok = summary.by_verdict["ok"]
+        validity = ok / summary.citations if summary.citations else None
+        return summary.model_copy(update={"citation_validity": validity})
+
+    monkeypatch.setattr(audit_module, "summarize", counts_unavailable)
+    report = await _evaluate(snapshot, SnapshotResolver(snapshot))
+    assert report.correct == report.cases
+    assert not report.passed()
+    assert any("citation_validity" in " ".join(f.expected) for f in report.failures)
 
 
 async def test_a_dropped_flag_is_caught(

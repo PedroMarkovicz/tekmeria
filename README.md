@@ -180,6 +180,7 @@ This is its output:
 
 <!-- evaluation:start -->
 planted cases: 1275/1275 correct (seed 0, 25 per category; 7 records, 178 passages)
+whole answers: 188/188 correct
 
 | Category | Distinct cases | Structured claims | Answer text |
 |---|---|---|---|
@@ -219,6 +220,11 @@ planted cases: 1275/1275 correct (seed 0, 25 per category; 7 records, 178 passag
 | `withdrawn` | 100 | 100 | 1.000 | 1.000 |
 | `quote_mismatch` | 425 | 425 | 1.000 | 1.000 |
 | `ok` | 425 | 425 | 1.000 | 1.000 |
+
+| Whole answers | Correct | Planted overall verdicts |
+|---|---|---|
+| mixed | 163/163 | `fail` 121, `incomplete` 7, `pass` 1, `warn` 34 |
+| clean | 25/25 | `pass` 25 |
 
 | Record | Planted citations |
 |---|---|

@@ -1,5 +1,6 @@
 """Run the planted cases through the audit and score the verdicts (spec section 16.9)."""
 
+import math
 import random
 import re
 from collections import Counter
@@ -11,6 +12,7 @@ from tekmerion.contract.audit import PassageResolver, audit
 from tekmerion.contract.audit_models import VERDICTS, CitationIn, ClaimIn, Verdict
 from tekmerion.contract.citations import parse_answer_text
 from tekmerion.contract.handles import HandleCodec
+from tekmerion.evaluation.answers import Answer, compose_answers, expected_result
 from tekmerion.evaluation.cases import CATEGORIES, MODES, Case, Mode, render_text
 
 MAX_FAILURES_SHOWN = 20
@@ -50,6 +52,14 @@ class VerdictScore(BaseModel):
     recall: float | None
 
 
+class AnswerScore(BaseModel):
+    kind: str  # "mixed" or "clean"
+    answers: int
+    correct: int
+    # the overall verdict planted in these answers -> how many answers
+    planted: dict[str, int]
+
+
 class EvaluationReport(BaseModel):
     seed: int
     per_category: int
@@ -64,7 +74,14 @@ class EvaluationReport(BaseModel):
     confusion: dict[str, dict[str, int]]
     # planted citations per record, once per case (each case is audited in up to two modes)
     records: dict[str, int]
+    # whole answers: correct only when every sentence's status, every citation's verdict and
+    # flags, every metric and the overall verdict are as planted
+    answers: list[AnswerScore]
     failures: list[Failure]
+
+    def passed(self) -> bool:
+        """Every planted case and every whole answer came out as planted."""
+        return self.correct == self.cases and all(a.correct == a.answers for a in self.answers)
 
 
 def _label(verdict: str, flags: Sequence[str]) -> str:
@@ -86,6 +103,39 @@ async def _audit_case(
         (c.verdict, [f.name for f in c.flags]) for claim in report.claims for c in claim.citations
     ]
     return answer, [(verdict, flags) for verdict, flags in got]
+
+
+async def _score_answer(
+    answer: Answer, *, codec: HandleCodec, resolver: PassageResolver
+) -> tuple[bool, list[str], list[str]]:
+    want = expected_result(answer)
+    report = await audit(parse_answer_text(answer.text), codec=codec, resolver=resolver)
+    summary = report.summary
+    got_metrics: dict[str, float | int | None] = {
+        name: getattr(summary, name) for name in want.metrics
+    }
+    got = [c for claim in report.claims for c in claim.citations]
+    ok = (
+        [claim.status for claim in report.claims] == want.statuses
+        and [(c.verdict, sorted(f.name for f in c.flags)) for c in got] == want.citations
+        and report.verdict == want.verdict
+        and all(_same(got_metrics[name], value) for name, value in want.metrics.items())
+    )
+    expected = [want.verdict, *want.statuses, *(_label(v, f) for v, f in want.citations)]
+    actual = [
+        report.verdict,
+        *(claim.status for claim in report.claims),
+        *(_label(c.verdict, [f.name for f in c.flags]) for c in got),
+    ]
+    if ok or expected != actual:
+        return ok, expected, actual
+    return ok, [*expected, str(want.metrics)], [*actual, str(got_metrics)]  # a metric differs
+
+
+def _same(got: float | int | None, want: float | int | None) -> bool:
+    if got is None or want is None:
+        return got is want
+    return math.isclose(got, want)
 
 
 async def run_evaluation(
@@ -135,6 +185,26 @@ async def run_evaluation(
                         got=[_label(v, f) for v, f in got_sorted],
                     )
                 )
+    answer_scores: dict[str, AnswerScore] = {}
+    for answer in compose_answers(cases, seed):
+        ok, expected_items, got_items = await _score_answer(answer, codec=codec, resolver=resolver)
+        score = answer_scores.setdefault(
+            answer.kind, AnswerScore(kind=answer.kind, answers=0, correct=0, planted={})
+        )
+        score.answers += 1
+        score.correct += ok
+        verdict = expected_items[0]
+        score.planted[verdict] = score.planted.get(verdict, 0) + 1
+        if not ok and len(failures) < MAX_FAILURES_SHOWN:
+            failures.append(
+                Failure(
+                    category=f"whole answer ({answer.kind})",
+                    mode="text",
+                    answer=answer.text,
+                    expected=expected_items,
+                    got=got_items,
+                )
+            )
     verdicts = []
     for verdict in VERDICTS:
         expected_n = sum(confusion[verdict].values())
@@ -165,6 +235,7 @@ async def run_evaluation(
         verdicts=verdicts,
         confusion=confusion,
         records=dict(sorted(records.items())),
+        answers=list(answer_scores.values()),
         failures=failures,
     )
 
@@ -187,6 +258,8 @@ def render_report(report: EvaluationReport) -> str:
         f"planted cases: {report.correct}/{report.cases} correct "
         f"(seed {report.seed}, {report.per_category} per category; "
         f"{len(report.snapshot_records)} records, {report.snapshot_passages} passages)",
+        f"whole answers: {sum(a.correct for a in report.answers)}/"
+        f"{sum(a.answers for a in report.answers)} correct",
         "",
         "| Category | Distinct cases | Structured claims | Answer text |",
         "|---|---|---|---|",
@@ -207,6 +280,14 @@ def render_report(report: EvaluationReport) -> str:
             f"| `{score.verdict}` | {score.expected} | {score.predicted} | "
             f"{_ratio(score.precision)} | {_ratio(score.recall)} |"
         )
+    lines += [
+        "",
+        "| Whole answers | Correct | Planted overall verdicts |",
+        "|---|---|---|",
+    ]
+    for answer in report.answers:
+        planted = ", ".join(f"`{v}` {n}" for v, n in sorted(answer.planted.items()))
+        lines.append(f"| {answer.kind} | {answer.correct}/{answer.answers} | {planted} |")
     lines += ["", "| Record | Planted citations |", "|---|---|"]
     lines += [f"| {record} | {count} |" for record, count in report.records.items()]
     for failure in report.failures:

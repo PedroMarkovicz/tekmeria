@@ -94,7 +94,8 @@ async def _demo(json_out: Path | None, html_out: Path | None, open_page: bool) -
 
 
 async def _evaluate(seed: int, per_category: int, json_out: Path | None) -> bool:
-    """Audit the planted cases offline and print the report; True when every case passed."""
+    """Audit the planted cases and whole answers offline and print the report; True when
+    every one came out as planted."""
     config = demo_config()
     async with open_runtime(config) as app:
         snapshot = await load_snapshot(app.service)
@@ -112,7 +113,7 @@ async def _evaluate(seed: int, per_category: int, json_out: Path | None) -> bool
     if json_out is not None:
         _write(json_out, report.model_dump_json(indent=2))
         print(f"\nreport written to {json_out}")
-    return report.correct == report.cases
+    return report.passed()
 
 
 def _at_least_one(text: str) -> int:
