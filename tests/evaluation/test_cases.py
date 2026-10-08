@@ -1,0 +1,72 @@
+import random
+from collections import Counter
+
+import pytest
+
+from tekmerion.contract.citations import parse_answer_text
+from tekmerion.contract.handles import (
+    ForgedHandleError,
+    HandleCodec,
+    MalformedHandleError,
+)
+from tekmerion.contract.normalize import quote_in_passage
+from tekmerion.evaluation.cases import CATEGORIES, Planted, generate_cases, render_text
+from tekmerion.evaluation.snapshot import Snapshot, record_key
+from tekmerion.infra.keys import DEMO_KEY
+
+pytestmark = pytest.mark.anyio
+
+CODEC = HandleCodec(DEMO_KEY)
+
+
+def _text_of(snapshot: Snapshot, handle: str) -> str | None:
+    locator = CODEC.verify(handle)
+    item = snapshot.records.get(record_key(str(locator.record)))
+    passage = next((p for p in item.passages if p.path == locator.path), None) if item else None
+    return passage.text if passage else None
+
+
+def _check(snapshot: Snapshot, planted: Planted) -> None:
+    """The planted citation really is what its verdict says, independently of the audit."""
+    if planted.verdict == "malformed":
+        with pytest.raises(MalformedHandleError):
+            CODEC.verify(planted.handle)
+        return
+    if planted.verdict == "forged":
+        with pytest.raises(ForgedHandleError):
+            CODEC.verify(planted.handle)
+        return
+    text = _text_of(snapshot, planted.handle)  # genuine: verify raises nothing
+    if planted.verdict in ("withdrawn", "unavailable"):
+        assert text is None
+        return
+    assert text is not None
+    if planted.quote is not None:
+        assert quote_in_passage(planted.quote, text) == (planted.verdict == "ok")
+
+
+async def test_the_same_seed_gives_the_same_cases(snapshot: Snapshot) -> None:
+    first = generate_cases(snapshot, CODEC, seed=7, per_category=3)
+    assert first == generate_cases(snapshot, CODEC, seed=7, per_category=3)
+    assert first != generate_cases(snapshot, CODEC, seed=8, per_category=3)
+
+
+async def test_every_category_gets_its_share(snapshot: Snapshot) -> None:
+    cases = generate_cases(snapshot, CODEC, seed=0, per_category=4)
+    assert Counter(case.category for case in cases) == dict.fromkeys(CATEGORIES, 4)
+
+
+async def test_cases_plant_what_their_category_says(snapshot: Snapshot) -> None:
+    for case in generate_cases(snapshot, CODEC, seed=0, per_category=10):
+        for planted in case.citations:
+            _check(snapshot, planted)
+
+
+async def test_a_rendered_answer_cites_exactly_the_planted_citations(snapshot: Snapshot) -> None:
+    rng = random.Random(0)
+    for case in generate_cases(snapshot, CODEC, seed=0, per_category=10):
+        if "text" not in case.modes:
+            continue
+        claims = parse_answer_text(render_text(case, rng))
+        cited = [(c.handle, c.quote) for claim in claims for c in claim.citations]
+        assert cited == [(p.handle, p.quote) for p in case.citations], case.category
