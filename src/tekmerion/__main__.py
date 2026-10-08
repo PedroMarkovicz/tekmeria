@@ -100,7 +100,7 @@ async def _evaluate(seed: int, per_category: int, json_out: Path | None) -> bool
         snapshot = await load_snapshot(app.service)
     codec = HandleCodec(config.handle_key)
     report = await run_evaluation(
-        generate_cases(snapshot, codec, seed=seed, per_category=per_category),
+        generate_cases(snapshot, config.handle_key, seed=seed, per_category=per_category),
         codec=codec,
         resolver=SnapshotResolver(snapshot),
         seed=seed,

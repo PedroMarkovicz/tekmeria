@@ -1,0 +1,63 @@
+"""The reference oracle for planted cases (spec section 16.10).
+
+Written from the spec (4.1 grammar, 4.4 check code, 4.5 normalization) and sharing no code
+with the audit under test: the generator decides what it plants with this module, so a bug in
+the audit's own comparator or codec cannot quietly drop or reshape the cases that would expose
+it. A misreading of the spec itself would of course be shared by both.
+"""
+
+import hashlib
+import hmac
+import re
+import unicodedata
+
+# Spec 4.1: five characters of lowercase Crockford base32.
+ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
+# Spec 4.1: scheme ":" id ["@" version] "/" path "~" check.
+_HANDLE = re.compile(
+    r"^(?P<locator>(?:pmid|pmcid|ppr|nct|setid):[A-Za-z0-9-]+(?:@[A-Za-z0-9.-]+)?"
+    r"/[a-z0-9_]+(?:\.[a-z0-9_]+)*)~(?P<check>[0-9a-hjkmnp-tv-z]{5})$"
+)
+# Spec 4.5 step 3 (docs/CONTRACT.md section 3): typographic variants, folded for comparison.
+_FOLDS = {
+    **dict.fromkeys(map(chr, (0x2018, 0x2019, 0x201A, 0x201B)), "'"),
+    **dict.fromkeys(map(chr, (0x201C, 0x201D, 0x201E, 0x201F)), '"'),
+    **dict.fromkeys(map(chr, (0x2010, 0x2011, 0x2013, 0x2014, 0x2212)), "-"),
+    chr(0x00A0): " ",
+    chr(0x2026): "...",
+}
+
+
+def check_code(key: bytes, locator: str) -> str:
+    """Spec 4.4: the first 25 bits of HMAC-SHA256(key, utf8(locator)) in Crockford base32."""
+    digest = hmac.new(key, locator.encode("utf-8"), hashlib.sha256).digest()
+    bits = int.from_bytes(digest[:4], "big") >> 7
+    return "".join(ALPHABET[(bits >> shift) & 0b11111] for shift in (20, 15, 10, 5, 0))
+
+
+def issue(key: bytes, locator: str) -> str:
+    """The genuine handle for a locator such as 'pmid:30831578/abstract.7'."""
+    return f"{locator}~{check_code(key, locator)}"
+
+
+def well_formed(handle: str) -> bool:
+    return _HANDLE.match(handle) is not None
+
+
+def is_genuine(key: bytes, handle: str) -> bool:
+    match = _HANDLE.match(handle)
+    return match is not None and hmac.compare_digest(
+        match["check"], check_code(key, match["locator"])
+    )
+
+
+def fold(text: str) -> str:
+    """Spec 4.5: NFC, whitespace runs to one space, ends trimmed, then the typographic folds."""
+    spaced = " ".join(unicodedata.normalize("NFC", text).split())
+    return " ".join("".join(_FOLDS.get(char, char) for char in spaced).split())
+
+
+def quote_matches(quote: str, passage: str) -> bool:
+    """True when the folded quote is a non-empty part of the folded passage."""
+    needle = fold(quote)
+    return bool(needle) and needle in fold(passage)
