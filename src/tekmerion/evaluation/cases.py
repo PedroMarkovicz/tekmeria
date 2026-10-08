@@ -9,6 +9,7 @@ cannot find in the passage.
 
 import random
 import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
@@ -23,6 +24,29 @@ MODES: tuple[Mode, ...] = ("claims", "text")
 # Quote marks never appear inside a planted quote, so every quote style can carry it.
 _QUOTE_MARKS = frozenset("\"'" + chr(0x2018) + chr(0x2019) + chr(0x201C) + chr(0x201D))
 _EN_DASH, _NBSP = chr(0x2013), chr(0x00A0)
+# Edits that change biomedical meaning while keeping almost every character.
+_DECIMAL = re.compile(r"\d+\.\d+")
+_FLIPS = {"<": ">", ">": "<", chr(0x2264): chr(0x2265), chr(0x2265): chr(0x2264)}
+_COMPARISON = re.compile("[" + "".join(_FLIPS) + "]")
+_UNIT_SWAPS = {
+    "mg/kg": "mg",
+    "mg/dL": "mg/L",
+    "mcg": "mg",
+    "mg": "g",
+    "kg": "g",
+    "mmol": "mol",
+    "mL": "L",
+    "IU": "mg",
+    "g": "mg",
+    "L": "mL",
+    "%": chr(0x2030),
+}
+_UNIT = re.compile(r"(?<=\d) ?(mg/kg|mg/dL|mcg|mg|kg|mmol|mL|IU|g|L|%)(?![A-Za-z])")
+_UNSIGNED_NUMBER = re.compile(r"(?<![\w.,+-])\d")
+_WORD = re.compile(r"\b[A-Za-z][a-z]+\b")
+# Typographic variants a verbatim quote may use (spec 4.5): each folds back to the passage.
+_APOSTROPHES = {"'": chr(0x2019), chr(0x2019): "'"}
+_DOUBLE_MARKS = {'"': chr(0x201C), chr(0x201C): '"', chr(0x201D): '"'}
 _TRAILING_DIGITS = re.compile(r"(\d+)$")
 # Redraws per case: a category that cannot be planted means a bug, so fail instead of looping.
 _ATTEMPTS = 1000
@@ -69,6 +93,15 @@ class _Builder:
             if len(snapshot.records[record_key(r.record_id)].passages) > 1
         ]
         self.numbered = [(r, p) for r, p in self.clean if _TRAILING_DIGITS.search(p.path)]
+        self.decimal = self._having(_DECIMAL)
+        self.comparison = self._having(_COMPARISON)
+        self.unit = self._having(_UNIT)
+        self.unsigned = self._having(_UNSIGNED_NUMBER)
+        self.apostrophe = self._having(re.compile("[" + "".join(_APOSTROPHES) + "]"), _APOSTROPHES)
+        self.decomposable = self._having(re.compile("[" + chr(0xC0) + "-" + chr(0x24F) + "]"))
+        self.double_marks = self._having(
+            re.compile("[" + "".join(_DOUBLE_MARKS) + "]"), _DOUBLE_MARKS
+        )
         self.records = snapshot.records
         self._queues: dict[int, list[tuple[Record, Passage]]] = {}
 
@@ -82,6 +115,21 @@ class _Builder:
 
     def window(self, text: str, *, digits: bool = False) -> str:
         options = [w for w in _windows(text) if _has_digit(w) or not digits]
+        return options[self.rng.randrange(len(options))]
+
+    def _having(
+        self, pattern: re.Pattern[str], allowed: dict[str, str] | None = None
+    ) -> list[tuple[Record, Passage]]:
+        """Clean passages with at least one quotable window that `pattern` matches."""
+        marks = frozenset(allowed or ())
+        return [
+            (r, p) for r, p in self.clean if any(pattern.search(w) for w in _windows(p.text, marks))
+        ]
+
+    def matching_window(
+        self, text: str, pattern: re.Pattern[str], allowed: dict[str, str] | None = None
+    ) -> str:
+        options = [w for w in _windows(text, frozenset(allowed or ())) if pattern.search(w)]
         return options[self.rng.randrange(len(options))]
 
     def handle(self, passage: Passage) -> str:
@@ -119,6 +167,119 @@ class _Builder:
         quote = " ".join(words[:at]) + self.rng.choice(["  ", _NBSP]) + " ".join(words[at:])
         quote = quote.replace("-", _EN_DASH)  # typographic variants are folded before comparing
         return Case("ok_quote_reformatted", (Planted(self.handle(passage), quote, "ok"),))
+
+    def _variant_ok(
+        self,
+        category: str,
+        pool: list[tuple[Record, Passage]],
+        pattern: re.Pattern[str],
+        rewrite: Callable[[str], str],
+        allowed: dict[str, str] | None = None,
+        modes: tuple[Mode, ...] = MODES,
+    ) -> Case:
+        """A verbatim quote written with a variant the comparison must fold back."""
+
+        def attempt() -> Case | None:
+            _, passage = self.pick(pool)
+            quote = rewrite(self.matching_window(passage.text, pattern, allowed))
+            if not oracle.quote_matches(quote, passage.text):  # the variant must still match
+                return None
+            return Case(category, (Planted(self.handle(passage), quote, "ok"),), modes=modes)
+
+        return self._draw(category, attempt)
+
+    def ok_quote_apostrophe(self) -> Case:
+        pattern = re.compile("[" + "".join(_APOSTROPHES) + "]")
+        return self._variant_ok(
+            "ok_quote_apostrophe",
+            self.apostrophe,
+            pattern,
+            lambda q: "".join(_APOSTROPHES.get(c, c) for c in q),
+            _APOSTROPHES,
+        )
+
+    def ok_quote_decomposed(self) -> Case:
+        pattern = re.compile("[" + chr(0xC0) + "-" + chr(0x24F) + "]")
+        return self._variant_ok(
+            "ok_quote_decomposed",
+            self.decomposable,
+            pattern,
+            lambda q: unicodedata.normalize("NFD", q),
+        )
+
+    def ok_quote_double_marks(self) -> Case:
+        # Answer text cannot carry a quote that contains double quote marks (CONTRACT section
+        # 4), so this category is audited as structured claims only.
+        pattern = re.compile("[" + "".join(_DOUBLE_MARKS) + "]")
+        return self._variant_ok(
+            "ok_quote_double_marks",
+            self.double_marks,
+            pattern,
+            lambda q: "".join(_DOUBLE_MARKS.get(c, c) for c in q),
+            _DOUBLE_MARKS,
+            modes=("claims",),
+        )
+
+    def _edit_mismatch(
+        self,
+        category: str,
+        pool: list[tuple[Record, Passage]],
+        pattern: re.Pattern[str],
+        edit: Callable[[str], str],
+    ) -> Case:
+        def attempt() -> Case | None:
+            _, passage = self.pick(pool)
+            quote = edit(self.matching_window(passage.text, pattern))
+            if oracle.quote_matches(quote, passage.text):  # the edit recreated real text
+                return None
+            return Case(category, (Planted(self.handle(passage), quote, "quote_mismatch"),))
+
+        return self._draw(category, attempt)
+
+    def quote_decimal_moved(self) -> Case:
+        def edit(quote: str) -> str:
+            match = self.rng.choice(list(_DECIMAL.finditer(quote)))
+            whole, frac = match.group(0).split(".")
+            if len(whole) > 1:  # 97.6 -> 9.76
+                moved = whole[:-1] + "." + whole[-1] + frac
+            else:  # 0.93 -> 9.3, and 1.5 -> 15
+                digits = (whole + frac[0]).lstrip("0") or "0"
+                moved = digits + ("." + frac[1:] if len(frac) > 1 else "")
+            return quote[: match.start()] + moved + quote[match.end() :]
+
+        return self._edit_mismatch("quote_decimal_moved", self.decimal, _DECIMAL, edit)
+
+    def quote_comparison_flipped(self) -> Case:
+        def edit(quote: str) -> str:
+            match = self.rng.choice(list(_COMPARISON.finditer(quote)))
+            return quote[: match.start()] + _FLIPS[match.group(0)] + quote[match.end() :]
+
+        return self._edit_mismatch("quote_comparison_flipped", self.comparison, _COMPARISON, edit)
+
+    def quote_unit_changed(self) -> Case:
+        def edit(quote: str) -> str:
+            match = self.rng.choice(list(_UNIT.finditer(quote)))
+            unit = match.group(1)
+            start = match.start(1)
+            return quote[:start] + _UNIT_SWAPS[unit] + quote[start + len(unit) :]
+
+        return self._edit_mismatch("quote_unit_changed", self.unit, _UNIT, edit)
+
+    def quote_sign_changed(self) -> Case:
+        def edit(quote: str) -> str:
+            match = self.rng.choice(list(_UNSIGNED_NUMBER.finditer(quote)))
+            return quote[: match.start()] + "-" + quote[match.start() :]
+
+        return self._edit_mismatch("quote_sign_changed", self.unsigned, _UNSIGNED_NUMBER, edit)
+
+    def quote_case_changed(self) -> Case:
+        def edit(quote: str) -> str:
+            match = self.rng.choice(list(_WORD.finditer(quote)))
+            word = match.group(0)
+            flipped = word[0].lower() if word[0].isupper() else word[0].upper()
+            return quote[: match.start()] + flipped + word[1:] + quote[match.end() :]
+
+        return self._edit_mismatch("quote_case_changed", self.quotable, _WORD, edit)
 
     def _mismatch(self, category: str, edit: Callable[[str], str], *, digits: bool) -> Case:
         pool = self.numeric if digits else self.quotable
@@ -215,6 +376,22 @@ class _Builder:
             raise RuntimeError(f"malformed: {broken} is well formed")
         return Case("malformed", (Planted(broken, None, "malformed"),))
 
+    def malformed_with_note(self) -> Case:
+        # A note written inside the citation entry, not as a quote: the entry is not a handle.
+        _, passage = self.pick(self.clean)
+        note = self.rng.choice(["(Table 2)", "(abstract)", "p. 4", "(see Methods)"])
+        entry = f"{self.handle(passage)} {note}"
+        if oracle.well_formed(entry):
+            raise RuntimeError(f"malformed_with_note: {entry} is well formed")
+        return Case("malformed_with_note", (Planted(entry, None, "malformed"),))
+
+    def forged_bare(self) -> Case:
+        # A forged handle written outside any brackets still counts (docs/CONTRACT.md
+        # section 4), so it cannot slip past the audit.
+        _, passage = self.pick(self.clean)
+        forged = self.forge_code(self.handle(passage))
+        return Case("forged_bare", (Planted(forged, None, "forged"),), modes=("text",))
+
     def withdrawn_path(self) -> Case:
         record, passage = self.pick(self.numbered)
         paths = {p.path for p in self.records[record_key(record.record_id)].passages}
@@ -272,13 +449,23 @@ CATEGORIES: tuple[str, ...] = (
     "ok_plain",
     "ok_quote",
     "ok_quote_reformatted",
+    "ok_quote_apostrophe",
+    "ok_quote_decomposed",
+    "ok_quote_double_marks",
     "quote_number_changed",
+    "quote_decimal_moved",
+    "quote_comparison_flipped",
+    "quote_unit_changed",
+    "quote_sign_changed",
+    "quote_case_changed",
     "quote_negated",
     "quote_word_swapped",
     "forged_check_code",
     "forged_path_swap",
     "forged_record_id",
+    "forged_bare",
     "malformed",
+    "malformed_with_note",
     "withdrawn_path",
     "withdrawn_record",
     "unavailable",
@@ -296,19 +483,33 @@ def generate_cases(snapshot: Snapshot, key: bytes, *, seed: int, per_category: i
     return [getattr(builder, category)() for category in CATEGORIES for _ in range(per_category)]
 
 
-def render_text(case: Case, rng: random.Random) -> str:
-    """The case as an answer a model might write, in one of the citation styles the
-    contract accepts (docs/CONTRACT.md section 4)."""
+def render_group(case: Case, rng: random.Random) -> str:
+    """The case's citation group, in one of the styles the contract accepts (docs/CONTRACT.md
+    section 4)."""
     if case.category == "hidden_in_quote":
         visible, hidden = case.citations
-        group = f"[{visible.handle} 'see; {hidden.handle} 'here']"
-    else:
-        (planted,) = case.citations
-        group = _group(planted, rng)
+        return f"[{visible.handle} 'see; {hidden.handle} 'here']"
+    (planted,) = case.citations
+    if case.category == "forged_bare":
+        return f"(see {planted.handle})"
+    if case.category == "malformed_with_note":
+        return f"[{planted.handle}]"  # the whole entry is read as the handle, wrapping included
+    return _group(planted, rng)
+
+
+def after_full_stop(group: str, rng: random.Random) -> bool:
+    """Whether to write the group after the sentence's full stop. Only a bracket group moves
+    to the sentence before it; a bare handle stays inside its sentence."""
+    return group.startswith("[") and rng.random() < 0.5
+
+
+def render_text(case: Case, rng: random.Random) -> str:
+    """The case as an answer a model might write."""
+    group = render_group(case, rng)
     sentence = "The cited source reports this finding"
-    if rng.random() < 0.5:
-        return f"{sentence} {group}."
-    return f"{sentence}. {group}"  # citations written after the full stop
+    if after_full_stop(group, rng):
+        return f"{sentence}. {group}"
+    return f"{sentence} {group}."
 
 
 def _group(planted: Planted, rng: random.Random) -> str:
@@ -316,24 +517,21 @@ def _group(planted: Planted, rng: random.Random) -> str:
     if quote is None:
         style = rng.choice(["[{h}]", "[`{h}`]", "[**{h}**]", "[{h}.]"])
         return style.format(h=handle)
-    style = rng.choice(
-        [
-            '[{h} "{q}"]',
-            "[{h} " + chr(0x201C) + "{q}" + chr(0x201D) + "]",
-            "[{h} '{q}']",
-            '[{h}"{q}"]',
-        ]
-    )
-    return style.format(h=handle, q=quote)
+    styles = ['[{h} "{q}"]', "[{h} " + chr(0x201C) + "{q}" + chr(0x201D) + "]", '[{h}"{q}"]']
+    if not set(quote) & set(_APOSTROPHES):  # an apostrophe could close a single-quoted quote
+        styles.append("[{h} '{q}']")
+    return rng.choice(styles).format(h=handle, q=quote)
 
 
-def _windows(text: str) -> list[str]:
-    """Runs of 4 to 12 words with no quote mark: the quotes a case may plant."""
+def _windows(text: str, allowed: frozenset[str] = frozenset()) -> list[str]:
+    """Runs of 4, 7 or 10 words with no quote mark other than `allowed`: the quotes a case may
+    plant."""
+    banned = _QUOTE_MARKS - allowed
     words = text.split(" ")
     found: list[str] = []
     for start in range(0, max(0, len(words) - 3), 3):
         run = words[start : start + 4 + start % 9]
-        if len(run) >= 4 and not any(ch in _QUOTE_MARKS for w in run for ch in w):
+        if len(run) >= 4 and not any(ch in banned for w in run for ch in w):
             found.append(" ".join(run))
     return found
 

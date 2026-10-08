@@ -1,4 +1,5 @@
 import random
+import re
 from collections import Counter
 
 import pytest
@@ -84,3 +85,69 @@ async def test_a_category_uses_every_passage_of_its_pool_before_repeating_one(
     assert len(set(plain)) == 20  # the pool has far more than 20 passages
     preprints = Counter(c.citations[0].handle for c in generated if c.category == "preprint_cited")
     assert sorted(preprints.values()) == [10, 10]  # two passages, used in turn
+
+
+PER_MILLE = chr(0x2030)
+
+
+def _units(text: str) -> str:
+    return re.sub(
+        r"(?<=\d) ?(mg/kg|mg/dL|mcg|mg|kg|mmol|mL|IU|g|L|%)(?![A-Za-z])",
+        " U",
+        text.replace(PER_MILLE, "%"),
+    )
+
+
+# Each edit changes one detail and keeps the rest: undoing the detail on both sides finds the
+# quote in the passage again.
+UNDO_THE_EDIT = {
+    "quote_decimal_moved": lambda text: re.sub(r"[\d.]+", "#", text),
+    "quote_comparison_flipped": lambda text: re.sub(
+        "[<>" + chr(0x2264) + chr(0x2265) + "]", "<", text
+    ),
+    "quote_unit_changed": _units,
+    "quote_case_changed": str.lower,
+}
+
+
+def _planted(snapshot: Snapshot, categories: set[str]) -> list[tuple[Planted, str]]:
+    """The citations planted in `categories`, each with its passage's text; never empty."""
+    found: list[tuple[Planted, str]] = []
+    for case in generate_cases(snapshot, DEMO_KEY, seed=0, per_category=10):
+        if case.category in categories:
+            for planted in case.citations:
+                text = _text_of(snapshot, planted.handle.split(" ", 1)[0])
+                assert text is not None
+                found.append((planted, text))
+    assert found, categories
+    return found
+
+
+@pytest.mark.parametrize("category", sorted(UNDO_THE_EDIT))
+async def test_a_meaning_edit_changes_one_detail(snapshot: Snapshot, category: str) -> None:
+    undo = UNDO_THE_EDIT[category]
+    for planted, text in _planted(snapshot, {category}):
+        assert planted.quote is not None
+        assert not oracle.quote_matches(planted.quote, text)
+        assert undo(oracle.fold(planted.quote)) in undo(oracle.fold(text)), planted.quote
+
+
+async def test_a_sign_edit_adds_one_minus_before_a_number(snapshot: Snapshot) -> None:
+    for planted, text in _planted(snapshot, {"quote_sign_changed"}):
+        assert planted.quote is not None
+        minus = [i for i, ch in enumerate(planted.quote) if ch == "-"]
+        unsigned = [planted.quote[:i] + planted.quote[i + 1 :] for i in minus]
+        assert any(oracle.quote_matches(quote, text) for quote in unsigned), planted.quote
+
+
+async def test_a_typographic_variant_still_differs_from_the_passage(snapshot: Snapshot) -> None:
+    # The variant categories must exercise the folding: the quote is not the passage's own text.
+    variants = {"ok_quote_apostrophe", "ok_quote_decomposed", "ok_quote_double_marks"}
+    for planted, text in _planted(snapshot, variants):
+        assert planted.quote is not None and planted.quote not in text, planted.quote
+
+
+async def test_a_note_follows_a_genuine_handle(snapshot: Snapshot) -> None:
+    for planted, _ in _planted(snapshot, {"malformed_with_note"}):
+        handle, note = planted.handle.split(" ", 1)
+        assert oracle.is_genuine(DEMO_KEY, handle) and note

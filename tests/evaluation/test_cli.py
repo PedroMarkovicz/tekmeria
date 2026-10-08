@@ -23,9 +23,9 @@ def test_evaluate_prints_the_report_and_writes_json(
     out_path = tmp_path / "evaluation.json"
     main(["evaluate", "--per-category", "2", "--json-out", str(out_path)])
     out = capsys.readouterr().out
-    assert out.startswith("planted cases: 66/66 correct (seed 0, 2 per category;")
+    assert out.startswith("planted cases: 102/102 correct (seed 0, 2 per category;")
     report = json.loads(out_path.read_text(encoding="utf-8"))
-    assert report["correct"] == report["cases"] == 66
+    assert report["correct"] == report["cases"] == 102
 
 
 def test_evaluate_fails_when_a_case_gets_the_wrong_verdict(monkeypatch: pytest.MonkeyPatch) -> None:

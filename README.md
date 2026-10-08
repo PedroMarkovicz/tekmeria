@@ -179,20 +179,30 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 This is its output:
 
 <!-- evaluation:start -->
-planted cases: 825/825 correct (seed 0, 25 per category; 7 records, 178 passages)
+planted cases: 1275/1275 correct (seed 0, 25 per category; 7 records, 178 passages)
 
 | Category | Distinct cases | Structured claims | Answer text |
 |---|---|---|---|
 | `ok_plain` | 25 | 25/25 | 25/25 |
 | `ok_quote` | 25 | 25/25 | 25/25 |
 | `ok_quote_reformatted` | 25 | 25/25 | 25/25 |
+| `ok_quote_apostrophe` | 19 | 25/25 | 25/25 |
+| `ok_quote_decomposed` | 2 | 25/25 | 25/25 |
+| `ok_quote_double_marks` | 19 | 25/25 | - |
 | `quote_number_changed` | 25 | 25/25 | 25/25 |
+| `quote_decimal_moved` | 25 | 25/25 | 25/25 |
+| `quote_comparison_flipped` | 18 | 25/25 | 25/25 |
+| `quote_unit_changed` | 25 | 25/25 | 25/25 |
+| `quote_sign_changed` | 25 | 25/25 | 25/25 |
+| `quote_case_changed` | 25 | 25/25 | 25/25 |
 | `quote_negated` | 25 | 25/25 | 25/25 |
 | `quote_word_swapped` | 25 | 25/25 | 25/25 |
 | `forged_check_code` | 25 | 25/25 | 25/25 |
 | `forged_path_swap` | 25 | 25/25 | 25/25 |
 | `forged_record_id` | 25 | 25/25 | 25/25 |
+| `forged_bare` | 25 | - | 25/25 |
 | `malformed` | 25 | 25/25 | 25/25 |
+| `malformed_with_note` | 25 | 25/25 | 25/25 |
 | `withdrawn_path` | 25 | 25/25 | 25/25 |
 | `withdrawn_record` | 25 | 25/25 | 25/25 |
 | `unavailable` | 9 | 25/25 | 25/25 |
@@ -203,23 +213,23 @@ planted cases: 825/825 correct (seed 0, 25 per category; 7 records, 178 passages
 
 | Verdict | Planted | Given | Precision | Recall |
 |---|---|---|---|---|
-| `malformed` | 50 | 50 | 1.000 | 1.000 |
-| `forged` | 175 | 175 | 1.000 | 1.000 |
+| `malformed` | 100 | 100 | 1.000 | 1.000 |
+| `forged` | 200 | 200 | 1.000 | 1.000 |
 | `unavailable` | 50 | 50 | 1.000 | 1.000 |
 | `withdrawn` | 100 | 100 | 1.000 | 1.000 |
-| `quote_mismatch` | 175 | 175 | 1.000 | 1.000 |
-| `ok` | 300 | 300 | 1.000 | 1.000 |
+| `quote_mismatch` | 425 | 425 | 1.000 | 1.000 |
+| `ok` | 425 | 425 | 1.000 | 1.000 |
 
 | Record | Planted citations |
 |---|---|
-| nct:NCT04363697 | 94 |
+| nct:NCT04363697 | 167 |
 | outside the snapshot | 75 |
-| pmcid:PMC13425182 | 16 |
-| pmid:30831578 | 15 |
+| pmcid:PMC13425182 | 27 |
+| pmid:30831578 | 22 |
 | pmid:42530928 | 2 |
 | pmid:9500320 | 25 |
 | ppr:PPR1297067 | 25 |
-| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 198 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 357 |
 <!-- evaluation:end -->
 
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.

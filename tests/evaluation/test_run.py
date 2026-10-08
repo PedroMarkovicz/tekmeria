@@ -44,7 +44,9 @@ async def _evaluate(
 
 async def test_the_audit_gives_every_planted_case_its_verdict(snapshot: Snapshot) -> None:
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
-    assert report.cases == 5 * (16 * 2 + 1)  # hidden_in_quote runs on answer text only
+    # ok_quote_double_marks runs on structured claims only; forged_bare and hidden_in_quote on
+    # answer text only
+    assert report.cases == 5 * (24 * 2 + 3)
     assert (report.correct, report.failures) == (report.cases, [])
     assert all(score.precision == score.recall == 1.0 for score in report.verdicts)
 
@@ -73,10 +75,11 @@ async def test_a_citation_the_audit_misses_counts_against_recall(
 async def test_the_report_reads_as_markdown_tables(snapshot: Snapshot) -> None:
     text = render_report(await _evaluate(snapshot, SnapshotResolver(snapshot)))
     lines = text.splitlines()
-    assert lines[0].startswith("planted cases: 165/165 correct (seed 0, 5 per category;")
+    assert lines[0].startswith("planted cases: 255/255 correct (seed 0, 5 per category;")
     assert "| `hidden_in_quote` | 5 | - | 5/5 |" in lines
+    assert "| `ok_quote_double_marks` | 5 | 5/5 | - |" in lines
     assert "| `preprint_cited` | 2 | 5/5 | 5/5 |" in lines
-    assert "| `forged` | 35 | 35 | 1.000 | 1.000 |" in lines
+    assert "| `forged` | 40 | 40 | 1.000 | 1.000 |" in lines
     assert "| outside the snapshot | 15 |" in lines
 
 
@@ -86,7 +89,7 @@ async def test_the_report_counts_distinct_cases_and_citations_per_record(
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
     distinct = {score.category: score.distinct for score in report.categories}
     assert distinct["preprint_cited"] == 2 and distinct["ok_plain"] == 5
-    assert sum(report.records.values()) == 5 * 18  # every planted citation, once per case
+    assert sum(report.records.values()) == 5 * 28  # every planted citation, once per case
     assert report.records["outside the snapshot"] == 15  # withdrawn records and the offline one
 
 
@@ -121,6 +124,20 @@ async def test_a_check_code_that_ignores_the_path_is_caught(
     monkeypatch.setattr(HandleCodec, "check_code", path_blind)
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
     assert report.correct < report.cases
+
+
+async def test_a_case_blind_comparator_is_caught(
+    snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = normalize.quote_in_passage
+
+    def case_blind(quote: str, passage: str) -> bool:
+        return real(quote.lower(), passage.lower())
+
+    monkeypatch.setattr(audit_module, "quote_in_passage", case_blind)
+    report = await _evaluate(snapshot, SnapshotResolver(snapshot))
+    failed = {score.category for score in report.categories if score.correct < score.cases}
+    assert failed == {"quote_case_changed"}
 
 
 async def test_a_dropped_flag_is_caught(
