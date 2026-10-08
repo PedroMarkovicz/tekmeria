@@ -66,3 +66,24 @@ async def test_cache_file_is_created(tmp_path: Path) -> None:
     async with Cache(path) as cache:
         await cache.record_issued([("pmid:1/title", "t", None)])
     assert path.exists()
+
+
+async def test_a_cache_file_uses_wal_and_waits_for_other_writers(tmp_path: Path) -> None:
+    async with Cache(tmp_path / "cache.sqlite3") as cache:
+        async with cache.db.execute("PRAGMA journal_mode") as cursor:
+            assert await cursor.fetchone() == ("wal",)
+        async with cache.db.execute("PRAGMA busy_timeout") as cursor:
+            assert await cursor.fetchone() == (5000,)
+
+
+async def test_expired_responses_are_purged_when_the_cache_opens(tmp_path: Path) -> None:
+    clock, path = FakeClock(), tmp_path / "cache.sqlite3"
+    async with Cache(path, clock=clock) as cache:
+        await cache.put_response("old", CachedResponse(200, "text/plain", "x"), ttl_s=10)
+        await cache.put_response("new", CachedResponse(200, "text/plain", "y"), ttl_s=1000)
+        await cache.record_issued([("pmid:1/title", "t", None)])
+    clock.now += 100
+    async with Cache(path, clock=clock) as cache:
+        async with cache.db.execute("SELECT key FROM responses") as cursor:
+            assert await cursor.fetchall() == [("new",)]
+        assert list(await cache.get_issued(["pmid:1/title"])) == ["pmid:1/title"]

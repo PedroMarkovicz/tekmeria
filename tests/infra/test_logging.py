@@ -3,6 +3,7 @@ import json
 import sys
 
 import pytest
+import structlog
 
 from medcite.infra.logging import configure_logging, get_logger
 
@@ -26,3 +27,25 @@ def test_level_filters(monkeypatch: pytest.MonkeyPatch) -> None:
     get_logger("t").warning("shown")
     assert [json.loads(line)["event"] for line in stream.getvalue().splitlines()] == ["shown"]
     configure_logging("INFO")
+
+
+def test_a_logged_exception_keeps_its_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
+    configure_logging("INFO")
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        get_logger("t").exception("failed")
+    assert "ValueError: boom" in json.loads(stream.getvalue())["exception"]
+
+
+def test_logs_go_to_stderr_even_before_configuration(capsys: pytest.CaptureFixture[str]) -> None:
+    structlog.reset_defaults()
+    try:
+        get_logger("t").info("early")
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert json.loads(captured.err)["event"] == "early"
+    finally:
+        configure_logging("INFO")

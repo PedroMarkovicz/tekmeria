@@ -1,7 +1,9 @@
 """One upstream host: pooled client, rate limit, retries, cache (spec section 9.1)."""
 
 import random
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 import anyio
@@ -38,6 +40,28 @@ class HostConfig:
     rate: float
     per_seconds: float = 1.0
     default_params: Mapping[str, str] | None = None
+
+
+# The upstream calls of the current tool call, for its log line (spec 9.3).
+_calls: ContextVar[list[dict[str, object]] | None] = ContextVar("upstream_calls", default=None)
+
+
+@contextmanager
+def record_upstream_calls() -> Iterator[list[dict[str, object]]]:
+    """Collect {host, status, cache} for every upstream call made inside the block,
+    including calls made by tasks started inside it."""
+    calls: list[dict[str, object]] = []
+    token = _calls.set(calls)
+    try:
+        yield calls
+    finally:
+        _calls.reset(token)
+
+
+def _note(host: str, status: int | str, *, cache: bool) -> None:
+    calls = _calls.get()
+    if calls is not None:
+        calls.append({"host": host, "status": status, "cache": cache})
 
 
 def _retry_after_seconds(response: httpx.Response) -> float | None:
@@ -95,8 +119,14 @@ class Upstream:
         key = f"{self.config.name}:{request_key('GET', request.url)}"
         cached = await self.cache.get_response(key)
         if cached is not None:
+            _note(self.config.name, cached.status, cache=True)
             return cached.body
-        response = await self._send_with_retries(request)
+        try:
+            response = await self._send_with_retries(request)
+        except UpstreamUnavailableError:
+            _note(self.config.name, "unavailable", cache=False)
+            raise
+        _note(self.config.name, response.status_code, cache=False)
         if response.status_code == 404:
             raise UpstreamNotFoundError(str(request.url.copy_with(params=None)))
         if response.status_code >= 400:

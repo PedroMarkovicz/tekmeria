@@ -1,5 +1,6 @@
 """Handle key loading (spec section 4.4)."""
 
+import contextlib
 import os
 import secrets
 from pathlib import Path
@@ -21,6 +22,26 @@ def default_key_path() -> Path:
     return Path(user_data_dir("medcite", appauthor=False)) / "handle.key"
 
 
+def _create_key_file(path: Path) -> None:
+    """Write a new random key unless one exists. The key goes to a temporary file that is
+    linked into place only if the name is still free, so no process reads a half-written
+    key, and a key another process created first is never replaced."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{secrets.token_hex(8)}.tmp")
+    temporary.write_bytes(secrets.token_bytes(MIN_KEY_BYTES))
+    if os.name == "posix":
+        temporary.chmod(0o600)
+    try:
+        os.link(temporary, path)
+    except FileExistsError:
+        pass  # another process won; its key is the one to use
+    except OSError:  # no hard links on this drive: create the file exclusively instead
+        with contextlib.suppress(FileExistsError), path.open("xb") as file:
+            file.write(temporary.read_bytes())
+    finally:
+        temporary.unlink()
+
+
 def load_handle_key(settings: Settings, *, demo: bool, key_path: Path | None = None) -> bytes:
     """Demo key only in demo mode; otherwise env override, else a key file created on first run."""
     if demo:
@@ -34,10 +55,7 @@ def load_handle_key(settings: Settings, *, demo: bool, key_path: Path | None = N
     else:
         path = key_path or default_key_path()
         if not path.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(secrets.token_bytes(MIN_KEY_BYTES))
-            if os.name == "posix":
-                path.chmod(0o600)
+            _create_key_file(path)
         key = path.read_bytes()
     if len(key) < MIN_KEY_BYTES:
         raise HandleKeyError(f"handle key must be at least {MIN_KEY_BYTES} bytes")

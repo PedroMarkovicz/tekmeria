@@ -141,3 +141,19 @@ async def test_resources(client: Client) -> None:
     assert record["record_id"] == f"pmid:{COHORT_PMID}"
     with pytest.raises(MCPError):
         await client.read_resource(f"evidence://passage/{forge(handle)}")
+
+
+async def test_each_tool_call_logs_one_line_with_its_upstream_calls(
+    client: Client, capsys: pytest.CaptureFixture[str]
+) -> None:
+    capsys.readouterr()
+    for _ in range(2):  # the second call is answered from the cache
+        await _call(client, "fetch_passages", {"record_ids": [f"pmid:{COHORT_PMID}"]})
+    lines = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    first, second = [line for line in lines if line.get("tool") == "fetch_passages"]
+    assert first["event"] == "tool_ok" and isinstance(first["ms"], int)
+    assert first["source_status"]["pubmed"] == "ok"
+    assert {"host": "ncbi", "status": 200, "cache": False} in first["upstream"]
+    # Only these three fields: never a URL, a query or a key.
+    assert all(set(call) == {"host", "status", "cache"} for call in first["upstream"])
+    assert second["upstream"] and all(call["cache"] for call in second["upstream"])

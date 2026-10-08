@@ -23,6 +23,7 @@ def configure_logging(level: str = "INFO") -> None:
         processors=[
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.format_exc_info,  # a logged exception keeps its traceback
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
@@ -34,4 +35,6 @@ def configure_logging(level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> structlog.typing.FilteringBoundLogger:
+    if not structlog.is_configured():  # structlog's own default writes to stdout
+        configure_logging()
     return structlog.get_logger(name)

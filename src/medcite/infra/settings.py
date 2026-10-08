@@ -7,7 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
+    # Environment only: a .env file would make the handle key depend on the folder the
+    # server starts in, and handles issued under another key read as forged.
+    model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
 
     ncbi_api_key: SecretStr | None = Field(default=None, alias="NCBI_API_KEY")
     ncbi_email: str | None = Field(default=None, alias="NCBI_EMAIL")

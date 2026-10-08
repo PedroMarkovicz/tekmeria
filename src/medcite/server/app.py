@@ -30,6 +30,7 @@ from medcite.infra.http import (
     UpstreamNotFoundError,
     UpstreamResponseError,
     UpstreamUnavailableError,
+    record_upstream_calls,
 )
 from medcite.infra.logging import get_logger
 from medcite.server import render
@@ -78,35 +79,58 @@ def _error(code: str, message: str, *, retryable: bool, hint: str | None = None)
     )
 
 
+def _ms_since(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
+
+
 async def _run(ctx: Context[Any, Any], tool: str, work: Work) -> CallToolResult:
-    """Run a tool body under the deadline and turn failures into ToolError results."""
+    """Run a tool body under the deadline and turn failures into ToolError results.
+
+    Each call logs one line: the tool, its duration, every upstream call (host, status,
+    cache hit) and the source status, or the error with its traceback (spec 9.3).
+    """
     app = _app(ctx)
     started = time.perf_counter()
-    try:
-        with anyio.fail_after(app.deadline_s):
-            model, text = await work(app)
-    except TimeoutError:
-        error = _error(
-            "deadline_exceeded", f"{tool} took longer than {app.deadline_s:g}s", retryable=True
-        )
-    except InvalidInputError as exc:
-        error = _error("invalid_input", str(exc), retryable=False, hint=exc.hint)
-    except UpstreamUnavailableError as exc:
-        error = _error("upstream_unavailable", str(exc), retryable=True, hint="Retry in a moment.")
-    except UpstreamNotFoundError as exc:
-        error = _error("not_found", str(exc), retryable=False)
-    except UpstreamResponseError as exc:
-        error = _error("upstream_error", str(exc), retryable=False)
-    except Exception as exc:
-        log.exception("tool_failed", tool=tool)
-        error = _error("internal", f"{type(exc).__name__}: {exc}", retryable=False)
-    else:
-        log.info("tool_ok", tool=tool, ms=round((time.perf_counter() - started) * 1000))
-        return CallToolResult(
-            content=[TextContent(type="text", text=text)],
-            structured_content=model.model_dump(mode="json"),
-        )
-    log.warning("tool_error", tool=tool, code=error.code, message=error.message)
+    failure: Exception | None = None
+    with record_upstream_calls() as calls:
+        try:
+            with anyio.fail_after(app.deadline_s):
+                model, text = await work(app)
+        except TimeoutError:
+            error = _error(
+                "deadline_exceeded", f"{tool} took longer than {app.deadline_s:g}s", retryable=True
+            )
+        except InvalidInputError as exc:
+            error = _error("invalid_input", str(exc), retryable=False, hint=exc.hint)
+        except UpstreamUnavailableError as exc:
+            error = _error(
+                "upstream_unavailable", str(exc), retryable=True, hint="Retry in a moment."
+            )
+        except UpstreamNotFoundError as exc:
+            error = _error("not_found", str(exc), retryable=False)
+        except UpstreamResponseError as exc:
+            error = _error("upstream_error", str(exc), retryable=False)
+        except Exception as exc:
+            failure = exc
+            error = _error("internal", f"{type(exc).__name__}: {exc}", retryable=False)
+        else:
+            status = getattr(model, "source_status", None)
+            log.info(
+                "tool_ok", tool=tool, ms=_ms_since(started), upstream=calls, source_status=status
+            )
+            return CallToolResult(
+                content=[TextContent(type="text", text=text)],
+                structured_content=model.model_dump(mode="json"),
+            )
+    log.warning(
+        "tool_error",
+        tool=tool,
+        ms=_ms_since(started),
+        upstream=calls,
+        code=error.code,
+        message=error.message,
+        exc_info=failure,
+    )
     return CallToolResult(
         content=[TextContent(type="text", text=render.render_error(error))],
         structured_content=error.model_dump(mode="json"),

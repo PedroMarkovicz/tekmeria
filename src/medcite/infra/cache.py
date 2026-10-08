@@ -57,7 +57,14 @@ class Cache:
         if self._path != ":memory:":
             Path(self._path).parent.mkdir(parents=True, exist_ok=True)
         self._db = await aiosqlite.connect(self._path)
+        # Several servers may share one cache file: wait for another's write instead of
+        # failing, and let reads go on during a write (WAL needs a file, not :memory:).
+        await self._db.execute("PRAGMA busy_timeout = 5000")
+        if self._path != ":memory:":
+            await self._db.execute("PRAGMA journal_mode = WAL")
         await self._db.executescript(_SCHEMA)
+        # Expired responses are never served again; passages as issued are kept for good.
+        await self._db.execute("DELETE FROM responses WHERE expires_at <= ?", (self._clock(),))
         await self._db.commit()
         return self
 
