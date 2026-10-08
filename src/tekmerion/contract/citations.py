@@ -12,7 +12,12 @@ with warnings.catch_warnings():
 
 _OPEN, _CLOSE = "\u27e6", "\u27e7"
 # A bracket group may contain quoted spans, and a quote may contain brackets: "(range [3-10])".
-_GROUP_RE = re.compile(r'\[((?:[^\[\]"“”]|["“][^"“”]*["”])*)\]')
+# A single-quoted span opens after a space and closes before a separator or the bracket.
+_GROUP_RE = re.compile(
+    r"\[((?:(?<=\s)['\u2018](?:(?!['\u2019]\s*[;,\]]).)*['\u2019](?=\s*[;,\]])"
+    r'|["“][^"“”]*["”]'
+    r'|[^\[\]"“”])*)\]'
+)
 # Entries are separated by ";" or "," outside quotes (models often use commas). A single
 # quote mark opens a quote only after a space and closes it only before a separator or the
 # end, so an apostrophe ("children's") never does.
@@ -113,7 +118,15 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
         entries = _entries(match.group(1))
         if not any(_CITE_TOKEN_RE.match(_first_token(entry)) for entry in entries):
             return match.group(0)
-        groups.append([_citation(entry) for entry in entries])
+        cited = [_citation(entry) for entry in entries]
+        # A handle written inside a quote (say, after an unclosed quote mark) still counts.
+        hidden = [
+            CitationIn(handle=handle)
+            for citation in cited
+            if citation.quote
+            for handle in _BARE_HANDLE_RE.findall(citation.quote)
+        ]
+        groups.append(cited + hidden)
         return f"{_OPEN}{len(groups) - 1}{_CLOSE}"
 
     def mask_bare(match: re.Match[str]) -> str:

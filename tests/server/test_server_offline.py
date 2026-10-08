@@ -1,5 +1,6 @@
 """Server behaviour that needs no recorded upstream data (an empty fixture directory)."""
 
+import json
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -171,3 +172,19 @@ async def test_an_answer_with_nothing_to_audit_is_invalid_input(
     assert result.is_error and result.structured_content is not None
     assert result.structured_content["code"] == "invalid_input"
     assert "no sentences" in result.structured_content["message"]
+
+
+async def test_an_internal_error_is_logged_as_an_error_with_its_traceback(
+    offline: Client, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken() -> object:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("tekmerion.server.app.contract_description", broken)
+    capsys.readouterr()
+    result = await offline.call_tool("describe_contract", {})
+    assert result.is_error
+    lines = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    (line,) = [line for line in lines if line.get("tool") == "describe_contract"]
+    assert line["level"] == "error"
+    assert "RuntimeError: boom" in line["exception"]

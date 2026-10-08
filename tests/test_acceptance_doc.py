@@ -27,3 +27,17 @@ def test_every_criterion_has_a_row() -> None:
 
 def test_no_personal_local_paths() -> None:
     assert not re.search(r"[A-Z]:/(?:Projects|Users)/", DOC)
+
+
+def test_records_made_before_the_rename_say_so() -> None:
+    # The host screenshot and live run 1 date from before the rename (spec 16.8).
+    row = next(line for line in DOC.splitlines() if line.startswith("| 6 |"))
+    assert "earlier name" in row
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    chat = readme.split("## In a chat", 1)[1].split("\n## ", 1)[0]
+    assert "earlier name" in chat
+    assert "tekmerion's own instructions" not in readme
+    spec = (ROOT / "docs" / "specs" / "2026-10-06-tekmerion-server-design.md").read_text(
+        encoding="utf-8"
+    )
+    assert "free on PyPI on 2026-10-06" not in spec

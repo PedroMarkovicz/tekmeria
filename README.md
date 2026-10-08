@@ -141,7 +141,7 @@ fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 
 ## In a chat
 
-Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued:
+Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued. The screenshot was taken before the rename, so the widget's header shows the project's earlier name:
 
 ![The audit view rendered inside Claude Desktop](docs/assets/host-audit-view.png)
 
@@ -154,7 +154,7 @@ verdict: WARN  (16 citations: 16 ok)
 fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
 ```
 
-Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in tekmerion's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
+Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
 
 ## Architecture
 

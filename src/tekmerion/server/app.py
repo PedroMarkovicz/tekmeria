@@ -122,7 +122,8 @@ async def _run(ctx: Context[Any, Any], tool: str, work: Work) -> CallToolResult:
                 content=[TextContent(type="text", text=text)],
                 structured_content=model.model_dump(mode="json"),
             )
-    log.warning(
+    # A crash is an error, kept even when the log level is ERROR; other failures are warnings.
+    (log.error if failure is not None else log.warning)(
         "tool_error",
         tool=tool,
         ms=_ms_since(started),

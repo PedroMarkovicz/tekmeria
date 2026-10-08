@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-06
 - **Status:** design approved section by section; written spec awaiting review
-- **Working name:** `tekmerion` (free on PyPI on 2026-10-06; can be renamed before implementation)
+- **Name:** `tekmerion` since 2026-10-07; the project started under an earlier working name (see 16.8)
 - **Contract version introduced:** 0.1.0
 
 ## 1. Context

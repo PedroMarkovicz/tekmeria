@@ -200,3 +200,16 @@ def test_citations_moved_to_the_previous_sentence_obey_the_limit() -> None:
     ten = ", ".join([H2] * 10)
     with pytest.raises(ValidationError):
         parse_answer_text(f"First claim [{H1}]. [{ten}] Second claim.")
+
+
+def test_a_single_quoted_quote_may_hold_brackets() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{H1} 'range [3-10]'].")
+    assert [(c.handle, c.quote) for c in claim.citations] == [(H1, "range [3-10]")]
+    assert claim.sentence == "Risk was unchanged."
+
+
+@pytest.mark.parametrize("mark", ["'", '"'])
+def test_a_handle_inside_an_unclosed_quote_is_still_audited(mark: str) -> None:
+    text = f"Risk was unchanged [{H1} {mark}a; {H2} {mark}b{mark}]."
+    (claim,) = parse_answer_text(text)
+    assert H2 in [c.handle for c in claim.citations]
