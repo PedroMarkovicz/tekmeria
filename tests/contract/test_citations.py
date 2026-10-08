@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from medcite.contract.citations import parse_answer_text
+from tekmerion.contract.citations import parse_answer_text
 
 H1 = "pmid:30831578/abstract.7~7hq3k"
 H2 = "pmid:9500320/abstract.3~p0c8m"

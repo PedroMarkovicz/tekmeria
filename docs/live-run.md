@@ -1,3 +1,5 @@
+These runs were made under the project's earlier name, medcite, before the rename described in spec section 16.8. The transcripts and audit outputs below keep that name as it was used.
+
 # Live run 1: a finding
 
 - **Date:** 2026-10-07

@@ -1,7 +1,7 @@
 import pytest
 
-from medcite.sources.errors import InvalidInputError
-from medcite.sources.service import SearchState
+from tekmerion.sources.errors import InvalidInputError
+from tekmerion.sources.service import SearchState
 
 
 def test_search_state_round_trip_and_validation() -> None:

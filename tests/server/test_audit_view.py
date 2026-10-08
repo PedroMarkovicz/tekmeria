@@ -8,11 +8,11 @@ from mcp import Client
 from mcp.server.apps import APP_MIME_TYPE, EXTENSION_ID
 from mcp.types import TextResourceContents
 
-from medcite.contract.handles import HandleCodec, Locator
-from medcite.infra.fixtures import FixtureTransport
-from medcite.server.app import create_server
-from medcite.server.runtime import RuntimeConfig
-from medcite.ui import AUDIT_VIEW_URI, REPORT_SLOT, audit_view_html, standalone_page
+from tekmerion.contract.handles import HandleCodec, Locator
+from tekmerion.infra.fixtures import FixtureTransport
+from tekmerion.server.app import create_server
+from tekmerion.server.runtime import RuntimeConfig
+from tekmerion.ui import AUDIT_VIEW_URI, REPORT_SLOT, audit_view_html, standalone_page
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio
@@ -79,13 +79,13 @@ def test_a_standalone_page_embeds_the_report_safely() -> None:
     report = {"claims": [], "summary": {}, "note": "</script><script>alert(1)</script>"}
     page = standalone_page(json.dumps(report))
     assert REPORT_SLOT not in page
-    start = page.index('id="medcite-report">') + len('id="medcite-report">')
+    start = page.index('id="tekmerion-report">') + len('id="tekmerion-report">')
     embedded = page[start : page.index("</script>", start)]
     assert json.loads(embedded) == report
     assert "<script>alert(1)" not in page
 
 
 def test_a_view_without_a_slot_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("medcite.ui.audit_view_html", lambda: "<html></html>")
+    monkeypatch.setattr("tekmerion.ui.audit_view_html", lambda: "<html></html>")
     with pytest.raises(RuntimeError, match="rebuild"):
         standalone_page("{}")

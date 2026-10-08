@@ -1,7 +1,7 @@
-from medcite.contract import CONTRACT_VERSION
-from medcite.contract.audit_models import FLAG_NAMES, VERDICTS
-from medcite.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS, contract_description
-from medcite.contract.handles import HANDLE_PATTERN
+from tekmerion.contract import CONTRACT_VERSION
+from tekmerion.contract.audit_models import FLAG_NAMES, VERDICTS
+from tekmerion.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS, contract_description
+from tekmerion.contract.handles import HANDLE_PATTERN
 
 
 def test_every_verdict_and_flag_is_described_in_order() -> None:

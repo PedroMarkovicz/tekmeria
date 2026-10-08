@@ -9,10 +9,10 @@ import pytest
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from medcite.contract.handles import HandleCodec, Locator
-from medcite.infra.fixtures import FixtureTransport
-from medcite.server.app import create_server
-from medcite.server.runtime import RuntimeConfig
+from tekmerion.contract.handles import HandleCodec, Locator
+from tekmerion.infra.fixtures import FixtureTransport
+from tekmerion.server.app import create_server
+from tekmerion.server.runtime import RuntimeConfig
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio
@@ -123,7 +123,7 @@ async def test_prompt_and_resource_templates(offline: Client) -> None:
 
 
 async def test_server_identity(offline: Client) -> None:
-    assert offline.server_info is not None and offline.server_info.name == "medcite"
+    assert offline.server_info is not None and offline.server_info.name == "tekmerion"
 
 
 class Hanging(httpx.AsyncBaseTransport):

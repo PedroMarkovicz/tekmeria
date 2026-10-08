@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from mcp import Client
 
-from medcite.__main__ import main
-from medcite.demo.scenario import run_demo
-from medcite.infra.settings import Settings
+from tekmerion.__main__ import main
+from tekmerion.demo.scenario import run_demo
+from tekmerion.infra.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -42,19 +42,19 @@ def _help(argv: list[str], capsys: pytest.CaptureFixture[str]) -> str:
 
 def test_every_flag_in_the_readme_exists(capsys: pytest.CaptureFixture[str]) -> None:
     known = _help(["--help"], capsys) + _help(["demo", "--help"], capsys)
-    lines = [line for line in README.splitlines() if "medcite" in line and "--" in line]
+    lines = [line for line in README.splitlines() if "tekmerion" in line and "--" in line]
     flags = {flag for line in lines for flag in re.findall(r"(?<![\w-])--[a-z][a-z-]+", line)}
     flags -= {"--from"}  # uvx's own flag
-    assert flags, "no medcite flags found in the README"
+    assert flags, "no tekmerion flags found in the README"
     for flag in flags:
-        assert flag in known, f"{flag} is not a medcite flag"
+        assert flag in known, f"{flag} is not a tekmerion flag"
 
 
 def test_linked_files_exist() -> None:
     for target in re.findall(r"\]\(((?:docs|LICENSE|NOTICE)[^)#]*)\)", README):
         assert (ROOT / target).exists(), f"README links to missing {target}"
-    assert "https://github.com/PedroMarkovicz/medcite" in README
-    assert "https://pedromarkovicz.github.io/medcite/" in README
+    assert "https://github.com/PedroMarkovicz/tekmerion" in README
+    assert "https://pedromarkovicz.github.io/tekmerion/" in README
 
 
 def _acceptance_status(row: int) -> str:

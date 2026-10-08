@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from medcite.sources.clinicaltrials_parse import eligibility_items, parse_study, trial_hit
+from tekmerion.sources.clinicaltrials_parse import eligibility_items, parse_study, trial_hit
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 

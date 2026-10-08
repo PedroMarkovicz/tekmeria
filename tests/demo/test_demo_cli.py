@@ -1,17 +1,17 @@
-"""`medcite demo` writes the report and the audit view, and can open the view."""
+"""`tekmerion demo` writes the report and the audit view, and can open the view."""
 
 import json
 from pathlib import Path
 
 import pytest
 
-from medcite.__main__ import main
-from medcite.contract.audit_models import AuditReport
-from medcite.ui import REPORT_SLOT
+from tekmerion.__main__ import main
+from tekmerion.contract.audit_models import AuditReport
+from tekmerion.ui import REPORT_SLOT
 
 
 def _embedded(page: str) -> dict[str, object]:
-    start = page.index('id="medcite-report">') + len('id="medcite-report">')
+    start = page.index('id="tekmerion-report">') + len('id="tekmerion-report">')
     return json.loads(page[start : page.index("</script>", start)])
 
 

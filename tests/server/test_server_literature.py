@@ -9,18 +9,18 @@ import pytest
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from medcite.__main__ import demo_config
-from medcite.contract.handles import HandleCodec
-from medcite.demo.scenario import (
+from tekmerion.__main__ import demo_config
+from tekmerion.contract.handles import HandleCodec
+from tekmerion.demo.scenario import (
     COHORT_PMID,
     DEMO_QUERY,
     FIXTURES_DIR,
     PUBMED_ONLY_SEARCH,
     RETRACTED_PMID,
 )
-from medcite.infra.fixtures import FixtureTransport
-from medcite.infra.keys import DEMO_KEY
-from medcite.server.app import create_server
+from tekmerion.infra.fixtures import FixtureTransport
+from tekmerion.infra.keys import DEMO_KEY
+from tekmerion.server.app import create_server
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio

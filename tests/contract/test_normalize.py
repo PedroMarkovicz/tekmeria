@@ -1,7 +1,7 @@
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from medcite.contract.normalize import (
+from tekmerion.contract.normalize import (
     closest_match,
     fold_for_compare,
     normalize_text,

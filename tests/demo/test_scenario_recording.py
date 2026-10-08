@@ -1,6 +1,6 @@
 import pytest
 
-from medcite.demo.scenario import DemoError, require_complete
+from tekmerion.demo.scenario import DemoError, require_complete
 
 
 def test_recording_refuses_a_degraded_result() -> None:

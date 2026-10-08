@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from medcite.infra.cache import Cache, CachedResponse
-from medcite.infra.ratelimit import RateLimiter
+from tekmerion.infra.cache import Cache, CachedResponse
+from tekmerion.infra.ratelimit import RateLimiter
 
 pytestmark = pytest.mark.anyio
 

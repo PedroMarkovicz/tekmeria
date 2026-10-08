@@ -3,16 +3,16 @@
 import pytest
 from mcp import Client
 
-from medcite.__main__ import live_config
-from medcite.infra.settings import Settings
-from medcite.server.app import create_server
+from tekmerion.__main__ import live_config
+from tekmerion.infra.settings import Settings
+from tekmerion.server.app import create_server
 from tests.conftest import structured
 
 pytestmark = [pytest.mark.live, pytest.mark.anyio]
 
 
 async def test_live_search_fetch_and_audit() -> None:
-    settings = Settings.model_validate({"MEDCITE_CACHE_PATH": ":memory:"})
+    settings = Settings.model_validate({"TEKMERION_CACHE_PATH": ":memory:"})
     config = live_config(settings)
     async with Client(create_server(config)) as client:
         search = structured(

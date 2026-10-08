@@ -2,16 +2,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from medcite.contract.audit_models import (
+from tekmerion.contract.audit_models import (
     AuditReport,
     AuditSummary,
     CitationResult,
     ClaimResult,
     Flag,
 )
-from medcite.contract.handles import HandleCodec
-from medcite.contract.models import RecordIds, Signal, StudyDesign, ToolError
-from medcite.contract.tool_models import (
+from tekmerion.contract.handles import HandleCodec
+from tekmerion.contract.models import RecordIds, Signal, StudyDesign, ToolError
+from tekmerion.contract.tool_models import (
     LabelHit,
     LabelSearchResult,
     LiteratureHit,
@@ -19,15 +19,15 @@ from medcite.contract.tool_models import (
     TrialHit,
     TrialSearchResult,
 )
-from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
-from medcite.server.render import (
+from tekmerion.server.cursor import decode_cursor, decode_offset, encode_cursor
+from tekmerion.server.render import (
     render_audit,
     render_error,
     render_labels,
     render_search,
     render_trials,
 )
-from medcite.sources.errors import InvalidInputError
+from tekmerion.sources.errors import InvalidInputError
 
 CODEC = HandleCodec(bytes(range(32)))
 ARGS = {"query": "mmr", "limit": None}

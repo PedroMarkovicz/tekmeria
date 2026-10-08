@@ -3,11 +3,11 @@ import json
 import httpx
 import pytest
 
-from medcite.infra.cache import Cache
-from medcite.infra.http import Upstream, UpstreamResponseError
-from medcite.sources.errors import InvalidInputError
-from medcite.sources.europepmc import EuropePmcAdapter, build_query, europepmc_host
-from medcite.sources.pubmed import LiteratureQuery
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.http import Upstream, UpstreamResponseError
+from tekmerion.sources.errors import InvalidInputError
+from tekmerion.sources.europepmc import EuropePmcAdapter, build_query, europepmc_host
+from tekmerion.sources.pubmed import LiteratureQuery
 
 pytestmark = pytest.mark.anyio
 

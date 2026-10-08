@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from medcite.contract.audit_models import AuditReport
-from medcite.contract.schemas import SCHEMAS, export, schema_text
+from tekmerion.contract.audit_models import AuditReport
+from tekmerion.contract.schemas import SCHEMAS, export, schema_text
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -10,7 +10,7 @@ def test_committed_schemas_match_the_models() -> None:
     for name, model in SCHEMAS.items():
         committed = (REPO / "schemas" / name).read_text(encoding="utf-8")
         assert committed == schema_text(model), (
-            f"schemas/{name} is stale; run `uv run python -m medcite.contract.schemas`"
+            f"schemas/{name} is stale; run `uv run python -m tekmerion.contract.schemas`"
         )
 
 

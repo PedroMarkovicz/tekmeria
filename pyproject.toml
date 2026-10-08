@@ -1,5 +1,5 @@
 [project]
-name = "medcite"
+name = "tekmerion"
 version = "0.1.0"
 description = "Biomedical evidence over MCP, cited by handle: every passage is citable and every citation is auditable."
 readme = "README.md"
@@ -26,13 +26,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/PedroMarkovicz/medcite"
-Repository = "https://github.com/PedroMarkovicz/medcite"
-Documentation = "https://github.com/PedroMarkovicz/medcite/blob/main/docs/CONTRACT.md"
-"Audit view demo" = "https://pedromarkovicz.github.io/medcite/"
+Homepage = "https://github.com/PedroMarkovicz/tekmerion"
+Repository = "https://github.com/PedroMarkovicz/tekmerion"
+Documentation = "https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md"
+"Audit view demo" = "https://pedromarkovicz.github.io/tekmerion/"
 
 [project.scripts]
-medcite = "medcite.__main__:main"
+tekmerion = "tekmerion.__main__:main"
 
 [dependency-groups]
 dev = [
@@ -48,7 +48,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/medcite"]
+packages = ["src/tekmerion"]
 
 # The sdist ships the project only; untracked local folders (caches, notes) never do.
 [tool.hatch.build.targets.sdist]
@@ -79,16 +79,16 @@ filterwarnings = ["error", "ignore::SyntaxWarning", "ignore::DeprecationWarning:
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["src/medcite/demo/fixtures"]
+extend-exclude = ["src/tekmerion/demo/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["medcite", "tests"]
+known-first-party = ["tekmerion", "tests"]
 
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 include = ["src", "tests"]
-strict = ["src/medcite/contract"]
+strict = ["src/tekmerion/contract"]

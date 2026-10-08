@@ -1,10 +1,10 @@
-# medcite
+# tekmerion
 
-Biomedical evidence over MCP, cited by handle. Every passage medcite returns comes with a short handle such as `pmid:30831578/abstract.7~rbhq7`. An agent cites those handles, and a deterministic audit then shows, for any model, which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
+Biomedical evidence over MCP, cited by handle. Every passage tekmerion returns comes with a short handle such as `pmid:30831578/abstract.7~30med`. An agent cites those handles, and a deterministic audit then shows, for any model, which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
 
 ![The audit view showing the offline demo's report](docs/assets/audit-view.png)
 
-Once GitHub Pages is enabled for the repository, running the `pages` workflow (`.github/workflows/pages.yml`) publishes this view of the demo to <https://pedromarkovicz.github.io/medcite/>.
+Once GitHub Pages is enabled for the repository, running the `pages` workflow (`.github/workflows/pages.yml`) publishes this view of the demo to <https://pedromarkovicz.github.io/tekmerion/>.
 
 ## Why
 
@@ -15,12 +15,12 @@ Once GitHub Pages is enabled for the repository, running the `pages` workflow (`
   - In Chen et al. ([arXiv 2608.30676](https://arxiv.org/abs/2608.30676)), citation fabrication by a medical agent rose from 16.5% to 31.8% when reinforcement learning rewarded only correct answers, even as accuracy improved.
 - **MCP now points this way.** The [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) makes the protocol stateless and says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
 
-So medcite does not compete on coverage. It makes every citation checkable.
+So tekmerion does not compete on coverage. It makes every citation checkable.
 
 ## How it works
 
 ```
-pmid:30831578/abstract.7~rbhq7
+pmid:30831578/abstract.7~30med
 \__/ \______/ \________/ \___/
 scheme  id      path     check code: HMAC of everything before the "~"
 ```
@@ -38,7 +38,7 @@ You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if need
 See the audit on the offline demo, in the terminal and in your browser:
 
 ```bash
-uvx --from git+https://github.com/PedroMarkovicz/medcite medcite demo --open
+uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion demo --open
 ```
 
 ### Claude Desktop
@@ -48,15 +48,15 @@ Add this to `claude_desktop_config.json` (Settings, Developer, Edit Config) and 
 ```json
 {
   "mcpServers": {
-    "medcite": {
+    "tekmerion": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/medcite", "medcite"]
+      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmerion", "tekmerion"]
     }
   }
 }
 ```
 
-Then start a chat with the `cite_by_handle` prompt. `audit_answer` also declares the audit view (`ui://medcite/audit-view`) as an MCP App, for hosts that support MCP Apps.
+Then start a chat with the `cite_by_handle` prompt. `audit_answer` also declares the audit view (`ui://tekmerion/audit-view`) as an MCP App, for hosts that support MCP Apps.
 
 ### VS Code
 
@@ -65,10 +65,10 @@ Add this to `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "medcite": {
+    "tekmerion": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/medcite", "medcite"]
+      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmerion", "tekmerion"]
     }
   }
 }
@@ -77,17 +77,17 @@ Add this to `.vscode/mcp.json`:
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/medcite medcite
+npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion
 ```
 
 ### Other ways to run it
 
 | Command | What it does |
 |---|---|
-| `medcite` | Serves MCP over stdio. |
-| `medcite --http --port 8000` | Serves Streamable HTTP on `http://127.0.0.1:8000/mcp` (localhost only). |
-| `medcite --demo` | Serves the recorded demo data with the public demo key: no network needed. |
-| `medcite demo` | Runs the offline demo and prints the audit. Add `--json-out PATH` for the report, `--html-out PATH` for the audit view, `--open` to open it. |
+| `tekmerion` | Serves MCP over stdio. |
+| `tekmerion --http --port 8000` | Serves Streamable HTTP on `http://127.0.0.1:8000/mcp` (localhost only). |
+| `tekmerion --demo` | Serves the recorded demo data with the public demo key: no network needed. |
+| `tekmerion demo` | Runs the offline demo and prints the audit. Add `--json-out PATH` for the report, `--html-out PATH` for the audit view, `--open` to open it. |
 
 ### Configuration
 
@@ -99,10 +99,10 @@ Everything is optional and read from environment variables; a `.env` file is not
 | `NCBI_EMAIL` | Contact address NCBI asks for; sent only when set. |
 | `OPENFDA_API_KEY` | Raises openFDA's daily limit from 1,000 to 120,000 requests. |
 | `CROSSREF_MAILTO` | Puts Crossref requests in its polite pool; sent only when set. |
-| `MEDCITE_HANDLE_KEY` | The handle key, in hex: at least 32 bytes (64 hex digits). By default a random key is created on first run and stored in your user data folder. |
-| `MEDCITE_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
-| `MEDCITE_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
-| `MEDCITE_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
+| `TEKMERION_HANDLE_KEY` | The handle key, in hex: at least 32 bytes (64 hex digits). By default a random key is created on first run and stored in your user data folder. |
+| `TEKMERION_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
+| `TEKMERION_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
+| `TEKMERION_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
 
 ## Tools
 
@@ -113,29 +113,29 @@ Everything is optional and read from environment variables; a `.env` file is not
 | `search_drug_labels` | Finds every openFDA drug label naming a drug, newest first. |
 | `fetch_passages` | Fetches records (`pmid:`, `pmcid:`, `ppr:`, `nct:`, `setid:`) and their passages, each with a handle; adds entities and retraction status. |
 | `resolve_handles` | Looks up the passage behind each handle and says whether the handle is genuine. |
-| `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://medcite/audit-view`) as an MCP App. |
+| `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://tekmerion/audit-view`) as an MCP App. |
 | `describe_contract` | Returns the contract: handle grammar, verdicts, flags, metrics and the citing instructions. |
 
 There is also a prompt, `cite_by_handle`, and two resource templates, `evidence://record/{+record_id}` and `evidence://passage/{+handle}` (the `+` lets the slashes in a handle through).
 
 ## The demo
 
-`medcite demo` runs offline on recorded responses. It searches, fetches two papers, and audits an answer with six planted cases: a correct quote, a misquote, a forged check code, a malformed handle, a citation of a retracted paper and an uncited sentence. This is its audit:
+`tekmerion demo` runs offline on recorded responses. It searches, fetches two papers, and audits an answer with six planted cases: a correct quote, a misquote, a forged check code, a malformed handle, a citation of a retracted paper and an uncited sentence. This is its audit:
 
 ```text
 verdict: FAIL  (5 citations: 1 malformed, 1 forged, 1 quote_mismatch, 2 ok)
 fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 [1] cited: A nationwide Danish cohort found no increased risk of autism after MMR vaccination.
-    ok             pmid:30831578/abstract.7~rbhq7 "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism"
+    ok             pmid:30831578/abstract.7~30med "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism"
 [2] invalid_only: The same study concluded that MMR vaccination raises autism risk.
-    quote_mismatch pmid:30831578/abstract.9~kmtk5 "MMR vaccination strongly increases the risk of autism"
+    quote_mismatch pmid:30831578/abstract.9~2h68h "MMR vaccination strongly increases the risk of autism"
                    closest: "MMR vaccination does not increase the risk for autism" (0.8491)
 [3] invalid_only: A second cohort reported the same null association.
-    forged         pmid:30831578/abstract.7~rbhq0
+    forged         pmid:30831578/abstract.7~30me0
 [4] invalid_only: Earlier reviews reached the same conclusion.
     malformed      pmid:30831578-abstract
 [5] cited: A 1998 case series that proposed a link was later retracted.
-    ok             pmid:9500320/abstract.4~5z8a5 [retracted]
+    ok             pmid:9500320/abstract.4~ewr8d [retracted]
 [6] uncited: Parents should discuss the vaccination schedule with their paediatrician.
 ```
 
@@ -154,7 +154,7 @@ verdict: WARN  (16 citations: 16 ok)
 fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
 ```
 
-Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in medcite's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
+Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in tekmerion's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
 
 ## Architecture
 
@@ -170,12 +170,12 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
                  server/: MCP tools, resources, prompt, audit view (ui://)
 ```
 
-- `src/medcite/contract/` is pure and fully typed: the handle codec, the evidence and report models, citation parsing and the audit. The JSON Schema in `schemas/` is exported from these models.
-- `src/medcite/sources/` has one adapter per upstream, a parser for each record source (PubMed, Europe PMC, ClinicalTrials.gov and openFDA), and `service.py`, which routes requests, merges sources and resolves handles for the audit.
-- `src/medcite/infra/` holds settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports.
-- `src/medcite/server/` is the thin MCP layer; `src/medcite/ui/audit-view.html` is the audit view, built from `web/` (React and TypeScript) and committed, so running medcite never needs Node.
+- `src/tekmerion/contract/` is pure and fully typed: the handle codec, the evidence and report models, citation parsing and the audit. The JSON Schema in `schemas/` is exported from these models.
+- `src/tekmerion/sources/` has one adapter per upstream, a parser for each record source (PubMed, Europe PMC, ClinicalTrials.gov and openFDA), and `service.py`, which routes requests, merges sources and resolves handles for the audit.
+- `src/tekmerion/infra/` holds settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports.
+- `src/tekmerion/server/` is the thin MCP layer; `src/tekmerion/ui/audit-view.html` is the audit view, built from `web/` (React and TypeScript) and committed, so running tekmerion never needs Node.
 
-The design is in [docs/specs](docs/specs/2026-10-06-medcite-server-design.md), with the decisions made while building it in its section 16.
+The design is in [docs/specs](docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it in its section 16.
 
 ## Development
 
@@ -192,19 +192,19 @@ The audit view:
 cd web
 npm ci
 npm test && npm run typecheck
-npm run build            # rewrites src/medcite/ui/audit-view.html; commit it
+npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 ```
 
-After changing the report models, run `uv run python -m medcite.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/medcite/demo/fixtures/*.json` and run `uv run medcite record-fixtures` (with no email or API keys set).
+After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set).
 
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
 
 ## Limits
 
-- **Not medical advice.** medcite retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance.
+- **Not medical advice.** tekmerion retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance.
 - **Public data only.** It queries public biomedical APIs and is not built for patient data.
 - **Integrity, not support.** The audit checks that a citation was issued by this server, that its passage still exists, and that any quote is verbatim (in the text as issued or as it is now). Whether the passage supports the sentence is not checked.
-- **Current versions only.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from medcite's cache.
+- **Current versions only.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from tekmerion's cache.
 - **Handles are per installation.** A handle verifies only on the installation (key) that issued it.
 - **No PubMed book chapters yet.** Records such as StatPearls or GeneReviews chapters are left out of searches, and fetching one reports it as not found.
 - **Duplicates are merged page by page.** `search_literature` never shows the same record twice on one page, but a record can reappear on a later page.

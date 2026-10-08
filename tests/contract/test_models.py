@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from medcite.contract.audit_models import AuditReport, CitationIn
-from medcite.contract.models import Passage, Provenance, Quality, Record, RecordIds, Signal
-from medcite.contract.tool_models import (
+from tekmerion.contract.audit_models import AuditReport, CitationIn
+from tekmerion.contract.models import Passage, Provenance, Quality, Record, RecordIds, Signal
+from tekmerion.contract.tool_models import (
     FetchResult,
     LabelHit,
     LabelSearchResult,

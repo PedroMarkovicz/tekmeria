@@ -3,9 +3,9 @@
 import json
 from datetime import UTC, datetime
 
-from medcite.demo.scenario import COHORT_PMID, FIXTURES_DIR, RETRACTED_PMID
-from medcite.sources.base import RecordBundle
-from medcite.sources.pubmed_parse import parse_efetch
+from tekmerion.demo.scenario import COHORT_PMID, FIXTURES_DIR, RETRACTED_PMID
+from tekmerion.sources.base import RecordBundle
+from tekmerion.sources.pubmed_parse import parse_efetch
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 

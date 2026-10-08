@@ -1,4 +1,4 @@
-from medcite.sources.merge import Candidate, identity_keys, interleave
+from tekmerion.sources.merge import Candidate, identity_keys, interleave
 
 
 def c(*keys: str) -> Candidate:

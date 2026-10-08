@@ -4,9 +4,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-from medcite.infra.cache import Cache
-from medcite.infra.fixtures import FixtureTransport, RecordingTransport, request_key
-from medcite.infra.http import (
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport, request_key
+from tekmerion.infra.http import (
     HostConfig,
     Upstream,
     UpstreamNotFoundError,

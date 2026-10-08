@@ -8,9 +8,9 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.types import TextResourceContents
 
-from medcite.contract.handles import HandleCodec
-from medcite.demo.scenario import LABEL_SEARCH, NO_LABEL_SEARCH, TRIAL_SEARCH
-from medcite.infra.keys import DEMO_KEY
+from tekmerion.contract.handles import HandleCodec
+from tekmerion.demo.scenario import LABEL_SEARCH, NO_LABEL_SEARCH, TRIAL_SEARCH
+from tekmerion.infra.keys import DEMO_KEY
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio

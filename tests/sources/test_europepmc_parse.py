@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from medcite.sources.europepmc_parse import (
+from tekmerion.sources.europepmc_parse import (
     parse_full_text,
     parse_result,
     record_id_for,

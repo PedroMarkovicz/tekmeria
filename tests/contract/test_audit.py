@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from medcite.contract.audit import (
+from tekmerion.contract.audit import (
     Resolution,
     Resolved,
     Unavailable,
@@ -11,9 +11,9 @@ from medcite.contract.audit import (
     audit,
     check_handles,
 )
-from medcite.contract.audit_models import CitationIn, ClaimIn
-from medcite.contract.handles import HandleCodec, Locator
-from medcite.contract.models import (
+from tekmerion.contract.audit_models import CitationIn, ClaimIn
+from tekmerion.contract.handles import HandleCodec, Locator
+from tekmerion.contract.models import (
     Passage,
     Provenance,
     Quality,

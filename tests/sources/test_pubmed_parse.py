@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from medcite.sources.base import RecordBundle
-from medcite.sources.pubmed_parse import parse_efetch, study_designs
+from tekmerion.sources.base import RecordBundle
+from tekmerion.sources.pubmed_parse import parse_efetch, study_designs
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 

@@ -3,10 +3,10 @@ a model that repeats an example would otherwise be counted as fabricating."""
 
 import pytest
 
-from medcite.contract.citations import parse_answer_text
-from medcite.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS
-from medcite.contract.handles import HANDLE_RE
-from medcite.server.app import INSTRUCTIONS
+from tekmerion.contract.citations import parse_answer_text
+from tekmerion.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS
+from tekmerion.contract.handles import HANDLE_RE
+from tekmerion.server.app import INSTRUCTIONS
 
 
 @pytest.mark.parametrize("text", [CITE_BY_HANDLE_INSTRUCTIONS, INSTRUCTIONS])

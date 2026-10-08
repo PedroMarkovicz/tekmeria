@@ -5,10 +5,10 @@ from typing import Any
 import httpx
 import pytest
 
-from medcite.infra.cache import Cache
-from medcite.infra.http import Upstream, UpstreamResponseError
-from medcite.sources.errors import InvalidInputError
-from medcite.sources.openfda import (
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.http import Upstream, UpstreamResponseError
+from tekmerion.sources.errors import InvalidInputError
+from tekmerion.sources.openfda import (
     NOT_FOUND_ATTEMPTS,
     NOT_FOUND_RETRY_DELAY_S,
     OpenFdaAdapter,

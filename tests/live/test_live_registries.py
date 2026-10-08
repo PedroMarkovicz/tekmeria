@@ -3,16 +3,16 @@
 import pytest
 from mcp import Client
 
-from medcite.__main__ import live_config
-from medcite.infra.settings import Settings
-from medcite.server.app import create_server
+from tekmerion.__main__ import live_config
+from tekmerion.infra.settings import Settings
+from tekmerion.server.app import create_server
 from tests.conftest import structured
 
 pytestmark = [pytest.mark.live, pytest.mark.anyio]
 
 
 async def test_live_trials_and_labels() -> None:
-    settings = Settings.model_validate({"MEDCITE_CACHE_PATH": ":memory:"})
+    settings = Settings.model_validate({"TEKMERION_CACHE_PATH": ":memory:"})
     async with Client(create_server(live_config(settings))) as client:
         trials = structured(
             await client.call_tool(

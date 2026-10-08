@@ -4,9 +4,9 @@ from typing import Any
 import httpx
 import pytest
 
-from medcite.infra.cache import Cache
-from medcite.infra.http import Upstream, UpstreamResponseError
-from medcite.sources.clinicaltrials import (
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.http import Upstream, UpstreamResponseError
+from tekmerion.sources.clinicaltrials import (
     MAX_IDS_PER_CALL,
     PAGE_SIZE,
     ClinicalTrialsAdapter,
@@ -14,7 +14,7 @@ from medcite.sources.clinicaltrials import (
     build_params,
     clinicaltrials_host,
 )
-from medcite.sources.errors import InvalidInputError
+from tekmerion.sources.errors import InvalidInputError
 
 pytestmark = pytest.mark.anyio
 

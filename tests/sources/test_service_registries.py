@@ -11,23 +11,23 @@ import httpx
 import pytest
 from pydantic import JsonValue
 
-from medcite.contract.audit import check_handles
-from medcite.contract.handles import HandleCodec, Locator
-from medcite.infra.cache import Cache
-from medcite.infra.http import Upstream
-from medcite.sources.clinicaltrials import (
+from tekmerion.contract.audit import check_handles
+from tekmerion.contract.handles import HandleCodec, Locator
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.http import Upstream
+from tekmerion.sources.clinicaltrials import (
     PAGE_SIZE,
     ClinicalTrialsAdapter,
     TrialQuery,
     clinicaltrials_host,
 )
-from medcite.sources.crossref import CrossrefAdapter, crossref_host
-from medcite.sources.errors import InvalidInputError
-from medcite.sources.europepmc import EuropePmcAdapter, europepmc_host
-from medcite.sources.openfda import OpenFdaAdapter, openfda_host
-from medcite.sources.pubmed import PubMedAdapter, ncbi_host
-from medcite.sources.pubtator import PubTatorAdapter, pubtator_host
-from medcite.sources.service import EvidenceService, TrialSearchState
+from tekmerion.sources.crossref import CrossrefAdapter, crossref_host
+from tekmerion.sources.errors import InvalidInputError
+from tekmerion.sources.europepmc import EuropePmcAdapter, europepmc_host
+from tekmerion.sources.openfda import OpenFdaAdapter, openfda_host
+from tekmerion.sources.pubmed import PubMedAdapter, ncbi_host
+from tekmerion.sources.pubtator import PubTatorAdapter, pubtator_host
+from tekmerion.sources.service import EvidenceService, TrialSearchState
 
 pytestmark = pytest.mark.anyio
 

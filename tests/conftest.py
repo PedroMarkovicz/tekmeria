@@ -6,9 +6,9 @@ import pytest
 from mcp import Client
 from mcp.types import CallToolResult
 
-from medcite.__main__ import demo_config
-from medcite.demo.scenario import SCENARIO_FILE
-from medcite.server.app import create_server
+from tekmerion.__main__ import demo_config
+from tekmerion.demo.scenario import SCENARIO_FILE
+from tekmerion.server.app import create_server
 
 
 @pytest.fixture

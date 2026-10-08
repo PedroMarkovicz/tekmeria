@@ -3,10 +3,10 @@ from typing import Any
 import httpx
 import pytest
 
-from medcite.infra.cache import Cache
-from medcite.infra.http import Upstream, UpstreamResponseError
-from medcite.sources.base import PassageDraft
-from medcite.sources.pubtator import PubTatorAdapter, attach_entities, pubtator_host
+from tekmerion.infra.cache import Cache
+from tekmerion.infra.http import Upstream, UpstreamResponseError
+from tekmerion.sources.base import PassageDraft
+from tekmerion.sources.pubtator import PubTatorAdapter, attach_entities, pubtator_host
 
 TITLE = "TP53 mutations in breast cancer"
 SECTION_ONE = "We studied TP53 in 40 patients."

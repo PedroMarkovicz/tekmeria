@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
   build: {
-    outDir: "../src/medcite/ui",
+    outDir: "../src/tekmerion/ui",
     emptyOutDir: false,
     rollupOptions: { input: "audit-view.html" },
   },
