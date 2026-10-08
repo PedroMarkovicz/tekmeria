@@ -96,8 +96,8 @@ Each citation gets exactly one verdict. The checks run in this order, and the fi
 
 | Order | Verdict | Meaning |
 |---|---|---|
-| 1 | `malformed` | The text does not match the handle grammar. Copy errors land here, so they are never counted as fabrication. |
-| 2 | `forged` | The grammar matches but the check code is wrong: this server never issued the handle. This is fabrication. |
+| 1 | `malformed` | The text does not match the handle grammar. A copy error that breaks the grammar (a dropped character, a letter outside the check-code alphabet) lands here, so it is never counted as fabrication. |
+| 2 | `forged` | The grammar matches but the check code is wrong: this server never issued the handle. This is fabrication, as far as the server can tell: a copy error that keeps the grammar, such as one changed check-code character, also lands here. |
 | 3 | `unavailable` | A genuine handle whose source could not be reached in time. Retryable, and never counted as fabrication. |
 | 4 | `withdrawn` | The record, or the passage path within it, no longer exists upstream. |
 | 5 | `quote_mismatch` | A quote was given and is not a substring of the passage after the normalization in section 3. |

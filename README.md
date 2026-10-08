@@ -158,10 +158,10 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 
 ## Evaluation
 
-`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 17 categories:
-- genuine citations, with verbatim or reformatted quotes;
-- quotes with a changed number, an inserted "not" or a swapped word;
-- forged check codes, paths and record IDs, and malformed handles;
+`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 27 categories:
+- genuine citations, with verbatim quotes and with quotes written in typographic variants the comparison must accept (spacing, dashes, apostrophes, double quote marks, decomposed accents);
+- quotes with one detail changed: a number, a decimal point, a comparison sign, a unit, a minus sign, a letter's case, an inserted "not" or a swapped word;
+- forged check codes, paths and record IDs, a forged handle written outside brackets, malformed handles, and a note written inside the citation;
 - passages and records that do not exist, and a source that is down;
 - retracted papers, preprints and older record versions;
 - a forged handle hidden inside an unclosed quote.
@@ -174,6 +174,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 **How they are scored.**
 - Each case is audited as structured claims and, except the hidden-handle case, also as answer text in one of the citation styles a model might write. The two audits of a case use the same planted citations, so they are not independent observations.
 - A case passes only when every citation gets its planted verdict and exactly its planted flags.
+- The cases are also written into whole answers of several sentences, with a heading, bold lead-ins and uncited sentences. A whole answer passes only when every sentence's status, every citation, every metric and the overall verdict come out as planted. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them.
 - CI runs the evaluation on every push.
 
 This is its output:
@@ -244,6 +245,8 @@ whole answers: 188/188 correct
 - Small pools are drawn from more than once: see "Distinct cases".
 - The drug label and the trial supply most planted citations: see the last table.
 - The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
+
+**How much of the audit it exercises.** `python -m tekmerion.evaluation.mutants` changes one operator or constant at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each change. The evaluation catches 74 of 81 changes. Two of the other seven change nothing. The remaining five are faults it misses: a `preprint` flag that would wrongly need both preprint signals, which the snapshot's one preprint happens to have; `checked_against`, which it does not score; an empty quote (two changes); and the text of a plain `[1]` bracket. The diagnostic `closest_match`, the `check_handles` tool, the key-length check and the cursor signature are outside its scope, so they are not changed.
 
 ## Architecture
 

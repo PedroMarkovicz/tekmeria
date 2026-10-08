@@ -767,3 +767,33 @@ The project was called medcite until the cleanup pass (16.7). A paper of the sam
   - an audit that loses a citation.
 
   A category that cannot be planted at all stops the run with an error instead of looping. Before the reference oracle, the shared comparator bug scored 825/825.
+
+### 16.11 A stronger evaluation
+
+A review of the technical note found that the 16.10 evaluation missed two kinds of fault. A comparator that ignored letter case passed every case, and so did one that ignored punctuation, because no planted edit touched either. Nothing scored claim status, metrics or the overall verdict either. This stage closes both gaps and measures what remains.
+
+- **Ten more categories (27 in all).**
+  - Edits that change one biomedical detail and keep almost every character: a moved decimal point (97.6 to 9.76), a flipped comparison sign, a changed unit (mg to g), an added minus sign, and a changed letter case.
+  - Verbatim quotes written in typographic variants that section 4.5 folds back: the other apostrophe, other double quote marks (structured claims only, since answer text cannot carry them inside a quote), and accents in decomposed form.
+  - A forged handle written outside brackets (answer text only), and a note written inside a citation entry (`[handle (Table 2)]`), which is not a handle and so is `malformed`.
+
+  The ten categories rest on the same seven records. Their pools are smaller than the older categories': 19 passages carry an apostrophe, 18 a comparison sign, and only 2 an accent.
+- **Whole answers.** The cases that can be written as text are also put, four at a time, into multi-sentence answers. An answer may open with a Markdown heading, give a claim a bold lead-in, and end with an uncited sentence. Answers of genuine citations only, without that layout, also cover the `pass` verdict.
+  - The oracle derives the expected result from the contract's sections 7 to 9: each sentence's status, every citation's verdict and flags, the five metrics and the overall verdict (with the default `fail_on`).
+  - An answer is correct only when all of these match. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them. Tests show three such faults (an overall verdict that never warns, a wrong claim status, a wrong metric) that pass every planted case and fail whole answers.
+  - The report adds a "whole answers" line and table, with the overall verdicts planted. The command fails if any answer is wrong.
+- **Mutation score.** `python -m tekmerion.evaluation.mutants` measures how much of the audit the evaluation exercises.
+  - It changes one thing at a time inside the functions of `contract/audit.py`, `citations.py`, `handles.py` and `normalize.py`: a comparison negated or moved across its boundary, `and` and `or` swapped, a `not` removed, a boolean flipped, an integer increased by one.
+  - It runs the evaluation against each change in its own process. A change is killed when the evaluation then fails.
+  - Out of scope, so never changed: the diagnostic `closest_match`, the `check_handles` tool, the key-length check and the cursor signature.
+  - Result: 74 of 81 changes killed. Two survivors change nothing:
+    - a `peer_reviewed` value of `False` already implies the signal is known;
+    - a bold marker that is removed later anyway.
+  - The five others are faults the evaluation misses, and they are listed as such:
+    - `preprint` flagged only when a record is both a preprint and not peer-reviewed (the snapshot's one preprint is both);
+    - `checked_against`, which it does not score (16.10);
+    - an empty quote (two changes);
+    - the sentence text around a plain `[1]` bracket.
+  - The `mutants` workflow runs it on request; at about 80 runs of the evaluation, it is too slow for every push.
+- **Check codes against OpenSSL.** A test recomputes the four documented check codes with the `openssl` command. That way the oracle's reading of section 4.1 is confirmed by an implementation that shares neither code nor author with this project. The test is skipped where `openssl` is missing.
+- **Contract wording.** Section 5 said copy errors land in `malformed`, so they are never counted as fabrication. That holds only for a copy error that breaks the grammar. A copy error that keeps it, such as one changed check-code character, reads as `forged`: the server cannot tell it from a made-up handle. Section 5 now says so. Behavior is unchanged.
