@@ -61,3 +61,41 @@ def quote_matches(quote: str, passage: str) -> bool:
     """True when the folded quote is a non-empty part of the folded passage."""
     needle = fold(quote)
     return bool(needle) and needle in fold(passage)
+
+
+# docs/CONTRACT.md sections 7 to 9: claim status, metrics and the overall verdict, written
+# from the contract, for scoring whole answers.
+DEFAULT_FAIL_ON = ("forged", "malformed")
+
+
+def claim_status(verdicts: list[str]) -> str:
+    if not verdicts:
+        return "uncited"
+    return "cited" if "ok" in verdicts else "invalid_only"
+
+
+def overall_verdict(statuses: list[str], verdicts: list[str], retracted_ok: int) -> str:
+    """Section 9 with the default fail_on (forged and malformed)."""
+    if set(verdicts) & set(DEFAULT_FAIL_ON):
+        return "fail"
+    if "unavailable" in verdicts:
+        return "incomplete"
+    if "uncited" in statuses or retracted_ok:
+        return "warn"
+    return "pass"
+
+
+def metrics(
+    statuses: list[str], citations: list[tuple[str, bool, bool]]
+) -> dict[str, float | int | None]:
+    """Section 8. `citations` holds (verdict, has_quote, retracted) for every citation."""
+    verdicts = [verdict for verdict, _, _ in citations]
+    checkable = len(verdicts) - verdicts.count("unavailable")
+    quoted = [v for v, has_quote, _ in citations if has_quote and v in ("ok", "quote_mismatch")]
+    return {
+        "citation_validity": verdicts.count("ok") / checkable if checkable else None,
+        "sentence_coverage": statuses.count("cited") / len(statuses) if statuses else None,
+        "quote_accuracy": quoted.count("ok") / len(quoted) if quoted else None,
+        "fabricated": verdicts.count("forged"),
+        "retracted_cited": sum(1 for v, _, retracted in citations if v == "ok" and retracted),
+    }

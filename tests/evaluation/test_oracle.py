@@ -1,6 +1,8 @@
 """The evaluation's reference oracle agrees with the spec and the documented examples."""
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -60,3 +62,70 @@ def test_a_quote_matches_only_a_non_empty_folded_part() -> None:
     assert oracle.quote_matches("ratio " + chr(0x2013) + " 0.93", "the ratio - 0.93")
     assert not oracle.quote_matches("risk rate", "The risk ratio was 0.93.")
     assert not oracle.quote_matches("   ", "anything")
+
+
+@pytest.mark.skipif(shutil.which("openssl") is None, reason="needs the openssl command")
+def test_the_check_code_matches_an_independent_hmac() -> None:
+    # OpenSSL computes the HMAC; the first 25 bits are then read as five base-32 digits.
+    for locator, check in EXAMPLES:
+        digest = subprocess.run(
+            ["openssl", "dgst", "-sha256", "-hmac", DEMO_KEY.decode("ascii")],
+            input=locator.encode("utf-8"),
+            capture_output=True,
+            check=True,
+        ).stdout.split()[-1]
+        bits = int(digest[:8], 16) >> 7
+        code = "".join(oracle.ALPHABET[(bits >> shift) & 31] for shift in (20, 15, 10, 5, 0))
+        assert code == check == oracle.check_code(DEMO_KEY, locator)
+
+
+# docs/CONTRACT.md sections 7 to 9, the rules whole answers are scored by.
+
+
+def test_claim_status_follows_section_7() -> None:
+    assert oracle.claim_status([]) == "uncited"
+    assert oracle.claim_status(["forged", "ok"]) == "cited"
+    assert oracle.claim_status(["forged", "quote_mismatch"]) == "invalid_only"
+
+
+@pytest.mark.parametrize(
+    ("statuses", "verdicts", "retracted_ok", "expected"),
+    [
+        (["cited"], ["ok"], 0, "pass"),
+        (["cited", "uncited"], ["ok"], 0, "warn"),
+        (["cited"], ["ok"], 1, "warn"),
+        (["cited", "uncited"], ["ok", "unavailable"], 1, "incomplete"),
+        (["invalid_only"], ["quote_mismatch", "withdrawn"], 0, "pass"),
+        (["cited", "uncited"], ["ok", "unavailable", "malformed"], 0, "fail"),
+        (["cited"], ["ok", "forged"], 0, "fail"),
+    ],
+)
+def test_the_overall_verdict_follows_section_9(
+    statuses: list[str], verdicts: list[str], retracted_ok: int, expected: str
+) -> None:
+    assert oracle.overall_verdict(statuses, verdicts, retracted_ok) == expected
+
+
+def test_metrics_follow_section_8() -> None:
+    statuses = ["cited", "uncited", "invalid_only", "cited"]
+    citations = [
+        ("ok", True, False),
+        ("ok", False, True),
+        ("quote_mismatch", True, False),
+        ("forged", True, False),  # a quote that never reaches the quote check
+        ("unavailable", False, False),
+    ]
+    assert oracle.metrics(statuses, citations) == {
+        "citation_validity": 2 / 4,
+        "sentence_coverage": 2 / 4,
+        "quote_accuracy": 1 / 2,
+        "fabricated": 1,
+        "retracted_cited": 1,
+    }
+    assert oracle.metrics([], []) == {
+        "citation_validity": None,
+        "sentence_coverage": None,
+        "quote_accuracy": None,
+        "fabricated": 0,
+        "retracted_cited": 0,
+    }
