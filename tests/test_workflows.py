@@ -7,7 +7,7 @@ import pytest
 WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 
 
-@pytest.mark.parametrize("name", ["ci.yml", "live.yml", "pages.yml"])
+@pytest.mark.parametrize("name", ["ci.yml", "live.yml", "mutants.yml", "pages.yml"])
 def test_every_workflow_declares_its_permissions(name: str) -> None:
     text = (WORKFLOWS / name).read_text(encoding="utf-8")
     assert "\npermissions:\n  contents: read\n" in text
@@ -35,3 +35,11 @@ def test_every_ci_job_has_a_time_limit() -> None:
     jobs = text.split("\njobs:\n", 1)[1].splitlines()
     names = [line for line in jobs if line.startswith("  ") and line[2] != " "]
     assert names and text.count("    timeout-minutes: ") == len(names)
+
+
+def test_the_mutation_run_is_on_request_only() -> None:
+    # About 80 runs of the evaluation: worth a manual run, too slow for every push.
+    text = (WORKFLOWS / "mutants.yml").read_text(encoding="utf-8")
+    assert "on:\n  workflow_dispatch:\n\npermissions" in text
+    assert "timeout-minutes: 30" in text
+    assert "run: uv run python -m tekmerion.evaluation.mutants" in text

@@ -1,0 +1,20 @@
+name: mutants
+
+# How much of the audit the evaluation exercises: one mutant at a time, run on request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: uv python install 3.12
+      - run: uv sync --locked
+      - name: Mutation score of the evaluation
+        run: uv run python -m tekmerion.evaluation.mutants >> "$GITHUB_STEP_SUMMARY"
