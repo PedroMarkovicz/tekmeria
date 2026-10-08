@@ -30,6 +30,9 @@ Comparator = Callable[[str, str], bool]
 _PUNCTUATION = str.maketrans("", "", string.punctuation)
 _SPACE = re.compile(r"\s")
 _ANY_OTHER = chr(0xFFFD)  # stands for a character the comparator no longer folds
+# Whitespace normalization already reads a no-break space as a space, so deleting its fold
+# entry changes nothing; its fault is a comparator that does not read it as whitespace.
+_NO_BREAK_SPACE = chr(0x00A0)
 
 
 @dataclass(frozen=True)
@@ -46,13 +49,13 @@ def _comparator(name: str, change: Callable[[Comparator, str, str], bool]) -> Fa
     return Fault(name, (audit_module, "quote_in_passage"), make)
 
 
-def _unfolded(char: str) -> Fault:
-    """A comparator whose fold table has lost `char`: it no longer matches its plain form."""
+def _unfolded(char: str, name: str | None = None) -> Fault:
+    """A comparator for which `char` no longer matches its plain form."""
 
     def change(real: Comparator, quote: str, passage: str) -> bool:
         return real(quote.replace(char, _ANY_OTHER), passage.replace(char, _ANY_OTHER))
 
-    return _comparator(f"no fold for U+{ord(char):04X}", change)
+    return _comparator(name or f"no fold for U+{ord(char):04X}", change)
 
 
 def _strip_accents(text: str) -> str:
@@ -112,7 +115,8 @@ FAULTS: tuple[Fault, ...] = (
     _comparator(
         "comparator ignores whitespace", lambda r, q, p: r(_SPACE.sub("", q), _SPACE.sub("", p))
     ),
-    *(_unfolded(char) for char in oracle.FOLDS),
+    *(_unfolded(char) for char in oracle.FOLDS if char != _NO_BREAK_SPACE),
+    _unfolded(_NO_BREAK_SPACE, "no-break space not read as whitespace"),
     Fault("check code ignores the path", (HandleCodec, "check_code"), _path_blind),
     Fault("flags dropped", (audit_module, "_flags"), lambda real: lambda locator, record: []),
     Fault("overall verdict never warns", (audit_module, "overall_verdict"), _never_warns),

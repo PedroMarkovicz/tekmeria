@@ -29,9 +29,15 @@ def test_a_fault_is_put_back_even_when_the_run_fails() -> None:
     assert getattr(owner, attribute) is real
 
 
-def test_every_fold_of_the_spec_has_its_fault() -> None:
+def test_every_fold_that_matters_has_its_fault() -> None:
+    # Whitespace normalization already reads a no-break space as a space, so deleting its fold
+    # entry changes nothing. Its fault is a comparator that does not read it as whitespace.
+    no_break_space = chr(0x00A0)
     names = {fault.name for fault in FAULTS}
-    assert {f"no fold for U+{ord(char):04X}" for char in oracle.FOLDS} <= names
+    folds = {char for char in oracle.FOLDS if char != no_break_space}
+    assert {f"no fold for U+{ord(char):04X}" for char in folds} <= names
+    assert "no fold for U+00A0" not in names
+    assert "no-break space not read as whitespace" in names
 
 
 async def test_a_real_fault_is_caught_and_a_harmless_one_is_not(

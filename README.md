@@ -177,7 +177,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 - The cases are also written into whole answers of several sentences. A whole answer passes only when every sentence's status, every citation, every metric and the overall verdict come out as planted. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them. There are three kinds:
   - mixed: every case, four at a time, with a heading, bold lead-ins and uncited sentences;
   - clean: genuine citations only, which pass;
-  - paired: each category's first case between two genuine citations, so its own effect on the overall verdict is scored. With the default `fail_on`, a mismatched or withdrawn citation alone still passes.
+  - paired: the first case of each category that can be written as answer text (30 of 32) between two genuine citations, so its own effect on the overall verdict is scored. With the default `fail_on`, a mismatched or withdrawn citation alone still passes.
 - CI runs the evaluation on every push.
 
 This is its output:
@@ -257,7 +257,7 @@ whole answers: 243/243 correct
 
 **Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 27 faults are chosen by hand:
 - lenient comparators: case, punctuation, accents, whitespace, NFKC, or only the first 40 characters;
-- each of the 15 folds of the contract removed in turn;
+- each of 14 folds of the contract removed in turn, and a no-break space not read as whitespace (deleting that fold entry itself changes nothing, since whitespace normalization already reads it as a space);
 - a check code that ignores the path, dropped flags, and wrong rules for claim status, coverage, validity and the overall verdict.
 
 It catches 26 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 8 cases per category.
