@@ -47,6 +47,23 @@ _WORD = re.compile(r"\b[A-Za-z][a-z]+\b")
 # Typographic variants a verbatim quote may use (spec 4.5): each folds back to the passage.
 _APOSTROPHES = {"'": chr(0x2019), chr(0x2019): "'"}
 _DOUBLE_MARKS = {'"': chr(0x201C), chr(0x201C): '"', chr(0x201D): '"'}
+# Every other fold of spec 4.5, written into a verbatim quote one at a time, in turn.
+_DASH_FOLDS = (chr(0x2010), chr(0x2011), chr(0x2013), chr(0x2014), chr(0x2212))
+_HYPHEN = re.compile("-")
+_SINGLE_FOLDS = (chr(0x2018), chr(0x2019), chr(0x201A), chr(0x201B))
+_DOUBLE_FOLDS = (chr(0x201C), chr(0x201D), chr(0x201E), chr(0x201F))
+# Edits a lenient comparator would accept: an accent, a compatibility form, a lost space.
+_ACCENTS = {"a": chr(0xE1), "e": chr(0xE9), "i": chr(0xED), "o": chr(0xF3), "u": chr(0xFA)}
+_VOWEL = re.compile("[aeiou]")
+_SUPERSCRIPTS = dict(
+    zip(
+        "0123456789",
+        [chr(c) for c in (0x2070, 0xB9, 0xB2, 0xB3)] + [chr(c) for c in range(0x2074, 0x207A)],
+        strict=True,
+    )
+)
+_DIGIT = re.compile(r"\d")
+_INNER_SPACE = re.compile(r"(?<=\w) (?=\w)")
 _TRAILING_DIGITS = re.compile(r"(\d+)$")
 # Redraws per case: a category that cannot be planted means a bug, so fail instead of looping.
 _ATTEMPTS = 1000
@@ -102,8 +119,20 @@ class _Builder:
         self.double_marks = self._having(
             re.compile("[" + "".join(_DOUBLE_MARKS) + "]"), _DOUBLE_MARKS
         )
+        self.hyphenated = self._having(_HYPHEN)
+        self.vowels = self._having(_VOWEL)
+        self.digits = self._having(_DIGIT)
+        self.spaced = self._having(_INNER_SPACE)
         self.records = snapshot.records
         self._queues: dict[int, list[tuple[Record, Passage]]] = {}
+        self._turns: dict[str, int] = {}
+        self._marked: dict[str, list[tuple[Record, Passage]]] = {}
+
+    def turn(self, category: str, options: tuple[str, ...]) -> str:
+        """The next of `options`, in turn, so a category uses every option evenly."""
+        index = self._turns.get(category, 0)
+        self._turns[category] = index + 1
+        return options[index % len(options)]
 
     def pick(self, pool: list[tuple[Record, Passage]]) -> tuple[Record, Passage]:
         """The next passage of a shuffled pass through `pool`: no passage repeats until every
@@ -181,7 +210,10 @@ class _Builder:
 
         def attempt() -> Case | None:
             _, passage = self.pick(pool)
-            quote = rewrite(self.matching_window(passage.text, pattern, allowed))
+            window = self.matching_window(passage.text, pattern, allowed)
+            quote = rewrite(window)
+            if quote == window:  # nothing to fold: this would be a plain verbatim quote
+                return None
             if not oracle.quote_matches(quote, passage.text):  # the variant must still match
                 return None
             return Case(category, (Planted(self.handle(passage), quote, "ok"),), modes=modes)
@@ -218,6 +250,67 @@ class _Builder:
             lambda q: "".join(_DOUBLE_MARKS.get(c, c) for c in q),
             _DOUBLE_MARKS,
             modes=("claims",),
+        )
+
+    def _replace_one(self, quote: str, pattern: re.Pattern[str], new: Callable[[str], str]) -> str:
+        """`quote` with one match of `pattern`, chosen at random, replaced by `new(match)`."""
+        match = self.rng.choice(list(pattern.finditer(quote)))
+        return quote[: match.start()] + new(match.group(0)) + quote[match.end() :]
+
+    def ok_quote_folded(self) -> Case:
+        dash = self.turn("ok_quote_folded", _DASH_FOLDS)
+        return self._variant_ok(
+            "ok_quote_folded",
+            self.hyphenated,
+            _HYPHEN,
+            lambda q: self._replace_one(q, _HYPHEN, lambda _: dash),
+        )
+
+    def ok_quote_folded_marks(self) -> Case:
+        # A quote mark inside a quote cannot be carried by answer text (CONTRACT section 4), so
+        # this category is audited as structured claims only.
+        mark = self.turn("ok_quote_folded_marks", _SINGLE_FOLDS + _DOUBLE_FOLDS)
+        single = mark in _SINGLE_FOLDS
+        family = "'" + chr(0x2019) if single else '"' + chr(0x201C) + chr(0x201D)
+        allowed = _APOSTROPHES if single else _DOUBLE_MARKS
+        # The mark replaces one of its family that differs from it, so the quote always changes.
+        others = family.replace(mark, "")
+        pattern = re.compile("[" + others + "]")
+        if others not in self._marked:  # one pool per pattern keeps draws without replacement
+            self._marked[others] = self._having(pattern, allowed)
+        pool = self._marked[others]
+        return self._variant_ok(
+            "ok_quote_folded_marks",
+            pool,
+            pattern,
+            lambda q: self._replace_one(q, pattern, lambda _: mark),
+            allowed,
+            modes=("claims",),
+        )
+
+    def quote_accent_added(self) -> Case:
+        return self._edit_mismatch(
+            "quote_accent_added",
+            self.vowels,
+            _VOWEL,
+            lambda q: self._replace_one(q, _VOWEL, lambda v: _ACCENTS[v]),
+        )
+
+    def quote_compatibility_form(self) -> Case:
+        # A superscript digit: NFKC would read it as the plain digit, NFC keeps it apart.
+        return self._edit_mismatch(
+            "quote_compatibility_form",
+            self.digits,
+            _DIGIT,
+            lambda q: self._replace_one(q, _DIGIT, lambda d: _SUPERSCRIPTS[d]),
+        )
+
+    def quote_space_removed(self) -> Case:
+        return self._edit_mismatch(
+            "quote_space_removed",
+            self.spaced,
+            _INNER_SPACE,
+            lambda q: self._replace_one(q, _INNER_SPACE, lambda _: ""),
         )
 
     def _edit_mismatch(
@@ -452,12 +545,17 @@ CATEGORIES: tuple[str, ...] = (
     "ok_quote_apostrophe",
     "ok_quote_decomposed",
     "ok_quote_double_marks",
+    "ok_quote_folded",
+    "ok_quote_folded_marks",
     "quote_number_changed",
     "quote_decimal_moved",
     "quote_comparison_flipped",
     "quote_unit_changed",
     "quote_sign_changed",
     "quote_case_changed",
+    "quote_accent_added",
+    "quote_compatibility_form",
+    "quote_space_removed",
     "quote_negated",
     "quote_word_swapped",
     "forged_check_code",

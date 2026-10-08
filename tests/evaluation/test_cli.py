@@ -23,14 +23,14 @@ def test_evaluate_prints_the_report_and_writes_json(
     out_path = tmp_path / "evaluation.json"
     main(["evaluate", "--per-category", "2", "--json-out", str(out_path)])
     out = capsys.readouterr().out
-    assert out.startswith("planted cases: 102/102 correct (seed 0, 2 per category;")
-    assert out.splitlines()[1] == "whole answers: 41/41 correct"
+    assert out.startswith("planted cases: 120/120 correct (seed 0, 2 per category;")
+    assert out.splitlines()[1] == "whole answers: 47/47 correct"
     report = json.loads(out_path.read_text(encoding="utf-8"))
-    assert report["correct"] == report["cases"] == 102
+    assert report["correct"] == report["cases"] == 120
     assert [(a["kind"], a["answers"], a["correct"]) for a in report["answers"]] == [
-        ("mixed", 13, 13),
+        ("mixed", 15, 15),
         ("clean", 2, 2),
-        ("paired", 26, 26),
+        ("paired", 30, 30),
     ]
 
 

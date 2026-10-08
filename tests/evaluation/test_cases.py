@@ -1,5 +1,6 @@
 import random
 import re
+import unicodedata
 from collections import Counter
 
 import pytest
@@ -107,6 +108,11 @@ UNDO_THE_EDIT = {
     ),
     "quote_unit_changed": _units,
     "quote_case_changed": str.lower,
+    "quote_accent_added": lambda text: "".join(
+        c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)
+    ),
+    "quote_compatibility_form": lambda text: unicodedata.normalize("NFKC", text),
+    "quote_space_removed": lambda text: text.replace(" ", ""),
 }
 
 
@@ -142,7 +148,13 @@ async def test_a_sign_edit_adds_one_minus_before_a_number(snapshot: Snapshot) ->
 
 async def test_a_typographic_variant_still_differs_from_the_passage(snapshot: Snapshot) -> None:
     # The variant categories must exercise the folding: the quote is not the passage's own text.
-    variants = {"ok_quote_apostrophe", "ok_quote_decomposed", "ok_quote_double_marks"}
+    variants = {
+        "ok_quote_apostrophe",
+        "ok_quote_decomposed",
+        "ok_quote_double_marks",
+        "ok_quote_folded",
+        "ok_quote_folded_marks",
+    }
     for planted, text in _planted(snapshot, variants):
         assert planted.quote is not None and planted.quote not in text, planted.quote
 
@@ -151,3 +163,12 @@ async def test_a_note_follows_a_genuine_handle(snapshot: Snapshot) -> None:
     for planted, _ in _planted(snapshot, {"malformed_with_note"}):
         handle, note = planted.handle.split(" ", 1)
         assert oracle.is_genuine(DEMO_KEY, handle) and note
+
+
+async def test_every_fold_but_the_ellipsis_is_written_into_a_quote(snapshot: Snapshot) -> None:
+    # Each fold of the spec appears in some planted quote, so dropping any one of them fails a
+    # case. No passage of the snapshot holds an ellipsis, so its fold cannot be planted.
+    verbatim = {category for category in CATEGORIES if category.startswith("ok_quote")}
+    written = {char for planted, _ in _planted(snapshot, verbatim) for char in planted.quote or ""}
+    folds = set(oracle.FOLDS) - {chr(0x2026)}
+    assert folds - written == set()

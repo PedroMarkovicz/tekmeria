@@ -180,8 +180,8 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 This is its output:
 
 <!-- evaluation:start -->
-planted cases: 1275/1275 correct (seed 0, 25 per category; 7 records, 178 passages)
-whole answers: 214/214 correct
+planted cases: 1500/1500 correct (seed 0, 25 per category; 7 records, 178 passages)
+whole answers: 243/243 correct
 
 | Category | Distinct cases | Structured claims | Answer text |
 |---|---|---|---|
@@ -191,12 +191,17 @@ whole answers: 214/214 correct
 | `ok_quote_apostrophe` | 19 | 25/25 | 25/25 |
 | `ok_quote_decomposed` | 2 | 25/25 | 25/25 |
 | `ok_quote_double_marks` | 19 | 25/25 | - |
+| `ok_quote_folded` | 25 | 25/25 | 25/25 |
+| `ok_quote_folded_marks` | 25 | 25/25 | - |
 | `quote_number_changed` | 25 | 25/25 | 25/25 |
 | `quote_decimal_moved` | 25 | 25/25 | 25/25 |
-| `quote_comparison_flipped` | 18 | 25/25 | 25/25 |
+| `quote_comparison_flipped` | 17 | 25/25 | 25/25 |
 | `quote_unit_changed` | 25 | 25/25 | 25/25 |
 | `quote_sign_changed` | 25 | 25/25 | 25/25 |
 | `quote_case_changed` | 25 | 25/25 | 25/25 |
+| `quote_accent_added` | 25 | 25/25 | 25/25 |
+| `quote_compatibility_form` | 25 | 25/25 | 25/25 |
+| `quote_space_removed` | 25 | 25/25 | 25/25 |
 | `quote_negated` | 25 | 25/25 | 25/25 |
 | `quote_word_swapped` | 25 | 25/25 | 25/25 |
 | `forged_check_code` | 25 | 25/25 | 25/25 |
@@ -205,7 +210,7 @@ whole answers: 214/214 correct
 | `forged_bare` | 25 | - | 25/25 |
 | `malformed` | 25 | 25/25 | 25/25 |
 | `malformed_with_note` | 25 | 25/25 | 25/25 |
-| `withdrawn_path` | 25 | 25/25 | 25/25 |
+| `withdrawn_path` | 24 | 25/25 | 25/25 |
 | `withdrawn_record` | 25 | 25/25 | 25/25 |
 | `unavailable` | 9 | 25/25 | 25/25 |
 | `retracted_cited` | 5 | 25/25 | 25/25 |
@@ -219,25 +224,25 @@ whole answers: 214/214 correct
 | `forged` | 200 | 200 | 1.000 | 1.000 |
 | `unavailable` | 50 | 50 | 1.000 | 1.000 |
 | `withdrawn` | 100 | 100 | 1.000 | 1.000 |
-| `quote_mismatch` | 425 | 425 | 1.000 | 1.000 |
-| `ok` | 425 | 425 | 1.000 | 1.000 |
+| `quote_mismatch` | 575 | 575 | 1.000 | 1.000 |
+| `ok` | 500 | 500 | 1.000 | 1.000 |
 
 | Whole answers | Correct | Planted overall verdicts |
 |---|---|---|
-| mixed | 163/163 | `fail` 121, `incomplete` 7, `pass` 1, `warn` 34 |
+| mixed | 188/188 | `fail` 129, `incomplete` 11, `pass` 1, `warn` 47 |
 | clean | 25/25 | `pass` 25 |
-| paired | 26/26 | `fail` 7, `incomplete` 1, `pass` 17, `warn` 1 |
+| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 21, `warn` 1 |
 
 | Record | Planted citations |
 |---|---|
-| nct:NCT04363697 | 167 |
+| nct:NCT04363697 | 193 |
 | outside the snapshot | 75 |
-| pmcid:PMC13425182 | 27 |
-| pmid:30831578 | 22 |
+| pmcid:PMC13425182 | 43 |
+| pmid:30831578 | 28 |
 | pmid:42530928 | 2 |
 | pmid:9500320 | 25 |
 | ppr:PPR1297067 | 25 |
-| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 357 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 434 |
 <!-- evaluation:end -->
 
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.

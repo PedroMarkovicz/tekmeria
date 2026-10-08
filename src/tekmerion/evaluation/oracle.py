@@ -19,7 +19,7 @@ _HANDLE = re.compile(
     r"/[a-z0-9_]+(?:\.[a-z0-9_]+)*)~(?P<check>[0-9a-hjkmnp-tv-z]{5})$"
 )
 # Spec 4.5 step 3 (docs/CONTRACT.md section 3): typographic variants, folded for comparison.
-_FOLDS = {
+FOLDS = {
     **dict.fromkeys(map(chr, (0x2018, 0x2019, 0x201A, 0x201B)), "'"),
     **dict.fromkeys(map(chr, (0x201C, 0x201D, 0x201E, 0x201F)), '"'),
     **dict.fromkeys(map(chr, (0x2010, 0x2011, 0x2013, 0x2014, 0x2212)), "-"),
@@ -54,7 +54,7 @@ def is_genuine(key: bytes, handle: str) -> bool:
 def fold(text: str) -> str:
     """Spec 4.5: NFC, whitespace runs to one space, ends trimmed, then the typographic folds."""
     spaced = " ".join(unicodedata.normalize("NFC", text).split())
-    return " ".join("".join(_FOLDS.get(char, char) for char in spaced).split())
+    return " ".join("".join(FOLDS.get(char, char) for char in spaced).split())
 
 
 def quote_matches(quote: str, passage: str) -> bool:
