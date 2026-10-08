@@ -79,6 +79,11 @@ def _error(code: str, message: str, *, retryable: bool, hint: str | None = None)
     )
 
 
+# Error codes whose message never echoes the request. Other messages can carry a query, a
+# record ID or an upstream URL, so their log line keeps only the code.
+_LOGGED_MESSAGES = frozenset({"upstream_unavailable", "deadline_exceeded", "internal"})
+
+
 def _ms_since(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
 
@@ -129,8 +134,8 @@ async def _run(ctx: Context[Any, Any], tool: str, work: Work) -> CallToolResult:
         ms=_ms_since(started),
         upstream=calls,
         code=error.code,
-        message=error.message,
         exc_info=failure,
+        **({"message": error.message} if error.code in _LOGGED_MESSAGES else {}),
     )
     return CallToolResult(
         content=[TextContent(type="text", text=render.render_error(error))],

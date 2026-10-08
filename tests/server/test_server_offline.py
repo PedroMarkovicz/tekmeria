@@ -188,3 +188,15 @@ async def test_an_internal_error_is_logged_as_an_error_with_its_traceback(
     (line,) = [line for line in lines if line.get("tool") == "describe_contract"]
     assert line["level"] == "error"
     assert "RuntimeError: boom" in line["exception"]
+
+
+async def test_an_error_echoing_the_request_keeps_it_out_of_the_log(
+    offline: Client, capsys: pytest.CaptureFixture[str]
+) -> None:
+    capsys.readouterr()
+    result = await offline.call_tool("fetch_passages", {"record_ids": ["pmid:my private query"]})
+    assert result.is_error
+    err = capsys.readouterr().err
+    assert "my private query" not in err
+    (line,) = [json.loads(line) for line in err.splitlines() if '"fetch_passages"' in line]
+    assert line["code"] == "invalid_input" and "message" not in line
