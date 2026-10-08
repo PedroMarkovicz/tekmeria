@@ -22,22 +22,29 @@ def default_key_path() -> Path:
     return Path(user_data_dir("tekmerion", appauthor=False)) / "handle.key"
 
 
+def _write_new(path: Path, data: bytes) -> None:
+    """Create `path`, which must not exist, readable by its owner only (on POSIX)."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    with os.fdopen(os.open(path, flags, 0o600), "wb") as file:
+        file.write(data)
+
+
 def _create_key_file(path: Path) -> None:
     """Write a new random key unless one exists. The key goes to a temporary file that is
     linked into place only if the name is still free, so no process reads a half-written
-    key, and a key another process created first is never replaced."""
+    key, and a key another process created first is never replaced. Both files are created
+    readable by their owner only: the key can mint handles."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    key = secrets.token_bytes(MIN_KEY_BYTES)
     temporary = path.with_name(f"{path.name}.{secrets.token_hex(8)}.tmp")
-    temporary.write_bytes(secrets.token_bytes(MIN_KEY_BYTES))
-    if os.name == "posix":
-        temporary.chmod(0o600)
+    _write_new(temporary, key)
     try:
         os.link(temporary, path)
     except FileExistsError:
         pass  # another process won; its key is the one to use
     except OSError:  # no hard links on this drive: create the file exclusively instead
-        with contextlib.suppress(FileExistsError), path.open("xb") as file:
-            file.write(temporary.read_bytes())
+        with contextlib.suppress(FileExistsError):
+            _write_new(path, key)
     finally:
         temporary.unlink()
 

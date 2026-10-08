@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -66,3 +68,40 @@ def test_a_key_is_created_where_hard_links_are_not_supported(
     key = load_handle_key(Settings(), demo=False, key_path=path)
     assert len(key) == 32 and path.read_bytes() == key
     assert [p.name for p in tmp_path.iterdir()] == ["handle.key"]
+
+
+def _no_links(source: object, target: object) -> None:
+    raise OSError("hard links are not supported on this drive")
+
+
+@pytest.mark.parametrize("links", [True, False])
+def test_every_key_file_is_opened_owner_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, links: bool
+) -> None:
+    modes: list[int] = []
+    real_open = os.open
+
+    def recording_open(path: object, flags: int, mode: int = 0o777, *args: object) -> int:
+        modes.append(mode)
+        return real_open(path, flags, mode, *args)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("os.open", recording_open)
+    if not links:
+        monkeypatch.setattr("os.link", _no_links)
+    load_handle_key(Settings(), demo=False, key_path=tmp_path / "handle.key")
+    assert modes and all(mode == 0o600 for mode in modes)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="file modes are a POSIX matter")
+@pytest.mark.parametrize("links", [True, False])
+def test_a_new_key_file_is_readable_by_its_owner_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, links: bool
+) -> None:
+    if not links:
+        monkeypatch.setattr("os.link", _no_links)
+    previous = os.umask(0o022)
+    try:
+        load_handle_key(Settings(), demo=False, key_path=tmp_path / "handle.key")
+    finally:
+        os.umask(previous)
+    assert stat.S_IMODE((tmp_path / "handle.key").stat().st_mode) == 0o600
