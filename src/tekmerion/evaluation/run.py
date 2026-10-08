@@ -13,7 +13,15 @@ from tekmerion.contract.audit_models import VERDICTS, CitationIn, ClaimIn, Verdi
 from tekmerion.contract.citations import parse_answer_text
 from tekmerion.contract.handles import HandleCodec
 from tekmerion.evaluation.answers import Answer, compose_answers, expected_result
-from tekmerion.evaluation.cases import CATEGORIES, MODES, Case, Mode, render_text
+from tekmerion.evaluation.cases import (
+    CATEGORIES,
+    MODES,
+    Case,
+    Mode,
+    generate_cases,
+    render_text,
+)
+from tekmerion.evaluation.snapshot import Snapshot, SnapshotResolver
 
 MAX_FAILURES_SHOWN = 20
 MISSED, UNPLANTED = "missed", "unplanted"
@@ -237,6 +245,21 @@ async def run_evaluation(
         records=dict(sorted(records.items())),
         answers=list(answer_scores.values()),
         failures=failures,
+    )
+
+
+async def evaluate_snapshot(
+    snapshot: Snapshot, key: bytes, *, seed: int, per_category: int
+) -> EvaluationReport:
+    """The whole evaluation on a loaded snapshot: generate the cases and audit them."""
+    return await run_evaluation(
+        generate_cases(snapshot, key, seed=seed, per_category=per_category),
+        codec=HandleCodec(key),
+        resolver=SnapshotResolver(snapshot),
+        seed=seed,
+        per_category=per_category,
+        snapshot_records=sorted(snapshot.records),
+        snapshot_passages=len(snapshot.passages()),
     )
 
 

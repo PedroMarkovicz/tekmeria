@@ -27,6 +27,8 @@ jobs:
         run: uv run tekmerion demo
       - name: The audit must give every planted case its verdict
         run: uv run tekmerion evaluate
+      - name: The evaluation must catch every injected fault it can
+        run: uv run python -m tekmerion.evaluation.faults --per-category 8
       - name: The wheel ships the audit view
         run: |
           uv build --wheel --out-dir dist

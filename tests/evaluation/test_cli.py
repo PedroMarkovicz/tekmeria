@@ -38,7 +38,7 @@ def test_evaluate_fails_when_a_case_gets_the_wrong_verdict(monkeypatch: pytest.M
     def broken(snapshot: Snapshot) -> EverythingDown:
         return EverythingDown()
 
-    monkeypatch.setattr("tekmerion.__main__.SnapshotResolver", broken)
+    monkeypatch.setattr("tekmerion.evaluation.run.SnapshotResolver", broken)
     with pytest.raises(SystemExit) as exited:
         main(["evaluate", "--per-category", "1"])
     assert exited.value.code == 1

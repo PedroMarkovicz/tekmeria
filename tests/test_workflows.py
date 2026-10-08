@@ -43,3 +43,9 @@ def test_the_mutation_run_is_on_request_only() -> None:
     assert "on:\n  workflow_dispatch:\n\npermissions" in text
     assert "timeout-minutes: 30" in text
     assert "run: uv run python -m tekmerion.evaluation.mutants" in text
+
+
+def test_ci_runs_the_injected_faults() -> None:
+    # Eight cases per category cycle through every fold variant at least once.
+    text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+    assert "run: uv run python -m tekmerion.evaluation.faults --per-category 8" in text

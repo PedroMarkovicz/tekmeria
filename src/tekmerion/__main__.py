@@ -16,11 +16,9 @@ from mcp import Client
 from platformdirs import user_cache_dir
 from pydantic import SecretStr
 
-from tekmerion.contract.handles import HandleCodec
 from tekmerion.demo.scenario import FIXTURES_DIR, record_scenario, run_demo
-from tekmerion.evaluation.cases import generate_cases
-from tekmerion.evaluation.run import render_report, run_evaluation
-from tekmerion.evaluation.snapshot import SnapshotResolver, load_snapshot
+from tekmerion.evaluation.run import evaluate_snapshot, render_report
+from tekmerion.evaluation.snapshot import load_snapshot
 from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport
 from tekmerion.infra.keys import DEMO_KEY, load_handle_key
 from tekmerion.infra.logging import configure_logging
@@ -99,15 +97,8 @@ async def _evaluate(seed: int, per_category: int, json_out: Path | None) -> bool
     config = demo_config()
     async with open_runtime(config) as app:
         snapshot = await load_snapshot(app.service)
-    codec = HandleCodec(config.handle_key)
-    report = await run_evaluation(
-        generate_cases(snapshot, config.handle_key, seed=seed, per_category=per_category),
-        codec=codec,
-        resolver=SnapshotResolver(snapshot),
-        seed=seed,
-        per_category=per_category,
-        snapshot_records=sorted(snapshot.records),
-        snapshot_passages=len(snapshot.passages()),
+    report = await evaluate_snapshot(
+        snapshot, config.handle_key, seed=seed, per_category=per_category
     )
     print(render_report(report))
     if json_out is not None:
