@@ -2,8 +2,8 @@ name: pages
 
 # Publishes the audit view with the offline demo's report (spec 10).
 # Manual only for now: Pages needs a public repository (or a paid plan). When the
-# repository is public and Pages is set to "GitHub Actions", add this trigger, which
-# deploys only after CI passed on main:
+# repository is public and Pages is set to "GitHub Actions", add this trigger. It deploys
+# only after CI passed on a push to main, and deploys the commit CI tested:
 #   workflow_run:
 #     workflows: [ci]
 #     types: [completed]
@@ -22,10 +22,15 @@ concurrency:
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true

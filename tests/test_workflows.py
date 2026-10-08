@@ -16,3 +16,9 @@ def test_every_workflow_declares_its_permissions(name: str) -> None:
 def test_a_pages_deployment_is_never_cancelled_mid_way() -> None:
     text = (WORKFLOWS / "pages.yml").read_text(encoding="utf-8")
     assert "cancel-in-progress: false" in text
+
+
+def test_pages_deploys_the_commit_ci_tested_after_a_push() -> None:
+    text = (WORKFLOWS / "pages.yml").read_text(encoding="utf-8")
+    assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in text
+    assert "github.event.workflow_run.event == 'push'" in text
