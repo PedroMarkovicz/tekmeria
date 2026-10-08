@@ -137,11 +137,11 @@ def _title(result: dict[str, Any], brands: list[str], generics: list[str]) -> st
 
 
 def label_record_id(result: dict[str, Any]) -> str:
-    return f"setid:{result['set_id']}@{result['version']}"
+    return f"setid:{str(result['set_id']).lower()}@{result['version']}"
 
 
 def _record(result: dict[str, Any], retrieved_at: datetime) -> Record:
-    set_id, version = str(result["set_id"]), str(result["version"])
+    set_id, version = str(result["set_id"]).lower(), str(result["version"])
     openfda = result.get("openfda") or {}
     summary = _summary(result)
     pharm_class: list[JsonValue] = [

@@ -100,7 +100,16 @@ async def test_load_batches_ids_and_reports_missing() -> None:
     assert outcome.bundles["NCT00000001"].record.record_id == "nct:NCT00000001@2025-01-02"
 
 
-@pytest.mark.parametrize("body", ["not json", '{"studies": {}}', '{"studies": [{}]}'])
+@pytest.mark.parametrize(
+    "body",
+    [
+        "not json",
+        '{"studies": {}}',
+        '{"studies": [{}]}',
+        '{"studies": ["NCT00000001"]}',
+        '{"studies": [{"protocolSection": []}]}',
+    ],
+)
 async def test_unexpected_bodies_are_upstream_errors(body: str) -> None:
     transport = httpx.MockTransport(lambda request: httpx.Response(200, text=body))
     async with Cache(":memory:") as cache:
@@ -124,3 +133,14 @@ async def test_an_obsolete_alias_finds_the_merged_study() -> None:
         await upstream.aclose()
     assert outcome.missing == []
     assert outcome.bundles["NCT04707222"].record.record_id == "nct:NCT05024188@2025-01-02"
+
+
+async def test_a_query_the_registry_rejects_is_invalid_input() -> None:
+    message = "Error parsing query in Other terms: Unknown area name: `Foo`"
+    transport = httpx.MockTransport(lambda request: httpx.Response(400, text=message))
+    async with Cache(":memory:") as cache:
+        upstream = Upstream(clinicaltrials_host(), cache=cache, transport=transport)
+        with pytest.raises(InvalidInputError, match="Unknown area name") as caught:
+            await ClinicalTrialsAdapter(upstream).search(TrialQuery(terms="AREA[Foo]("), token=None)
+        await upstream.aclose()
+    assert caught.value.hint

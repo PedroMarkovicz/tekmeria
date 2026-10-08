@@ -111,3 +111,10 @@ def test_a_label_without_openfda_names_is_titled_from_its_product_data(
     hit = label_hit(result, NOW)
     assert hit.title == title
     assert hit.brand_names == [] and hit.generic_names == []
+
+
+def test_set_ids_are_lower_case_in_the_record() -> None:
+    upper = {**LABEL, "set_id": LABEL["set_id"].upper()}
+    record = parse_label(upper, NOW).record
+    assert record.record_id == "setid:0cbce382-9c88-4f58-ae0f-532a841e8f95@20"
+    assert record.ids.setid == "0cbce382-9c88-4f58-ae0f-532a841e8f95"

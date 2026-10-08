@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from medcite.infra.http import HostConfig, Upstream, UpstreamResponseError
 from medcite.sources.base import FetchOutcome
@@ -129,10 +129,19 @@ def _check(body: str) -> None:
     studies = data.get("studies") if isinstance(data, dict) else None
     if not isinstance(studies, list):
         raise UpstreamResponseError(200, "ClinicalTrials.gov response has no studies list")
-    for study in studies:
-        ident = ((study or {}).get("protocolSection") or {}).get("identificationModule") or {}
-        if not ident.get("nctId"):
+    for study in cast("list[object]", studies):
+        if not _nct_id(study):
             raise UpstreamResponseError(200, "ClinicalTrials.gov study has no nctId")
+
+
+def _nct_id(study: object) -> object:
+    """protocolSection.identificationModule.nctId, or None if any level is not an object."""
+    value = study
+    for key in ("protocolSection", "identificationModule", "nctId"):
+        if not isinstance(value, dict):
+            return None
+        value = cast("dict[str, object]", value).get(key)
+    return value
 
 
 def nct_of(study: dict[str, Any]) -> str:
@@ -166,7 +175,18 @@ class ClinicalTrialsAdapter:
         }
         if token:
             params["pageToken"] = token
-        body = await self.upstream.get_text("studies", params, ttl_s=SEARCH_TTL_S, validate=_check)
+        try:
+            body = await self.upstream.get_text(
+                "studies", params, ttl_s=SEARCH_TTL_S, validate=_check
+            )
+        except UpstreamResponseError as exc:
+            if exc.status != 400:
+                raise
+            # The registry rejected the query itself; its message says what to fix.
+            raise InvalidInputError(
+                f"ClinicalTrials.gov rejected the query: {exc}",
+                hint="Use plain words, or check the ClinicalTrials.gov search syntax.",
+            ) from exc
         data = json.loads(body)
         return TrialsPage(
             studies=list(data["studies"]),
