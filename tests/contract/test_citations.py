@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from medcite.contract.citations import parse_answer_text
 
 H1 = "pmid:30831578/abstract.7~7hq3k"
@@ -145,3 +148,55 @@ def test_a_label_with_a_citation_stays_a_claim() -> None:
 
 def test_emphasis_markers_are_removed_from_sentences() -> None:
     assert _claims(f"Risk was **not** raised [{H1}].") == [("Risk was not raised.", [H1])]
+
+
+def test_a_bracketed_url_is_plain_text() -> None:
+    (claim,) = parse_answer_text("See the registry [https://clinicaltrials.gov/study/NCT1].")
+    assert claim.citations == []
+    assert claim.sentence == "See the registry [https://clinicaltrials.gov/study/NCT1]."
+
+
+@pytest.mark.parametrize("closing", [".", ",", ";", ":"])
+def test_punctuation_after_a_handle_is_not_part_of_it(closing: str) -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{H1}{closing}]")
+    assert [c.handle for c in claim.citations] == [H1]
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        f"{H1} 'hazard ratio 0.93'",
+        f"{H1} \u2018hazard ratio 0.93\u2019",
+        f'{H1}"hazard ratio 0.93"',
+        f"`{H1}`'hazard ratio 0.93'",
+    ],
+)
+def test_quote_forms_models_write(entry: str) -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{entry}].")
+    assert [(c.handle, c.quote) for c in claim.citations] == [(H1, "hazard ratio 0.93")]
+
+
+def test_an_apostrophe_inside_a_single_quoted_quote() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{H1} 'the children's cohort'].")
+    assert claim.citations[0].quote == "the children's cohort"
+
+
+@pytest.mark.parametrize("separator", [",", ";"])
+def test_a_single_quoted_quote_may_contain_a_separator(separator: str) -> None:
+    text = f"Risk was unchanged [{H1} 'hazard ratio{separator} 0.93', {H2}]."
+    (claim,) = parse_answer_text(text)
+    assert [(c.handle, c.quote) for c in claim.citations] == [
+        (H1, f"hazard ratio{separator} 0.93"),
+        (H2, None),
+    ]
+
+
+def test_a_handle_whose_quote_holds_brackets_is_still_audited() -> None:
+    (claim,) = parse_answer_text(f"Risk was unchanged [{H1} 'range [3-10]'].")
+    assert H1 in [c.handle for c in claim.citations]
+
+
+def test_citations_moved_to_the_previous_sentence_obey_the_limit() -> None:
+    ten = ", ".join([H2] * 10)
+    with pytest.raises(ValidationError):
+        parse_answer_text(f"First claim [{H1}]. [{ten}] Second claim.")

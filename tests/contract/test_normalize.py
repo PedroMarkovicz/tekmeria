@@ -1,4 +1,4 @@
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from medcite.contract.normalize import (
@@ -73,6 +73,24 @@ def test_every_substring_of_a_passage_matches(text: str, data: st.DataObject) ->
     quote = passage[start:end]
     if quote.strip():
         assert quote_in_passage(quote, passage)
+
+
+# Letters, digits and spaces: folding leaves them alone, so any edit is a real change.
+PLAIN = "abcdefghij0123456789"
+
+
+@given(st.text(alphabet=PLAIN + " ", min_size=1, max_size=120), st.data())
+def test_an_edited_substring_does_not_match(text: str, data: st.DataObject) -> None:
+    passage = normalize_text(text)
+    assume(passage)
+    start = data.draw(st.integers(min_value=0, max_value=len(passage) - 1))
+    end = data.draw(st.integers(min_value=start + 1, max_value=len(passage)))
+    at = data.draw(st.integers(min_value=start, max_value=end - 1))
+    assume(passage[at] != " ")
+    replacement = data.draw(st.sampled_from(PLAIN).filter(lambda c: c != passage[at]))
+    quote = passage[start:at] + replacement + passage[at + 1 : end]
+    assume(normalize_text(quote) not in passage)  # the edit did not recreate other text
+    assert not quote_in_passage(quote, passage)
 
 
 def test_closest_match_stays_fast_for_long_quotes() -> None:

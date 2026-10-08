@@ -13,16 +13,26 @@ with warnings.catch_warnings():
 _OPEN, _CLOSE = "\u27e6", "\u27e7"
 # A bracket group may contain quoted spans, and a quote may contain brackets: "(range [3-10])".
 _GROUP_RE = re.compile(r'\[((?:[^\[\]"“”]|["“][^"“”]*["”])*)\]')
-# Entries are separated by ";" or "," outside quotes (models often use commas).
-_ENTRY_SPLIT_RE = re.compile(r'(?:[^;,"\u201c\u201d]|["\u201c][^"\u201c\u201d]*["\u201d])+')
+# Entries are separated by ";" or "," outside quotes (models often use commas). A single
+# quote mark opens a quote only after a space and closes it only before a separator or the
+# end, so an apostrophe ("children's") never does.
+_ENTRY_SPLIT_RE = re.compile(
+    r"(?:(?<=\s)['\u2018].*?['\u2019](?=\s*(?:[;,]|$))"
+    r'|["\u201c][^"\u201c\u201d]*["\u201d]'
+    r'|[^;,"\u201c\u201d])+'
+)
 _WRAPPING = "`*_"
-_QUOTE_OPENERS, _QUOTE_CLOSERS = '"\u201c', '"\u201d'
+_QUOTE_OPENERS, _QUOTE_CLOSERS = "\"\u201c'\u2018", "\"\u201d'\u2019"
+# A handle ends at whitespace or an opening quote mark; it never contains either.
+_HANDLE_THEN_REST_RE = re.compile(r"([^\s\"\u201c\u201d'\u2018\u2019]+)\s*(.*)", re.DOTALL)
+# A handle never ends in sentence punctuation (its check code comes last).
+_TRAILING_PUNCT = ".,;:!?"
 _MAX_HANDLE = 300
 # Backstop: a handle-shaped token outside any bracket group is still a citation.
 _BARE_HANDLE_RE = re.compile(
     r"(?<![\w:/~])(?:pmid|pmcid|ppr|nct|setid):[A-Za-z0-9@./_-]+~[0-9a-hjkmnp-tv-z]{5}(?![0-9a-z])"
 )
-_CITE_TOKEN_RE = re.compile(r"^[a-z]+:\S+")
+_CITE_TOKEN_RE = re.compile(r"^[a-z]+:(?!//)\S+")  # scheme:id, but not a URL
 _PLACEHOLDER_RE = re.compile(_OPEN + r"(\d+)" + _CLOSE)
 _LEADING_PLACEHOLDERS_RE = re.compile(r"^(?:\s*" + _OPEN + r"\d+" + _CLOSE + r")+")
 _SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?)])")
@@ -40,9 +50,18 @@ def _entries(group_body: str) -> list[str]:
     return [entry for entry in entries if entry]
 
 
+def _split_entry(entry: str) -> tuple[str, str]:
+    """(handle, rest) of an entry. The handle is unwrapped from markdown such as `code` or
+    **bold** and loses trailing punctuation; the rest may follow without a space."""
+    match = _HANDLE_THEN_REST_RE.match(entry)
+    if match is None:  # the entry opens with a quote mark: no handle to unwrap
+        return entry, ""
+    handle = match.group(1).lstrip(_WRAPPING).rstrip(_WRAPPING + _TRAILING_PUNCT)
+    return handle, match.group(2).strip()
+
+
 def _first_token(entry: str) -> str:
-    """The handle part of an entry, unwrapped from markdown such as `code` or **bold**."""
-    return entry.split(maxsplit=1)[0].strip(_WRAPPING)
+    return _split_entry(entry)[0]
 
 
 def _citation(entry: str) -> CitationIn:
@@ -50,9 +69,8 @@ def _citation(entry: str) -> CitationIn:
 
     Never raises: an entry that cannot be read becomes a (malformed) handle.
     """
-    parts = entry.split(maxsplit=1)
-    handle = _first_token(entry)[:_MAX_HANDLE]
-    rest = parts[1].strip() if len(parts) > 1 else ""
+    handle, rest = _split_entry(entry)
+    handle = handle[:_MAX_HANDLE]
     if not rest:
         return CitationIn(handle=handle)
     if len(rest) >= 2 and rest[0] in _QUOTE_OPENERS and rest[-1] in _QUOTE_CLOSERS:
@@ -85,6 +103,9 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
     token outside any group still counts, so no handle can vanish. Placeholders
     that open a sentence (citations written after the full stop) belong to the
     previous sentence. Markdown headings and bold lead-ins are sentences of their own.
+
+    Raises pydantic.ValidationError when a sentence exceeds a limit, including citations
+    moved onto it from the start of the next sentence.
     """
     groups: list[list[CitationIn]] = []
 
@@ -100,20 +121,21 @@ def parse_answer_text(text: str) -> list[ClaimIn]:
         return f"{_OPEN}{len(groups) - 1}{_CLOSE}"
 
     masked = _unwrap_markdown(_BARE_HANDLE_RE.sub(mask_bare, _GROUP_RE.sub(mask, text)))
-    claims: list[ClaimIn] = []
+    drafts: list[tuple[str, list[CitationIn]]] = []
     segments = cast("list[str]", _SEGMENTER.segment(masked))  # pyright: ignore[reportUnknownMemberType]
     for raw in segments:
         sentence = raw
         leading = _LEADING_PLACEHOLDERS_RE.match(sentence)
-        if leading and claims:
+        if leading and drafts:
             for index in _PLACEHOLDER_RE.findall(leading.group(0)):
-                claims[-1].citations.extend(groups[int(index)])
+                drafts[-1][1].extend(groups[int(index)])
             sentence = sentence[leading.end() :]
         cleaned = _clean_sentence(sentence)
         cited = [c for index in _PLACEHOLDER_RE.findall(sentence) for c in groups[int(index)]]
-        if not _WORD_RE.search(cleaned) and claims:
-            claims[-1].citations.extend(cited)
+        if not _WORD_RE.search(cleaned) and drafts:
+            drafts[-1][1].extend(cited)
             continue
         if cleaned or cited:
-            claims.append(ClaimIn(sentence=cleaned, citations=cited))
-    return claims
+            drafts.append((cleaned, cited))
+    # Validated last, so citations moved onto a sentence count towards its limit too.
+    return [ClaimIn(sentence=sentence, citations=cited) for sentence, cited in drafts]

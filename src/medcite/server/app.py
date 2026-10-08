@@ -422,6 +422,11 @@ def create_server(config: RuntimeConfig) -> MCPServer[AppContext]:
                 raise InvalidInputError(
                     f"answer exceeds a limit: {exc.errors()[0]['msg']}", hint=AUDIT_LIMITS_HINT
                 ) from exc
+            if not parsed:
+                raise InvalidInputError(
+                    "the answer has no sentences to audit",
+                    hint="Pass the answer text, with its [handle] citations.",
+                )
             report = await audit(parsed, codec=app.codec, resolver=app.service, fail_on=fail_on)
             return report, render.render_audit(report)
 

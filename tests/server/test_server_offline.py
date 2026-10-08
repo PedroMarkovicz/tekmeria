@@ -161,3 +161,13 @@ async def test_answer_over_the_limits_is_invalid_input_with_a_hint(offline: Clie
     assert result.is_error and result.structured_content is not None
     assert result.structured_content["code"] == "invalid_input"
     assert "10 citations" in (result.structured_content["hint"] or "")
+
+
+@pytest.mark.parametrize("args", [{"answer_text": "  "}, {"claims": []}])
+async def test_an_answer_with_nothing_to_audit_is_invalid_input(
+    offline: Client, args: dict[str, object]
+) -> None:
+    result = await offline.call_tool("audit_answer", args)
+    assert result.is_error and result.structured_content is not None
+    assert result.structured_content["code"] == "invalid_input"
+    assert "no sentences" in result.structured_content["message"]
