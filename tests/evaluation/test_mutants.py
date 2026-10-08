@@ -61,38 +61,72 @@ def test_removing_not_keeps_the_truth_value() -> None:
     assert callable(f) and f(0) is False and f(3) is True
 
 
-def test_the_real_code_survives_and_a_broken_quote_check_is_killed() -> None:
+def _index(module: str, change: str) -> int:
+    return [site.change for site in sites(mutants.parse(module), module)].index(change)
+
+
+def test_the_real_code_survives_and_a_broken_quote_check_gives_a_wrong_result() -> None:
     module = "tekmerion.contract.normalize"
-    assert not mutants.is_killed(module, -1, 1)  # index -1: no mutation
-    changes = [site.change for site in sites(mutants.parse(module), module)]
-    assert mutants.is_killed(module, changes.index("In -> NotIn (negated)"), 1)
+    assert mutants.outcome_of(module, -1, 1) == mutants.SURVIVED  # index -1: no mutation
+    broken = _index(module, "In -> NotIn (negated)")
+    assert mutants.outcome_of(module, broken, 1) == mutants.WRONG_RESULT
 
 
-def test_the_report_lists_survivors() -> None:
-    outcomes = [
-        Outcome(module=mutants.TARGETS[0], index=0, line=5, change="Eq -> NotEq", killed=True),
-        Outcome(module=mutants.TARGETS[0], index=1, line=9, change="2 -> 3", killed=False),
-    ]
+def test_a_mutant_that_stops_the_snapshot_loading_is_not_evaluated() -> None:
+    # The evidence service issues every passage's handle with the check code, so a broken
+    # check code stops the snapshot from loading: the evaluation never gets to judge it.
+    module = "tekmerion.contract.handles"
+    assert mutants.outcome_of(module, _index(module, "31 -> 32"), 1) == mutants.NOT_LOADED
+
+
+def _outcome(index: int, kind: str) -> Outcome:
+    return Outcome(module=mutants.TARGETS[0], index=index, line=index, change="c", kind=kind)
+
+
+def test_the_report_splits_kills_by_kind_and_leaves_unloaded_mutants_out_of_the_score() -> None:
+    kinds = [mutants.WRONG_RESULT, mutants.CRASH, mutants.TIMEOUT, mutants.SURVIVED]
+    outcomes = [_outcome(i, kind) for i, kind in enumerate([*kinds, mutants.NOT_LOADED])]
     text = render(outcomes)
-    assert text.startswith("mutation score: 1/2 mutants killed by the evaluation")
-    assert f"- `{mutants.TARGETS[0]}` line 9: 2 -> 3" in text
+    assert text.splitlines()[0] == (
+        "mutation score: 3/4 mutants killed by the evaluation "
+        "(1 by a wrong result, 1 by a crash, 1 by a timeout)"
+    )
+    assert text.splitlines()[1] == "not evaluated: 1 (the snapshot could not load)"
+    assert f"| `{mutants.TARGETS[0]}` | 5 | 1 | 1 | 1 | 1 | 1 |" in text
+    assert f"- `{mutants.TARGETS[0]}` line 3: c" in text  # the survivor is listed
+    assert f"- `{mutants.TARGETS[0]}` line 4: c" in text  # and so is the unloaded mutant
 
 
 def test_a_failing_evaluation_stops_the_run_before_any_mutant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Otherwise every mutant would count as killed, and the score would read 100%.
-    monkeypatch.setattr(mutants, "is_killed", lambda module, index, per_category: True)
-    with pytest.raises(RuntimeError, match="fails without any mutant"):
+    monkeypatch.setattr(mutants, "outcome_of", lambda module, index, per_category: "crash")
+    with pytest.raises(RuntimeError, match="reloaded and unchanged"):
         mutants.run_all(per_category=1, workers=1)
 
 
-def test_a_mutant_that_hangs_counts_as_killed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_every_target_is_checked_unchanged_before_any_mutant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Reloading a module can break identity checks elsewhere; each target is checked alone.
+    broken = mutants.TARGETS[-1]
+
+    def outcome(module: str, index: int, per_category: int) -> str:
+        return mutants.CRASH if module == broken else mutants.SURVIVED
+
+    monkeypatch.setattr(mutants, "outcome_of", outcome)
+    with pytest.raises(RuntimeError, match=broken):
+        mutants.run_all(per_category=1, workers=1)
+
+
+def test_a_mutant_that_hangs_counts_as_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     def hangs(*args: object, **kwargs: object) -> None:
         raise subprocess.TimeoutExpired(cmd="evaluate", timeout=mutants.TIMEOUT_SECONDS)
 
     monkeypatch.setattr(mutants.subprocess, "run", hangs)
-    assert mutants.is_killed("tekmerion.contract.normalize", 0, 1)
+    assert mutants.outcome_of("tekmerion.contract.normalize", 0, 1) == mutants.TIMEOUT
+    assert _outcome(0, mutants.TIMEOUT).killed
 
 
 def test_handle_parsing_only_the_service_uses_is_out_of_scope() -> None:

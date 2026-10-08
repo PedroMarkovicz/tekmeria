@@ -1,10 +1,12 @@
 """How much of the audit the evaluation exercises: a mutation score (spec section 16.11).
 
 Each mutant changes one operator or constant inside a function of the citation contract's
-code. A mutant is killed when `tekmerion evaluate` no longer passes with it, and survives when
-the evaluation cannot tell it from the real code. A survivor is either a fault the evaluation
-misses or an equivalent mutant (one that changes no behavior); the survivors are listed so a
-reader can tell which.
+code. A mutant is killed when the evaluation then reports a wrong result, crashes, or runs past
+the time limit, and survives when the evaluation cannot tell it from the real code. A survivor
+is either a fault the evaluation misses or an equivalent mutant (one that changes no behavior);
+the survivors are listed so a reader can tell which. A mutant that stops the snapshot from
+loading is not evaluated: the evaluation never gets to judge it, so it is left out of the score.
+String and regular-expression constants are not mutated.
 
     python -m tekmerion.evaluation.mutants [--per-category N] [--workers N] [--json-out PATH]
 """
@@ -43,6 +45,16 @@ OUT_OF_SCOPE = {
     "tekmerion.contract.normalize": {"closest_match"},
 }
 TIMEOUT_SECONDS = 300  # a mutant that hangs the evaluation counts as killed
+# What happened to a mutant. The child process reports it as its exit code.
+SURVIVED, WRONG_RESULT, CRASH, NOT_LOADED, TIMEOUT = (
+    "survived",
+    "wrong result",
+    "crash",
+    "not loaded",
+    "timeout",
+)
+_EXIT_CODES = {SURVIVED: 0, WRONG_RESULT: 1, CRASH: 2, NOT_LOADED: 3}
+KILLS = (WRONG_RESULT, CRASH, TIMEOUT)
 _NEGATED: dict[type[ast.cmpop], type[ast.cmpop]] = {
     ast.Eq: ast.NotEq,
     ast.NotEq: ast.Eq,
@@ -154,9 +166,9 @@ def parse(module: str) -> ast.Module:
     return ast.parse(_source(module).read_text(encoding="utf-8"))
 
 
-def _run_mutant(module: str, index: int, per_category: int) -> bool:
+def _run_mutant(module: str, index: int, per_category: int) -> str:
     """In a fresh interpreter: load `module` with mutation `index`, then run the evaluation.
-    True when the evaluation still passes."""
+    Returns what happened: SURVIVED, WRONG_RESULT, CRASH or NOT_LOADED."""
     tree = parse(module)
     if index >= 0:
         sites(tree, module)[index].apply()
@@ -170,10 +182,29 @@ def _run_mutant(module: str, index: int, per_category: int) -> bool:
     exec(compile(tree, str(_source(module)), "exec"), loaded.__dict__)
     setattr(package, name, loaded)
 
-    from tekmerion.__main__ import _evaluate  # imported after the mutant is in place
+    # Imported after the mutant is in place, so they see it.
+    from tekmerion.__main__ import demo_config
+    from tekmerion.evaluation.run import evaluate_snapshot
+    from tekmerion.evaluation.snapshot import load_snapshot
+    from tekmerion.server.runtime import open_runtime
+
+    async def run() -> str:
+        config = demo_config()
+        try:
+            async with open_runtime(config) as app:
+                snapshot = await load_snapshot(app.service)
+        except Exception:  # the mutant broke the evidence service, not a planted case
+            return NOT_LOADED
+        try:
+            report = await evaluate_snapshot(
+                snapshot, config.handle_key, seed=0, per_category=per_category
+            )
+        except Exception:
+            return CRASH
+        return SURVIVED if report.passed() else WRONG_RESULT
 
     with contextlib.redirect_stdout(io.StringIO()):
-        return anyio.run(_evaluate, 0, per_category, None)
+        return anyio.run(run)
 
 
 @dataclass(frozen=True)
@@ -182,47 +213,67 @@ class Outcome:
     index: int
     line: int
     change: str
-    killed: bool
+    kind: str  # SURVIVED, WRONG_RESULT, CRASH, NOT_LOADED or TIMEOUT
+
+    @property
+    def killed(self) -> bool:
+        return self.kind in KILLS
 
 
-def is_killed(module: str, index: int, per_category: int) -> bool:
-    """Run one mutant in a subprocess; True when it is killed."""
+def outcome_of(module: str, index: int, per_category: int) -> str:
+    """Run one mutant in a subprocess and say what happened to it."""
     command = [sys.executable, "-m", "tekmerion.evaluation.mutants", "--mutant", module]
     command += [str(index), "--per-category", str(per_category)]
     try:
         result = subprocess.run(command, capture_output=True, timeout=TIMEOUT_SECONDS, check=False)
     except subprocess.TimeoutExpired:
-        return True
-    return result.returncode != 0
+        return TIMEOUT
+    kinds = {code: kind for kind, code in _EXIT_CODES.items()}
+    return kinds.get(result.returncode, CRASH)  # any other exit is an unexpected crash
 
 
 def run_all(per_category: int, workers: int) -> list[Outcome]:
-    if is_killed(TARGETS[0], -1, per_category):
-        raise RuntimeError("the evaluation fails without any mutant; fix that first")
+    for module in TARGETS:  # reloading a module must not by itself change any result
+        if outcome_of(module, -1, per_category) != SURVIVED:
+            raise RuntimeError(f"the evaluation fails with {module} reloaded and unchanged")
     jobs = [(m, i, site) for m in TARGETS for i, site in enumerate(sites(parse(m), m))]
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        killed = pool.map(lambda job: is_killed(job[0], job[1], per_category), jobs)
+        kinds = pool.map(lambda job: outcome_of(job[0], job[1], per_category), jobs)
         return [
-            Outcome(module=m, index=i, line=site.line, change=site.change, killed=k)
-            for (m, i, site), k in zip(jobs, killed, strict=True)
+            Outcome(module=m, index=i, line=site.line, change=site.change, kind=k)
+            for (m, i, site), k in zip(jobs, kinds, strict=True)
         ]
 
 
 def render(outcomes: list[Outcome]) -> str:
-    killed = sum(o.killed for o in outcomes)
+    evaluated = [o for o in outcomes if o.kind != NOT_LOADED]
+    killed = [o for o in evaluated if o.killed]
+    by_kind = {kind: sum(o.kind == kind for o in killed) for kind in KILLS}
     lines = [
-        f"mutation score: {killed}/{len(outcomes)} mutants killed by the evaluation",
+        f"mutation score: {len(killed)}/{len(evaluated)} mutants killed by the evaluation "
+        f"({by_kind[WRONG_RESULT]} by a wrong result, {by_kind[CRASH]} by a crash, "
+        f"{by_kind[TIMEOUT]} by a timeout)",
+    ]
+    not_loaded = [o for o in outcomes if o.kind == NOT_LOADED]
+    if not_loaded:
+        lines.append(f"not evaluated: {len(not_loaded)} (the snapshot could not load)")
+    lines += [
         "",
-        "| Module | Mutants | Killed |",
-        "|---|---|---|",
+        "| Module | Mutants | Wrong result | Crash | Timeout | Survived | Not evaluated |",
+        "|---|---|---|---|---|---|---|",
     ]
     for module in TARGETS:
         mine = [o for o in outcomes if o.module == module]
-        lines.append(f"| `{module}` | {len(mine)} | {sum(o.killed for o in mine)} |")
-    survivors = [o for o in outcomes if not o.killed]
-    if survivors:
-        lines += ["", "Survivors (a missed fault, or a mutant that changes nothing):"]
-        lines += [f"- `{o.module}` line {o.line}: {o.change}" for o in survivors]
+        counts = [sum(o.kind == kind for o in mine) for kind in (*KILLS, SURVIVED, NOT_LOADED)]
+        lines.append(f"| `{module}` | {len(mine)} | " + " | ".join(map(str, counts)) + " |")
+    for title, kind in (
+        ("Survivors (a missed fault, or a mutant that changes nothing):", SURVIVED),
+        ("Not evaluated (the snapshot could not load):", NOT_LOADED),
+    ):
+        listed = [o for o in outcomes if o.kind == kind]
+        if listed:
+            lines += ["", title]
+            lines += [f"- `{o.module}` line {o.line}: {o.change}" for o in listed]
     return "\n".join(lines)
 
 
@@ -235,7 +286,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if args.mutant:
         module, index = args.mutant
-        sys.exit(0 if _run_mutant(module, int(index), args.per_category) else 1)
+        sys.exit(_EXIT_CODES[_run_mutant(module, int(index), args.per_category)])
     outcomes = run_all(args.per_category, args.workers)
     print(render(outcomes))
     if args.json_out is not None:
