@@ -1,7 +1,9 @@
 """Compact text for clients that only pass text to the model: handle first, one line per item."""
 
+from collections.abc import Mapping
+
 from medcite.contract.audit_models import AuditReport, HandleCheck
-from medcite.contract.models import Signal, ToolError
+from medcite.contract.models import Signal, SourceStatusValue, ToolError
 from medcite.contract.tool_models import (
     ContractDescription,
     FetchResult,
@@ -13,6 +15,12 @@ from medcite.contract.tool_models import (
 
 def _signal(signal: Signal[bool]) -> str:
     return "?" if signal.state != "known" else ("yes" if signal.value else "no")
+
+
+def _status(status: Mapping[str, SourceStatusValue]) -> list[str]:
+    """One line naming the sources that were not ok; none when all were."""
+    not_ok = [f"{name}={value}" for name, value in status.items() if value != "ok"]
+    return ["source_status: " + ", ".join(not_ok)] if not_ok else []
 
 
 def render_search(result: LiteratureSearchResult) -> str:
@@ -27,7 +35,9 @@ def render_search(result: LiteratureSearchResult) -> str:
             f"{hit.title_handle or hit.record_id}  {hit.title} ({hit.venue or 'unknown venue'}, "
             f"{date}) designs={designs} peer_reviewed={_signal(hit.peer_reviewed)}"
             + ("  RETRACTED" if retracted else "")
+            + ("" if hit.title_handle else "  (no handle: cite after fetch_passages)")
         )
+    lines += _status(result.source_status)
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
     return "\n".join(lines)
@@ -44,6 +54,7 @@ def render_trials(result: TrialSearchResult) -> str:
             f"{hit.record_id}  {hit.title} ({hit.status or 'status unknown'}, {phases}, "
             f"{size}, {posted}){pmids}"
         )
+    lines += _status(result.source_status)
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
     return "\n".join(lines)
@@ -58,6 +69,7 @@ def render_labels(result: LabelSearchResult) -> str:
             f"{hit.effective_date or 'n.d.'}, {routes})"
             + ("  BOXED WARNING" if hit.has_boxed_warning else "")
         )
+    lines += _status(result.source_status)
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
     return "\n".join(lines)
@@ -79,6 +91,7 @@ def render_fetch(result: FetchResult) -> str:
         lines.append("not found: " + ", ".join(result.not_found))
     if result.unavailable:
         lines.append("source unavailable for: " + ", ".join(result.unavailable))
+    lines += _status(result.source_status)
     if result.next_cursor:
         lines.append(f"next_cursor: {result.next_cursor}")
     return "\n".join(lines)

@@ -10,15 +10,23 @@ from medcite.contract.audit_models import (
     Flag,
 )
 from medcite.contract.handles import HandleCodec
-from medcite.contract.models import ToolError
+from medcite.contract.models import RecordIds, Signal, StudyDesign, ToolError
 from medcite.contract.tool_models import (
     LabelHit,
     LabelSearchResult,
+    LiteratureHit,
+    LiteratureSearchResult,
     TrialHit,
     TrialSearchResult,
 )
 from medcite.server.cursor import decode_cursor, decode_offset, encode_cursor
-from medcite.server.render import render_audit, render_error, render_labels, render_trials
+from medcite.server.render import (
+    render_audit,
+    render_error,
+    render_labels,
+    render_search,
+    render_trials,
+)
 from medcite.sources.errors import InvalidInputError
 
 CODEC = HandleCodec(bytes(range(32)))
@@ -161,3 +169,34 @@ def test_decode_offset_rejects_anything_but_a_non_negative_integer(state: object
     cursor = encode_cursor(CODEC, "fetch_passages", ARGS, state)  # type: ignore[arg-type]
     with pytest.raises(InvalidInputError):
         decode_offset(CODEC, "fetch_passages", ARGS, cursor)
+
+
+def test_render_search_marks_hits_without_a_handle_and_sources_not_ok() -> None:
+    hit = LiteratureHit(
+        record_id="pmid:123",
+        kind="journal_article",
+        title="A cohort",
+        title_handle=None,
+        preview=None,
+        published=None,
+        venue="BMJ",
+        study_designs=Signal[list[StudyDesign]].unknown(),
+        peer_reviewed=Signal[bool].known(True, "europepmc"),
+        retraction=Signal.not_checked(),
+        open_access_full_text=Signal.not_checked(),
+        ids=RecordIds(pmid="123"),
+    )
+    result = LiteratureSearchResult(
+        hits=[hit], total=1, source_status={"pubmed": "unavailable", "europepmc": "ok"}
+    )
+    assert render_search(result).splitlines() == [
+        "1 of 1 results",
+        "pmid:123  A cohort (BMJ, n.d.) designs=? peer_reviewed=yes"
+        "  (no handle: cite after fetch_passages)",
+        "source_status: pubmed=unavailable",
+    ]
+
+
+def test_sources_that_are_ok_add_no_line() -> None:
+    result = LabelSearchResult(hits=[], total=0, source_status={"openfda": "ok"})
+    assert render_labels(result).splitlines() == ["0 of 0 labels"]

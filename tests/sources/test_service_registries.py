@@ -200,3 +200,14 @@ async def test_a_handle_to_an_older_trial_version_is_flagged(cache: Cache) -> No
     assert checks[0].flags[0].detail == TRIAL_VERSION
     assert checks[1].flags == [] and checks[1].passage is not None
     assert checks[1].passage.text == "WARNING: serious."
+
+
+async def test_a_record_asked_for_twice_comes_back_once(cache: Cache) -> None:
+    service = _service(Registries(), cache)
+    page = await service.fetch_passages(
+        ["nct:NCT00000001", f"nct:NCT00000001@{TRIAL_VERSION}", "nct:nct00000001"],
+        sections=None,
+        max_passages=60,
+        offset=0,
+    )
+    assert [r.record.record_id for r in page.records] == [f"nct:NCT00000001@{TRIAL_VERSION}"]

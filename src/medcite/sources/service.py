@@ -628,7 +628,11 @@ class EvidenceService:
         full_text: bool = False,
         include_entities: bool = True,
     ) -> FetchPage:
-        refs = list(dict.fromkeys(_record_ref(record_id) for record_id in record_ids))
+        unique: dict[str, RecordRef] = {}  # one per record, whatever version or case was asked
+        for record_id in record_ids:
+            ref = _record_ref(record_id)
+            unique.setdefault(ref.key, ref)
+        refs = list(unique.values())
         loaded = await self._load(refs, full_text=full_text)
         companions: dict[str, str] = {}  # pmid key -> pmcid key holding its full text
         if full_text:
@@ -656,9 +660,10 @@ class EvidenceService:
                     quality = bundle.record.quality.model_copy(update={"open_access_full_text": oa})
                     record = bundle.record.model_copy(update={"quality": quality})
                     loaded.bundles[key] = replace(bundle, record=record)
-                    if any(d.path.startswith("body.") for d in companion.passages):
+                    body = [d for d in companion.passages if d.path.startswith("body.")]
+                    if body:  # title and abstract already come from the PubMed record
                         companions[key] = f"pmcid:{pmcid}"
-                        loaded.bundles[f"pmcid:{pmcid}"] = companion
+                        loaded.bundles[f"pmcid:{pmcid}"] = replace(companion, passages=body)
         if not loaded.bundles and loaded.failed:
             raise UpstreamUnavailableError("no source answered for the requested records")
         if include_entities:

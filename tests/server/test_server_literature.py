@@ -123,8 +123,10 @@ async def test_full_text_arrives_as_a_pmcid_companion(
     ]
     oa = data["records"][0]["record"]["quality"]["open_access_full_text"]
     assert oa["state"] == "known" and oa["value"]["available"] is True
-    body = [p for p in data["records"][1]["passages"] if p["path"].startswith("body.")]
-    assert body and all(CODEC.verify(p["handle"]).scheme == "pmcid" for p in body)
+    companion = data["records"][1]["passages"]
+    # Title and abstract come once, from PubMed; the companion adds only the body.
+    assert companion and all(p["path"].startswith("body.") for p in companion)
+    assert all(CODEC.verify(p["handle"]).scheme == "pmcid" for p in companion)
 
 
 async def test_full_text_by_pmcid(client: Client, scenario: dict[str, str]) -> None:
