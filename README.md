@@ -273,7 +273,7 @@ Some categories rest on few passages: one passage has an accented letter, so the
 - `src/tekmerion/infra/` holds settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports.
 - `src/tekmerion/server/` is the thin MCP layer; `src/tekmerion/ui/audit-view.html` is the audit view, built from `web/` (React and TypeScript) and committed, so running tekmerion never needs Node.
 
-The design is in [docs/specs](docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it in its section 16.
+The design is in [docs/specs](docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16.
 
 ## Development
 

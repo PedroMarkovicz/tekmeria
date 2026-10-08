@@ -25,3 +25,6 @@ site/
 # Local config and secrets
 .env
 *.key
+
+# Working notes, kept locally
+docs/plans/
