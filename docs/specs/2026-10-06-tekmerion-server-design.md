@@ -723,7 +723,7 @@ The project was called medcite until the cleanup pass (16.7). A paper of the sam
 `tekmerion evaluate` measures the audit's decisions offline and reproducibly, for the technical note.
 
 - **Records.** Seven real records: a cohort study, a retracted paper, an open-access article with its full text, a preprint, a trial and a drug label.
-  - They hold 178 passages: the drug label has 101, the trial 49 and the literature records 28.
+  - They hold 178 passages: the drug label has 101, the trial 49 and the literature records 28 (16.15 replaced the open-access article: 213 passages, 63 from the literature).
   - They are fetched once through the evidence service from the demo's recorded responses, then served from memory, so every case is independent of how the audit batches its lookups.
 - **Ground truth.** A reference oracle, `evaluation/oracle.py`, decides what each case plants. It is written from sections 4.1, 4.4 and 4.5 and shares no code with the audit:
   - it issues and forges handles;
@@ -831,3 +831,13 @@ The final review of 16.13 found that a sentence citing a genuine passage and, be
 - **9 Any citation that is not `ok` warns.** After `fail` and `incomplete`, an answer is `warn` if any sentence is uncited, any citation is not `ok`, or any `ok` citation is retracted. `pass` now means what a reader would assume: every sentence is cited, and every citation is genuine, still present upstream, verbatim if quoted, and not from a retracted record. The rule covers misquotes and withdrawn records, and also forged or malformed citations when a deployment removes them from `fail_on`. An `invalid_only` sentence is one case of it, so the code no longer needs its own clause. `fail_on` is unchanged.
 - **Evaluation.** A new category, `invalid_beside_valid`, cites a genuine passage and, in the same sentence, a misquote or a withdrawn record, in turn (34 categories in all). At seed 0, its paired answer is the one whole answer whose verdict the new rule changes. The fault harness keeps the rule before 16.13 as a fault and adds the rule of 16.13 as another (38 faults; 37 caught). With 10 cases per category, as CI runs it, only the paired answer of the new category catches the second: a mixed answer reaches `pass` under that rule only if its other cases are all genuine and it has no uncited line, and the draws for seed 0 give none.
 - **Contract version.** It stays `0.1.0`: nothing has been released (16.8).
+
+### 16.15 Fixtures the repository may redistribute
+
+A licence check before making the repository public found that the recorded fixtures held text the Apache License cannot cover.
+
+- **The open-access article.** Its full text (PMC13425182, JAMA Network Open) was CC BY-NC-ND 4.0, whose notice forbids alteration and commercial use, including text and data mining. It is replaced by a CC BY 4.0 article: Jiao et al., PLoS Medicine 2025 (PMID 41187138, PMC12585062). The scenario's open-access search now asks Europe PMC for `LICENSE:"cc by"` and for 2020 to 2025, and its choice of hit requires a `cc by` licence. A 2026 article was the first candidate, but PubTator had not annotated it yet and the recorder refuses degraded results; an article from 2025 or earlier has also settled upstream. Only the open-access calls were re-recorded; every other fixture is unchanged.
+- **Search abstracts.** The recorder removes, from Europe PMC search results, every abstract whose licence is not CC BY or CC0, except in lookups of one record by ID, which the demo and the evaluation fetch. Applied to the existing fixtures, this removed 53 abstracts and changed no test or evaluation result.
+- **What stays.** PubMed and PubTator abstracts of the records the demo and the evaluation fetch stay, among them the cohort study and the retracted paper, which remain under their publishers' copyright. NOTICE lists every source and its terms, and attributes the CC BY works.
+- **Tests.** Every recorded full text must carry a CC BY or CC0 licence, and no recorded search may keep an abstract the recorder would remove. The contract's example handles must name passages of the snapshot.
+- **Evaluation.** The snapshot grows from 178 to 213 passages, 63 of them from the literature instead of 28, so the label and the trial weigh less. Every planted case and whole answer is still scored correct.

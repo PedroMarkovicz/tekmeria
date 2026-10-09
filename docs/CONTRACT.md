@@ -23,7 +23,7 @@ Examples, issued under the public demo key: they resolve with `tekmerion --demo`
 
 ```
 pmid:30831578/abstract.7~30med
-pmcid:PMC13425182/body.methods.p2~7h34e
+pmcid:PMC12585062/body.methods.data_sources.p1~19ev9
 nct:NCT04363697@2026-06-16/results.outcome.1.analysis.1~1abw2
 setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~gwfaa
 ```

@@ -2,3 +2,32 @@ tekmerion
 Copyright 2026 Pedro Markovicz
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party data
+----------------
+
+The recorded API responses in src/tekmerion/demo/fixtures/ are kept so that the demo
+and the tests run offline. They are not covered by the Apache License; each keeps the
+terms of its source:
+
+- ClinicalTrials.gov (National Library of Medicine) and openFDA drug labels (Food
+  and Drug Administration): United States government data.
+- Crossref metadata: bibliographic facts, which Crossref makes available without
+  restriction.
+- PubMed and PubTator (National Library of Medicine): bibliographic records and
+  abstracts. Abstracts remain under the copyright of their publishers or authors.
+- Europe PMC search results: an abstract is kept only when Europe PMC lists the
+  article under CC BY or CC0, or when the result is the lookup of a record the demo
+  or the evaluation fetches. The recorder removes every other abstract.
+- Full text: Jiao B, Sato R, Mak J, et al. Financial risk protection from vaccines
+  in 52 Gavi-eligible low- and middle-income countries: a modeling study. PLoS
+  Medicine. 2025. doi:10.1371/journal.pmed.1004764. Licensed under CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/), recorded unmodified from Europe
+  PMC (PMC12585062).
+- Preprint: Garba A, Usman S, Hussaini A. Mapping immune targets in peste des petits
+  ruminants virus hemagglutinin: an integrated computational framework for vaccine
+  candidate prioritization. Research Square. 2026. doi:10.21203/rs.3.rs-10665898/v1.
+  Licensed under CC BY 4.0.
+
+A rights holder who wants a recorded item removed can open an issue in the
+repository.

@@ -168,7 +168,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 - a misquote or a withdrawn record cited beside a genuine citation in the same sentence.
 
 **How the cases are built.**
-- They rest on 7 real records (178 passages) from the demo's recorded responses.
+- They rest on 7 real records (213 passages) from the demo's recorded responses.
 - The withdrawn and unavailable cases cite made-up paths, made-up records, and a record treated as unreachable.
 - What each case plants is decided by a reference oracle, written from the spec and sharing no code with the audit.
 
@@ -184,7 +184,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 This is its output:
 
 <!-- evaluation:start -->
-planted cases: 1600/1600 correct (seed 0, 25 per category; 7 records, 178 passages)
+planted cases: 1600/1600 correct (seed 0, 25 per category; 7 records, 213 passages)
 whole answers: 257/257 correct
 
 | Category | Distinct cases | Structured claims | Answer text |
@@ -192,15 +192,15 @@ whole answers: 257/257 correct
 | `ok_plain` | 25 | 25/25 | 25/25 |
 | `ok_quote` | 25 | 25/25 | 25/25 |
 | `ok_quote_reformatted` | 25 | 25/25 | 25/25 |
-| `ok_quote_apostrophe` | 19 | 25/25 | 25/25 |
+| `ok_quote_apostrophe` | 23 | 25/25 | 25/25 |
 | `ok_quote_decomposed` | 2 | 25/25 | 25/25 |
-| `ok_quote_double_marks` | 19 | 25/25 | - |
+| `ok_quote_double_marks` | 20 | 25/25 | - |
 | `ok_quote_folded` | 25 | 25/25 | 25/25 |
 | `ok_quote_folded_marks` | 25 | 25/25 | - |
 | `ok_quote_invisible` | 25 | 25/25 | 25/25 |
 | `quote_number_changed` | 25 | 25/25 | 25/25 |
 | `quote_decimal_moved` | 25 | 25/25 | 25/25 |
-| `quote_comparison_flipped` | 19 | 25/25 | 25/25 |
+| `quote_comparison_flipped` | 20 | 25/25 | 25/25 |
 | `quote_unit_changed` | 25 | 25/25 | 25/25 |
 | `quote_sign_changed` | 25 | 25/25 | 25/25 |
 | `quote_case_changed` | 25 | 25/25 | 25/25 |
@@ -215,9 +215,9 @@ whole answers: 257/257 correct
 | `forged_bare` | 25 | - | 25/25 |
 | `malformed` | 25 | 25/25 | 25/25 |
 | `malformed_with_note` | 25 | 25/25 | 25/25 |
-| `withdrawn_path` | 24 | 25/25 | 25/25 |
+| `withdrawn_path` | 25 | 25/25 | 25/25 |
 | `withdrawn_record` | 25 | 25/25 | 25/25 |
-| `unavailable` | 8 | 25/25 | 25/25 |
+| `unavailable` | 9 | 25/25 | 25/25 |
 | `retracted_cited` | 5 | 25/25 | 25/25 |
 | `preprint_cited` | 2 | 25/25 | 25/25 |
 | `version_changed` | 25 | 25/25 | 25/25 |
@@ -241,14 +241,14 @@ whole answers: 257/257 correct
 
 | Record | Planted citations |
 |---|---|
-| nct:NCT04363697 | 208 |
+| nct:NCT04363697 | 188 |
 | outside the snapshot | 87 |
-| pmcid:PMC13425182 | 40 |
-| pmid:30831578 | 30 |
-| pmid:42530928 | 3 |
+| pmcid:PMC12585062 | 139 |
+| pmid:30831578 | 25 |
+| pmid:41187138 | 10 |
 | pmid:9500320 | 25 |
 | ppr:PPR1297067 | 25 |
-| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 482 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 401 |
 <!-- evaluation:end -->
 
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.
@@ -314,7 +314,7 @@ npm test && npm run typecheck
 npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 ```
 
-After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set).
+After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps only text the repository may redistribute: it records a CC BY open-access article, and removes from search results every abstract that is not CC BY or CC0 (see [NOTICE](NOTICE)).
 
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
 
@@ -330,4 +330,4 @@ After changing the report models, run `uv run python -m tekmerion.contract.schem
 
 ## License
 
-Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The recorded API responses under `src/tekmerion/demo/fixtures/` keep the terms of their sources, listed in NOTICE.

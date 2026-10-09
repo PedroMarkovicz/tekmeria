@@ -43,8 +43,12 @@ PREPRINT_SEARCH: dict[str, Any] = {
     "sources": ["europepmc"],
     "limit": 5,
 }
+# Only a CC BY article: its full text is redistributed with the fixtures (see NOTICE). Its
+# publication years end in 2025, so PubTator has annotated it and the record has settled.
 OPEN_ACCESS_SEARCH: dict[str, Any] = {
-    "query": '"measles vaccine" AND SRC:MED NOT PUB_TYPE:"Published Erratum"',
+    "query": '"measles vaccine" AND SRC:MED AND LICENSE:"cc by" NOT PUB_TYPE:"Published Erratum"',
+    "date_from": "2020",
+    "date_to": "2025-12-31",
     "sources": ["europepmc"],
     "open_access_only": True,
     "limit": 5,
@@ -149,20 +153,26 @@ async def run_demo(client: Client) -> DemoRun:
     return DemoRun(search=search, fetch=fetch, answer=answer, audit=audit)
 
 
+def wanted(hit: dict[str, Any], want: str) -> bool:
+    """Whether a search hit is the kind of record `want` names. An open-access article must
+    be CC BY, since its full text is redistributed with the fixtures (see NOTICE)."""
+    if want == "preprint":
+        return hit["kind"] == "preprint"
+    if want == "in_process":
+        return bool(hit["ids"]["pmid"])
+    oa = hit["open_access_full_text"]["value"] or {}
+    return bool(
+        hit["ids"]["pmcid"]
+        and hit["ids"]["pmid"]
+        and oa.get("available")
+        and oa.get("license") == "cc by"
+    )
+
+
 async def _first_hit(client: Client, args: dict[str, Any], *, want: str) -> dict[str, Any]:
     hits = _recorded(await client.call_tool("search_literature", args))["hits"]
     for hit in hits:
-        if want == "preprint" and hit["kind"] == "preprint":
-            return hit
-        oa = hit["open_access_full_text"]["value"] or {}
-        if (
-            want == "open_access"
-            and hit["ids"]["pmcid"]
-            and hit["ids"]["pmid"]
-            and oa.get("available")
-        ):
-            return hit
-        if want == "in_process" and hit["ids"]["pmid"]:
+        if wanted(hit, want):
             return hit
     raise DemoError(f"no {want} record found for {args['query']!r}")
 

@@ -17,7 +17,7 @@ from tekmerion.sources.service import EvidenceService
 # Record IDs fetched together, and whether with full text: these are the recorded fetches.
 SNAPSHOT_FETCHES: tuple[tuple[tuple[str, ...], bool], ...] = (
     (("pmid:30831578", "pmid:9500320"), False),  # a cohort study, and a retracted paper
-    (("pmid:42530928",), True),  # an open-access article with its full text
+    (("pmid:41187138",), True),  # an open-access (CC BY) article with its full text
     (("ppr:PPR1297067",), False),  # a preprint
     (("nct:NCT04363697",), False),  # a trial with posted results
     (("setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130",), False),  # a drug label
