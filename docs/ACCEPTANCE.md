@@ -54,7 +54,7 @@ Both checks use Claude Desktop with tekmerion installed from GitHub. They need n
 2. Let the model search and fetch, then answer with handle citations.
 3. Ask: *"Now call audit_answer on your answer exactly as written."*
 4. The audit must be `pass` or `warn`, with `fabricated: 0`. If it is `fail`, keep the transcript anyway: it is a finding, not a failed check of this checklist.
-5. Copy the whole exchange (question, the model's answer with its citations, and the audit's text output, including the count of citations by verdict) into `docs/live-run.md`, with the date, the Claude Desktop version and the model name at the top. The counts matter because `pass` is also reached when every citation is a `quote_mismatch` or `withdrawn`.
+5. Copy the whole exchange (question, the model's answer with its citations, and the audit's text output, including the count of citations by verdict) into `docs/live-run.md`, with the date, the Claude Desktop version and the model name at the top. The counts matter because `warn` is also reached when a citation is a `quote_mismatch` or `withdrawn`, not only when a sentence is uncited.
 
 ### After both
 
