@@ -97,6 +97,8 @@ def test_claim_status_follows_section_7() -> None:
         (["cited", "uncited"], ["ok", "unavailable"], 1, "incomplete"),
         (["invalid_only"], ["quote_mismatch", "withdrawn"], 0, "warn"),
         (["cited", "invalid_only"], ["ok", "quote_mismatch"], 0, "warn"),
+        (["cited"], ["ok", "quote_mismatch"], 0, "warn"),
+        (["cited"], ["ok", "withdrawn"], 0, "warn"),
         (["cited", "uncited"], ["ok", "unavailable", "malformed"], 0, "fail"),
         (["cited"], ["ok", "forged"], 0, "fail"),
     ],

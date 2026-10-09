@@ -86,7 +86,7 @@ def overall_verdict(statuses: list[str], verdicts: list[str], retracted_ok: int)
         return "fail"
     if "unavailable" in verdicts:
         return "incomplete"
-    if "uncited" in statuses or "invalid_only" in statuses or retracted_ok:
+    if "uncited" in statuses or any(v != "ok" for v in verdicts) or retracted_ok:
         return "warn"
     return "pass"
 

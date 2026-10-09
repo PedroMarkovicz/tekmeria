@@ -370,7 +370,7 @@ How the overall `verdict` is decided:
 - `fail_on` defaults to `["forged", "malformed"]`. It may add any verdict, plus `uncited` and `retracted`.
 - The verdict is `fail` if any item in `fail_on` occurs.
 - Otherwise it is `incomplete` if any citation is `unavailable`.
-- Otherwise it is `warn` if any sentence is uncited or cited only by invalid citations, or any `ok` citation is retracted.
+- Otherwise it is `warn` if any sentence is uncited, any citation is not `ok`, or any `ok` citation is retracted.
 - Otherwise it is `pass`.
 
 **Reproducibility.** The same input, the same handle key and the same upstream content always produce the same report, apart from `audited_at`. Handle resolution is batched per source and goes through the cache.

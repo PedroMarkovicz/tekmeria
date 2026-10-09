@@ -82,13 +82,22 @@ def _never_warns(real: Callable[..., str]) -> Callable[..., str]:
     return faulty
 
 
-def _invalid_only_passes(real: Callable[..., str]) -> Callable[..., str]:
-    """The rule before section 16.13: a sentence cited only by invalid citations did not warn."""
+def _earlier_warn_rule(*, invalid_only: bool) -> Callable[[Callable[..., str]], Callable[..., str]]:
+    """An earlier rule for `warn`: before section 16.13 only uncited sentences and retracted
+    sources warned; before 16.14 invalid_only sentences did too, but an invalid citation beside
+    a valid one did not."""
 
-    def faulty(summary: AuditSummary, fail_on: Sequence[str]) -> str:
-        return real(summary.model_copy(update={"invalid_only_sentences": 0}), fail_on)
+    def make(real: Callable[..., str]) -> Callable[..., str]:
+        def faulty(summary: AuditSummary, fail_on: Sequence[str]) -> str:
+            verdict = real(summary, fail_on)
+            reasons = [summary.uncited_sentences, summary.retracted_cited]
+            if invalid_only:
+                reasons.append(summary.invalid_only_sentences)
+            return "pass" if verdict == "warn" and not any(reasons) else verdict
 
-    return faulty
+        return faulty
+
+    return make
 
 
 def _invalid_as_uncited(real: Callable[[Sequence[CitationResult]], str]) -> Any:
@@ -133,7 +142,7 @@ FAULTS: tuple[Fault, ...] = (
     Fault(
         "invalid_only sentences do not warn",
         (audit_module, "overall_verdict"),
-        _invalid_only_passes,
+        _earlier_warn_rule(invalid_only=False),
     ),
     Fault("invalid_only read as uncited", (audit_module, "_claim_status"), _invalid_as_uncited),
     _summary_fault(

@@ -172,7 +172,8 @@ def overall_verdict(summary: AuditSummary, fail_on: Sequence[FailOn]) -> Overall
         return "fail"
     if summary.by_verdict["unavailable"]:
         return "incomplete"
-    if summary.uncited_sentences or summary.invalid_only_sentences or summary.retracted_cited:
+    invalid = summary.citations - summary.by_verdict["ok"]
+    if summary.uncited_sentences or invalid or summary.retracted_cited:
         return "warn"
     return "pass"
 

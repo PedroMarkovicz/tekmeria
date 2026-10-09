@@ -154,6 +154,33 @@ async def test_a_sentence_cited_only_by_invalid_citations_warns(citation: Citati
     assert report.verdict == "warn"
 
 
+@pytest.mark.parametrize(
+    "citation",
+    [
+        CitationIn(handle=CODEC.issue(OK_LOC), quote="MMR vaccination increased"),  # misquoted
+        CitationIn(handle=CODEC.issue(GONE_LOC)),  # withdrawn
+    ],
+)
+async def test_an_invalid_citation_beside_a_valid_one_warns(citation: CitationIn) -> None:
+    # The genuine citation makes the sentence cited, but the invalid one beside it still
+    # reaches the reader: the answer cannot pass (docs/CONTRACT.md section 9).
+    claim = ClaimIn(sentence="s", citations=[CitationIn(handle=CODEC.issue(OK_LOC)), citation])
+    report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
+    assert report.claims[0].status == "cited"
+    assert report.verdict == "warn"
+
+
+async def test_a_forged_citation_left_out_of_fail_on_still_warns() -> None:
+    claim = ClaimIn(
+        sentence="s",
+        citations=[CitationIn(handle=CODEC.issue(OK_LOC)), CitationIn(handle=forged(OK_LOC))],
+    )
+    report = await audit(
+        [claim], codec=CODEC, resolver=FakeResolver(), fail_on=[], now=lambda: FIXED_NOW
+    )
+    assert report.verdict == "warn"
+
+
 async def test_version_changed_flag_and_issued_text() -> None:
     claim = ClaimIn(sentence="s", citations=[CitationIn(handle=CODEC.issue(TRIAL_LOC))])
     report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
