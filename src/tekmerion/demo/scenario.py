@@ -8,6 +8,8 @@ from typing import Any
 from mcp import Client
 from mcp.types import CallToolResult
 
+from tekmerion.infra.fixtures import strip_abstracts
+
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SCENARIO_FILE = FIXTURES_DIR / "scenario.json"
 
@@ -64,6 +66,14 @@ TRIAL_SEARCH: dict[str, Any] = {
 }
 LABEL_SEARCH: dict[str, Any] = {"drug": "warfarin", "limit": 3}
 NO_LABEL_SEARCH: dict[str, Any] = {"drug": "zzzqqq not a drug"}
+
+
+def fetched_pmids(scenario: dict[str, str]) -> frozenset[str]:
+    """The PubMed records whose text the demo, the tests and the evaluation fetch: the only
+    ones whose abstracts the recorded fixtures keep (see NOTICE)."""
+    return frozenset(
+        {COHORT_PMID, RETRACTED_PMID, scenario["in_process_pmid"], scenario["open_access_pmid"]}
+    )
 
 
 class DemoError(RuntimeError):
@@ -255,3 +265,4 @@ async def record_scenario(client: Client) -> None:
         )
     scenario.update(await _record_registries(client))
     SCENARIO_FILE.write_text(json.dumps(scenario, indent=1), encoding="utf-8")
+    strip_abstracts(FIXTURES_DIR, fetched_pmids(scenario))

@@ -843,6 +843,15 @@ A licence check before making the repository public found that the recorded fixt
   - 6 of search results Europe PMC lists as CC BY;
   - 6 of search results under publisher copyright, which the search tool completes from PubMed. Two of them are among the abstracts the scrub removed from Europe PMC results.
 
-  Removing those six would need the recorder to tell a search's PubMed lookups from a fetch. NOTICE lists every source and its terms, and attributes the CC BY works; a test checks that it names the recorded article and preprint.
+  Removing those six would need the recorder to tell a search's PubMed lookups from a fetch (16.16 removed them, with the other search results' PubMed abstracts). NOTICE lists every source and its terms, and attributes the CC BY works; a test checks that it names the recorded article and preprint.
 - **Tests.** Every recorded full text must carry a CC BY or CC0 licence, and no recorded search may keep an abstract the recorder would remove. The contract's example handles must name passages of the snapshot.
 - **Evaluation.** The snapshot grows from 178 to 213 passages, 63 of them from the literature instead of 28, so the label and the trial weigh less. Every planted case and whole answer is still scored correct.
+
+### 16.16 PubMed abstracts only of fetched records
+
+16.15 left 16 PubMed abstracts in the fixtures, 6 of them search results under publisher copyright, which the search tool had completed from PubMed. They are removed.
+
+- **The rule.** Recorded PubMed responses keep an abstract only for the records the demo, the tests and the evaluation fetch: the cohort study, the retracted paper, the in-process record and the open-access article (`fetched_pmids`). PubMed carries no licence, so a rule by licence cannot be applied while recording; a rule by use can. It also removes the abstracts of 6 search results Europe PMC lists as CC BY, which nothing reads.
+- **The recorder.** `record-fixtures` ends with `strip_abstracts`, which rewrites the recorded PubMed fetches and leaves the rest of each record intact. Applied to the existing fixtures, it changed 6 files and removed 15 copies of 12 abstracts; no test, evaluation or demo result changed.
+- **Tests.** A test reads every recorded PubMed fetch with an XML parser, independently of the recorder's step, and requires that only fetched records carry an abstract; PubTator responses, which carry the abstract's text too, may cover only fetched records.
+- **What stays.** 4 PubMed abstracts: three under their publishers' copyright (the cohort study, the retracted paper and the in-process record), which the demo and the evaluation need, and the CC BY article.

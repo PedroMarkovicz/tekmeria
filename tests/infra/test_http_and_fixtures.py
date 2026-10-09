@@ -5,7 +5,14 @@ import httpx
 import pytest
 
 from tekmerion.infra.cache import Cache
-from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport, request_key, scrub
+from tekmerion.infra.fixtures import (
+    FixtureTransport,
+    RecordingTransport,
+    keep_abstracts,
+    request_key,
+    scrub,
+    strip_abstracts,
+)
 from tekmerion.infra.http import (
     HostConfig,
     Upstream,
@@ -167,3 +174,47 @@ async def test_the_recorder_writes_an_error_page_as_it_came(tmp_path: Path) -> N
     async with httpx.AsyncClient(transport=RecordingTransport(tmp_path, inner=live)) as client:
         response = await client.get(SEARCH, params={"query": "measles"})
     assert (response.status_code, response.text) == (503, page)
+
+
+def _articles(*pmids: str) -> str:
+    return (
+        "<PubmedArticleSet>"
+        + "".join(
+            f'<PubmedArticle><MedlineCitation><PMID Version="1">{pmid}</PMID><Article>'
+            f"<ArticleTitle>Title {pmid}</ArticleTitle>"
+            f"<Abstract><AbstractText>Abstract of {pmid}.</AbstractText></Abstract>"
+            "</Article></MedlineCitation></PubmedArticle>"
+            for pmid in pmids
+        )
+        + "</PubmedArticleSet>"
+    )
+
+
+def test_keep_abstracts_removes_only_the_abstracts_of_other_records() -> None:
+    body = _articles("1", "2")
+    kept = keep_abstracts(body, {"1"})
+    assert "Abstract of 1." in kept and "Abstract of 2." not in kept
+    assert "Title 2" in kept  # the rest of the record stays
+    assert keep_abstracts(body, {"1", "2"}) == body
+
+
+def test_strip_abstracts_rewrites_only_pubmed_fetches(tmp_path: Path) -> None:
+    fetch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=1%2C2"
+    other = "https://example.org/other?db=pubmed"
+    for name, url in (("fetch", fetch), ("other", other)):
+        record = {
+            "url": url,
+            "status": 200,
+            "content_type": "text/xml",
+            "body": _articles("1", "2"),
+        }
+        (tmp_path / f"{name}.json").write_text(json.dumps(record), encoding="utf-8")
+    (tmp_path / "scenario.json").write_text(json.dumps({"open_access_pmid": "2"}), encoding="utf-8")
+    assert strip_abstracts(tmp_path, {"1"}) == 1
+    fetched = json.loads((tmp_path / "fetch.json").read_text(encoding="utf-8"))["body"]
+    assert "Abstract of 2." not in fetched and "Abstract of 1." in fetched
+    assert (
+        "Abstract of 2."
+        in json.loads((tmp_path / "other.json").read_text(encoding="utf-8"))["body"]
+    )
+    assert strip_abstracts(tmp_path, {"1"}) == 0  # nothing left to remove

@@ -3,11 +3,12 @@ redistribute (see NOTICE)."""
 
 import json
 import re
+import xml.etree.ElementTree as ET
 
 import httpx
 
-from tekmerion.demo.scenario import FIXTURES_DIR
-from tekmerion.infra.fixtures import scrub
+from tekmerion.demo.scenario import FIXTURES_DIR, fetched_pmids
+from tekmerion.infra.fixtures import is_pubmed_fetch, scrub
 
 _LICENCE_LINK = re.compile(r"creativecommons\.org/(?:licenses|publicdomain)/([a-z-]+)/")
 
@@ -46,3 +47,19 @@ def test_notice_credits_the_recorded_full_text_and_preprint() -> None:
     preprint = _lookup(f"EXT_ID:{scenario['preprint_id']}")
     for expected in (scenario["open_access_pmcid"], article["doi"], preprint["doi"]):
         assert expected in notice, expected
+
+
+def test_pubmed_responses_keep_abstracts_only_of_fetched_records() -> None:
+    # PubMed carries no licence: only the records the demo, the tests and the evaluation fetch
+    # keep their abstracts. Read with an XML parser, independently of the recorder's step.
+    scenario = json.loads((FIXTURES_DIR / "scenario.json").read_text(encoding="utf-8"))
+    keep = fetched_pmids(scenario)
+    with_abstract: set[str] = set()
+    for record in _recorded():
+        if is_pubmed_fetch(record["url"]):
+            for article in ET.fromstring(record["body"]).iter("PubmedArticle"):
+                if article.find(".//Abstract") is not None:
+                    with_abstract.add(article.findtext(".//PMID") or "")
+        elif "/pubtator3-api/" in record["url"]:  # annotations carry the abstract's text too
+            assert set(httpx.URL(record["url"]).params["pmids"].split(",")) <= keep
+    assert with_abstract <= keep, sorted(with_abstract - keep)

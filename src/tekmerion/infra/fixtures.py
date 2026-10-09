@@ -6,11 +6,15 @@ removed. `FixtureTransport` replays them; `RecordingTransport` writes them.
 Recorded responses are redistributed with the repository, so the recorder keeps only text
 that may be redistributed (see NOTICE): a search result's abstract is dropped unless its
 licence is CC BY or CC0. Lookups of one record by ID keep theirs, since the demo and the
-evaluation fetch those records' text.
+evaluation fetch those records' text. PubMed responses carry no licence, so once a recording
+is done they keep abstracts only for the records the demo, the tests and the evaluation fetch
+(`strip_abstracts`).
 """
 
 import hashlib
 import json
+import re
+from collections.abc import Collection
 from pathlib import Path
 
 import httpx
@@ -19,6 +23,9 @@ VOLATILE_PARAMS = frozenset({"api_key", "tool", "email", "mailto"})
 OPEN_LICENCES = frozenset({"cc by", "cc0"})
 _EUROPEPMC_SEARCH = "/europepmc/webservices/rest/search"
 _LOOKUPS = ("EXT_ID:", "PMCID:")
+_PUBMED_ARTICLE = re.compile(r"<PubmedArticle>.*?</PubmedArticle>", re.S)
+_PMID = re.compile(r"<PMID[^>]*>(\d+)</PMID>")
+_ABSTRACT = re.compile(r"\s*<Abstract>.*?</Abstract>|\s*<OtherAbstract\b.*?</OtherAbstract>", re.S)
 
 
 def request_key(method: str, url: httpx.URL) -> str:
@@ -51,6 +58,39 @@ def scrub(url: httpx.URL, body: str) -> str:
     for result in restricted:
         del result["abstractText"]
     return json.dumps(data, ensure_ascii=False)
+
+
+def keep_abstracts(body: str, pmids: Collection[str]) -> str:
+    """A PubMed efetch `body` without the abstracts of records whose PMID is not in `pmids`."""
+
+    def strip(match: re.Match[str]) -> str:
+        article = match.group(0)
+        pmid = _PMID.search(article)
+        if pmid is None or pmid.group(1) in pmids:
+            return article
+        return _ABSTRACT.sub("", article)
+
+    return _PUBMED_ARTICLE.sub(strip, body)
+
+
+def is_pubmed_fetch(url: str) -> bool:
+    return "/entrez/eutils/efetch.fcgi" in url and "db=pubmed" in url
+
+
+def strip_abstracts(root: Path, pmids: Collection[str]) -> int:
+    """Rewrite the recorded PubMed efetch responses in `root` so that only the records in
+    `pmids` keep their abstracts. Returns how many files changed."""
+    changed = 0
+    for path in sorted(root.glob("*.json")):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if not is_pubmed_fetch(record.get("url", "")):
+            continue  # another source, or scenario.json
+        body = keep_abstracts(record["body"], pmids)
+        if body != record["body"]:
+            record["body"] = body
+            path.write_text(json.dumps(record, indent=1, ensure_ascii=False), encoding="utf-8")
+            changed += 1
+    return changed
 
 
 class FixtureTransport(httpx.AsyncBaseTransport):

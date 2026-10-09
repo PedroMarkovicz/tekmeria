@@ -314,7 +314,7 @@ npm test && npm run typecheck
 npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 ```
 
-After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps only text the repository may redistribute: it records a CC BY open-access article, and removes from search results every abstract that is not CC BY or CC0 (see [NOTICE](NOTICE)).
+After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps only text the repository may redistribute: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch (see [NOTICE](NOTICE)).
 
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
 

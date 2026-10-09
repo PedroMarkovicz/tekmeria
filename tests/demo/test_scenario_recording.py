@@ -1,6 +1,13 @@
 import pytest
 
-from tekmerion.demo.scenario import DemoError, require_complete, wanted
+from tekmerion.demo.scenario import (
+    COHORT_PMID,
+    RETRACTED_PMID,
+    DemoError,
+    fetched_pmids,
+    require_complete,
+    wanted,
+)
 
 
 def test_recording_refuses_a_degraded_result() -> None:
@@ -29,3 +36,8 @@ def test_only_a_cc_by_article_is_recorded_as_open_access() -> None:
     assert wanted(_article("cc by"), "open_access")
     for restricted in ("cc by-nc-nd", "cc by-nc", None):
         assert not wanted(_article(restricted), "open_access"), restricted
+
+
+def test_the_fetched_records_are_the_demo_papers_and_the_recorded_finds() -> None:
+    scenario = {"in_process_pmid": "3", "open_access_pmid": "4", "preprint_id": "PPR5"}
+    assert fetched_pmids(scenario) == {COHORT_PMID, RETRACTED_PMID, "3", "4"}
