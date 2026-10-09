@@ -20,12 +20,16 @@ _HANDLE = re.compile(
 )
 # Spec 4.5 step 3 (docs/CONTRACT.md section 3): typographic variants, folded for comparison.
 FOLDS = {
-    **dict.fromkeys(map(chr, (0x2018, 0x2019, 0x201A, 0x201B)), "'"),
+    **dict.fromkeys(map(chr, (0x2018, 0x2019, 0x201A, 0x201B, 0x02BC, 0x2032)), "'"),
     **dict.fromkeys(map(chr, (0x201C, 0x201D, 0x201E, 0x201F)), '"'),
-    **dict.fromkeys(map(chr, (0x2010, 0x2011, 0x2013, 0x2014, 0x2212)), "-"),
+    **dict.fromkeys(
+        map(chr, (0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0xFF0D)), "-"
+    ),
     chr(0x00A0): " ",
     chr(0x2026): "...",
 }
+# Spec 4.5 step 3: invisible characters, removed for comparison.
+REMOVED = frozenset(map(chr, (0x00AD, 0x200B, 0x2060, 0xFEFF)))
 
 
 def check_code(key: bytes, locator: str) -> str:
@@ -52,9 +56,11 @@ def is_genuine(key: bytes, handle: str) -> bool:
 
 
 def fold(text: str) -> str:
-    """Spec 4.5: NFC, whitespace runs to one space, ends trimmed, then the typographic folds."""
+    """Spec 4.5: NFC, whitespace runs to one space, ends trimmed, then the typographic folds
+    and the removal of invisible characters."""
     spaced = " ".join(unicodedata.normalize("NFC", text).split())
-    return " ".join("".join(FOLDS.get(char, char) for char in spaced).split())
+    kept = (char for char in spaced if char not in REMOVED)
+    return " ".join("".join(FOLDS.get(char, char) for char in kept).split())
 
 
 def quote_matches(quote: str, passage: str) -> bool:

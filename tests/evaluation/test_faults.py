@@ -38,6 +38,7 @@ def test_every_fold_that_matters_has_its_fault() -> None:
     assert {f"no fold for U+{ord(char):04X}" for char in folds} <= names
     assert "no fold for U+00A0" not in names
     assert "no-break space not read as whitespace" in names
+    assert {f"no removal of U+{ord(char):04X}" for char in oracle.REMOVED} <= names
 
 
 async def test_a_real_fault_is_caught_and_a_harmless_one_is_not(

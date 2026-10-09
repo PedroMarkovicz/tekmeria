@@ -48,10 +48,13 @@ _WORD = re.compile(r"\b[A-Za-z][a-z]+\b")
 _APOSTROPHES = {"'": chr(0x2019), chr(0x2019): "'"}
 _DOUBLE_MARKS = {'"': chr(0x201C), chr(0x201C): '"', chr(0x201D): '"'}
 # Every other fold of spec 4.5, written into a verbatim quote one at a time, in turn.
-_DASH_FOLDS = (chr(0x2010), chr(0x2011), chr(0x2013), chr(0x2014), chr(0x2212))
+_DASH_FOLDS = tuple(map(chr, (0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0xFF0D)))
 _HYPHEN = re.compile("-")
-_SINGLE_FOLDS = (chr(0x2018), chr(0x2019), chr(0x201A), chr(0x201B))
+_SINGLE_FOLDS = tuple(map(chr, (0x2018, 0x2019, 0x201A, 0x201B, 0x02BC, 0x2032)))
 _DOUBLE_FOLDS = (chr(0x201C), chr(0x201D), chr(0x201E), chr(0x201F))
+# Invisible characters the comparison removes, written inside a word of a verbatim quote.
+_INVISIBLE = (chr(0x00AD), chr(0x200B), chr(0x2060), chr(0xFEFF))
+_INSIDE_WORD = re.compile(r"[A-Za-z](?=[A-Za-z])")
 # Edits a lenient comparator would accept: an accent, a compatibility form, a lost space.
 _ACCENTS = {"a": chr(0xE1), "e": chr(0xE9), "i": chr(0xED), "o": chr(0xF3), "u": chr(0xFA)}
 _VOWEL = re.compile("[aeiou]")
@@ -286,6 +289,17 @@ class _Builder:
             lambda q: self._replace_one(q, pattern, lambda _: mark),
             allowed,
             modes=("claims",),
+        )
+
+    def ok_quote_invisible(self) -> Case:
+        # A soft hyphen or zero-width character in the quote, where the passage has none: the
+        # comparison removes it on both sides, so the quote is still verbatim.
+        char = self.turn("ok_quote_invisible", _INVISIBLE)
+        return self._variant_ok(
+            "ok_quote_invisible",
+            self.quotable,
+            _INSIDE_WORD,
+            lambda q: self._replace_one(q, _INSIDE_WORD, lambda letter: letter + char),
         )
 
     def quote_accent_added(self) -> Case:
@@ -547,6 +561,7 @@ CATEGORIES: tuple[str, ...] = (
     "ok_quote_double_marks",
     "ok_quote_folded",
     "ok_quote_folded_marks",
+    "ok_quote_invisible",
     "quote_number_changed",
     "quote_decimal_moved",
     "quote_comparison_flipped",

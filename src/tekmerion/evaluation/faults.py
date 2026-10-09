@@ -82,6 +82,15 @@ def _never_warns(real: Callable[..., str]) -> Callable[..., str]:
     return faulty
 
 
+def _invalid_only_passes(real: Callable[..., str]) -> Callable[..., str]:
+    """The rule before section 16.13: a sentence cited only by invalid citations did not warn."""
+
+    def faulty(summary: AuditSummary, fail_on: Sequence[str]) -> str:
+        return real(summary.model_copy(update={"invalid_only_sentences": 0}), fail_on)
+
+    return faulty
+
+
 def _invalid_as_uncited(real: Callable[[Sequence[CitationResult]], str]) -> Any:
     def faulty(citations: Sequence[CitationResult]) -> str:
         status = real(citations)
@@ -117,9 +126,15 @@ FAULTS: tuple[Fault, ...] = (
     ),
     *(_unfolded(char) for char in oracle.FOLDS if char != _NO_BREAK_SPACE),
     _unfolded(_NO_BREAK_SPACE, "no-break space not read as whitespace"),
+    *(_unfolded(char, f"no removal of U+{ord(char):04X}") for char in sorted(oracle.REMOVED)),
     Fault("check code ignores the path", (HandleCodec, "check_code"), _path_blind),
     Fault("flags dropped", (audit_module, "_flags"), lambda real: lambda locator, record: []),
     Fault("overall verdict never warns", (audit_module, "overall_verdict"), _never_warns),
+    Fault(
+        "invalid_only sentences do not warn",
+        (audit_module, "overall_verdict"),
+        _invalid_only_passes,
+    ),
     Fault("invalid_only read as uncited", (audit_module, "_claim_status"), _invalid_as_uncited),
     _summary_fault(
         "coverage = cited / (cited + invalid_only)",

@@ -11,6 +11,8 @@ _WORD_START = re.compile(r"(?<=\s)\S")
 _FOLDS = str.maketrans(
     {
         "\u2018": "'",
+        "\u02bc": "'",  # modifier letter apostrophe
+        "\u2032": "'",  # prime
         "\u2019": "'",
         "\u201a": "'",
         "\u201b": "'",
@@ -19,11 +21,19 @@ _FOLDS = str.maketrans(
         "\u201e": '"',
         "\u201f": '"',
         "\u2010": "-",
+        "\u2012": "-",  # figure dash
+        "\u2015": "-",  # horizontal bar
+        "\uff0d": "-",  # fullwidth hyphen-minus
         "\u2011": "-",
         "\u2013": "-",
         "\u2014": "-",
         "\u2212": "-",
         "\u00a0": " ",
+        # Invisible characters a passage may carry and a quote omits: removed.
+        "\u00ad": None,  # soft hyphen
+        "\u200b": None,  # zero-width space
+        "\u2060": None,  # word joiner
+        "\ufeff": None,  # zero-width no-break space
     }
 )
 
@@ -34,7 +44,8 @@ def normalize_text(text: str) -> str:
 
 
 def fold_for_compare(text: str) -> str:
-    """Steps 1-3: normalize, then fold typographic variants. Comparison only."""
+    """Steps 1-3: normalize, then fold typographic variants and remove invisible
+    characters. Comparison only."""
     folded = normalize_text(text).translate(_FOLDS).replace("\u2026", "...")
     return normalize_text(folded)
 

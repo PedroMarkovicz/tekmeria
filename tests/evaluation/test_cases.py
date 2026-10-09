@@ -165,10 +165,13 @@ async def test_a_note_follows_a_genuine_handle(snapshot: Snapshot) -> None:
         assert oracle.is_genuine(DEMO_KEY, handle) and note
 
 
-async def test_every_fold_but_the_ellipsis_is_written_into_a_quote(snapshot: Snapshot) -> None:
-    # Each fold of the spec appears in some planted quote, so dropping any one of them fails a
-    # case. No passage of the snapshot holds an ellipsis, so its fold cannot be planted.
+async def test_every_fold_but_the_ellipsis_and_every_removal_is_written_into_a_quote(
+    snapshot: Snapshot,
+) -> None:
+    # Each fold and each removed character of the spec appears in some planted quote, so dropping
+    # any one of them fails a case. No passage of the snapshot holds an ellipsis, so its fold
+    # cannot be planted.
     verbatim = {category for category in CATEGORIES if category.startswith("ok_quote")}
     written = {char for planted, _ in _planted(snapshot, verbatim) for char in planted.quote or ""}
-    folds = set(oracle.FOLDS) - {chr(0x2026)}
-    assert folds - written == set()
+    expected = (set(oracle.FOLDS) | oracle.REMOVED) - {chr(0x2026)}
+    assert expected - written == set()

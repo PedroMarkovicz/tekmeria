@@ -183,8 +183,8 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 This is its output:
 
 <!-- evaluation:start -->
-planted cases: 1500/1500 correct (seed 0, 25 per category; 7 records, 178 passages)
-whole answers: 243/243 correct
+planted cases: 1550/1550 correct (seed 0, 25 per category; 7 records, 178 passages)
+whole answers: 250/250 correct
 
 | Category | Distinct cases | Structured claims | Answer text |
 |---|---|---|---|
@@ -196,9 +196,10 @@ whole answers: 243/243 correct
 | `ok_quote_double_marks` | 19 | 25/25 | - |
 | `ok_quote_folded` | 25 | 25/25 | 25/25 |
 | `ok_quote_folded_marks` | 25 | 25/25 | - |
+| `ok_quote_invisible` | 25 | 25/25 | 25/25 |
 | `quote_number_changed` | 25 | 25/25 | 25/25 |
 | `quote_decimal_moved` | 25 | 25/25 | 25/25 |
-| `quote_comparison_flipped` | 17 | 25/25 | 25/25 |
+| `quote_comparison_flipped` | 19 | 25/25 | 25/25 |
 | `quote_unit_changed` | 25 | 25/25 | 25/25 |
 | `quote_sign_changed` | 25 | 25/25 | 25/25 |
 | `quote_case_changed` | 25 | 25/25 | 25/25 |
@@ -215,7 +216,7 @@ whole answers: 243/243 correct
 | `malformed_with_note` | 25 | 25/25 | 25/25 |
 | `withdrawn_path` | 24 | 25/25 | 25/25 |
 | `withdrawn_record` | 25 | 25/25 | 25/25 |
-| `unavailable` | 9 | 25/25 | 25/25 |
+| `unavailable` | 8 | 25/25 | 25/25 |
 | `retracted_cited` | 5 | 25/25 | 25/25 |
 | `preprint_cited` | 2 | 25/25 | 25/25 |
 | `version_changed` | 25 | 25/25 | 25/25 |
@@ -228,24 +229,24 @@ whole answers: 243/243 correct
 | `unavailable` | 50 | 50 | 1.000 | 1.000 |
 | `withdrawn` | 100 | 100 | 1.000 | 1.000 |
 | `quote_mismatch` | 575 | 575 | 1.000 | 1.000 |
-| `ok` | 500 | 500 | 1.000 | 1.000 |
+| `ok` | 550 | 550 | 1.000 | 1.000 |
 
 | Whole answers | Correct | Planted overall verdicts |
 |---|---|---|
-| mixed | 188/188 | `fail` 129, `incomplete` 11, `warn` 48 |
+| mixed | 194/194 | `fail` 132, `incomplete` 9, `warn` 53 |
 | clean | 25/25 | `pass` 25 |
-| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 8, `warn` 14 |
+| paired | 31/31 | `fail` 7, `incomplete` 1, `pass` 9, `warn` 14 |
 
 | Record | Planted citations |
 |---|---|
-| nct:NCT04363697 | 193 |
+| nct:NCT04363697 | 199 |
 | outside the snapshot | 75 |
-| pmcid:PMC13425182 | 43 |
-| pmid:30831578 | 28 |
+| pmcid:PMC13425182 | 39 |
+| pmid:30831578 | 23 |
 | pmid:42530928 | 2 |
 | pmid:9500320 | 25 |
 | ppr:PPR1297067 | 25 |
-| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 434 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 462 |
 <!-- evaluation:end -->
 
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.

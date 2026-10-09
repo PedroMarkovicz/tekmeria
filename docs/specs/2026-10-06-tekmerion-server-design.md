@@ -156,7 +156,7 @@ Applied to passage text when it is issued, and to quotes before they are compare
 
 1. Unicode NFC.
 2. Collapse all whitespace runs to a single space, and trim.
-3. **For comparison only:** fold typographic variants. Curly quotes become straight quotes; en dash, em dash and minus sign become a hyphen; non-breaking space becomes a space; ellipsis becomes three dots.
+3. **For comparison only:** fold typographic variants and remove invisible characters. Curly quotes, the modifier letter apostrophe and the prime become straight quotes; figure dash, en dash, em dash, horizontal bar, minus sign and fullwidth hyphen become a hyphen; non-breaking space becomes a space; ellipsis becomes three dots; soft hyphens and zero-width characters are removed.
 
 Normalization must be idempotent.
 

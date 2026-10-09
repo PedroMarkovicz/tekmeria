@@ -130,3 +130,9 @@ def test_metrics_follow_section_8() -> None:
         "fabricated": 0,
         "retracted_cited": 0,
     }
+
+
+def test_fold_removes_invisible_characters_and_folds_the_rarer_variants() -> None:
+    text = "a" + chr(0x00AD) + "b" + chr(0x200B) + "c" + chr(0x2012) + chr(0x2032)
+    assert oracle.fold(text) == "abc-'"
+    assert frozenset(map(chr, (0x00AD, 0x200B, 0x2060, 0xFEFF))) == oracle.REMOVED

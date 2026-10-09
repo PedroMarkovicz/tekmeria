@@ -71,7 +71,7 @@ def test_every_substring_of_a_passage_matches(text: str, data: st.DataObject) ->
     start = data.draw(st.integers(min_value=0, max_value=len(passage) - 1))
     end = data.draw(st.integers(min_value=start + 1, max_value=len(passage)))
     quote = passage[start:end]
-    if quote.strip():
+    if fold_for_compare(quote):  # a quote of only spaces or removed characters is empty
         assert quote_in_passage(quote, passage)
 
 
@@ -101,3 +101,18 @@ def test_closest_match_stays_fast_for_long_quotes() -> None:
     started = time.perf_counter()
     closest_match(quote, passage)
     assert time.perf_counter() - started < 1.0
+
+
+def test_fold_maps_the_rarer_dashes_and_apostrophes() -> None:
+    dashes = "".join(map(chr, (0x2012, 0x2015, 0xFF0D)))
+    apostrophes = chr(0x02BC) + chr(0x2032)
+    assert fold_for_compare(f"a{dashes}b {apostrophes}") == "a---b ''"
+
+
+def test_invisible_characters_are_removed_before_comparing() -> None:
+    # Full text and labels carry soft hyphens and zero-width characters a quote omits.
+    invisible = "".join(map(chr, (0x00AD, 0x200B, 0x2060, 0xFEFF)))
+    passage = f"hyper{invisible}glycaemia was common"
+    assert quote_in_passage("hyperglycaemia was", passage)
+    assert quote_in_passage(f"hyper{chr(0x00AD)}glycaemia", "hyperglycaemia")
+    assert not quote_in_passage(invisible, passage)  # nothing left to compare

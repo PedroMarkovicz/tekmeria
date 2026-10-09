@@ -73,12 +73,13 @@ Passage text is issued normalized, and quotes are normalized the same way before
 
 1. Unicode NFC.
 2. Every run of whitespace becomes one space, and the ends are trimmed.
-3. For comparison only, typographic variants are folded:
-   - U+2018, U+2019, U+201A and U+201B (single curly and low quotes) become `'`;
+3. For comparison only, typographic variants are folded and invisible characters removed:
+   - U+2018, U+2019, U+201A and U+201B (single curly and low quotes), U+02BC (modifier letter apostrophe) and U+2032 (prime) become `'`;
    - U+201C, U+201D, U+201E and U+201F (double curly and low quotes) become `"`;
-   - U+2010 (hyphen), U+2011 (non-breaking hyphen), U+2013 (en dash), U+2014 (em dash) and U+2212 (minus sign) become `-`;
+   - U+2010 (hyphen), U+2011 (non-breaking hyphen), U+2012 (figure dash), U+2013 (en dash), U+2014 (em dash), U+2015 (horizontal bar), U+2212 (minus sign) and U+FF0D (fullwidth hyphen-minus) become `-`;
    - U+00A0 (non-breaking space) becomes a space;
-   - U+2026 (ellipsis) becomes three dots.
+   - U+2026 (ellipsis) becomes three dots;
+   - U+00AD (soft hyphen), U+200B (zero-width space), U+2060 (word joiner) and U+FEFF (zero-width no-break space) are removed.
 
 ## 4. Citing in an answer
 
