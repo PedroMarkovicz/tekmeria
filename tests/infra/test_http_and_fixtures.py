@@ -9,6 +9,7 @@ from tekmerion.infra.fixtures import (
     FixtureTransport,
     RecordingTransport,
     keep_abstracts,
+    open_licence_pmids,
     request_key,
     scrub,
     strip_abstracts,
@@ -230,3 +231,28 @@ def test_keep_abstracts_covers_book_records_too() -> None:
     )
     assert "Abstract of 7." not in keep_abstracts(book, {"1"})
     assert keep_abstracts(book, {"7"}) == book
+
+
+def test_open_licence_pmids_reads_the_licences_of_recorded_searches(tmp_path: Path) -> None:
+    results = [
+        {"pmid": "1", "license": "cc by"},
+        {"pmid": "2", "license": "cc0"},
+        {"pmid": "3", "license": "cc by-nc-nd"},
+        {"pmid": "4"},
+        {"license": "cc by"},  # a preprint without a PMID
+    ]
+    search = {
+        "url": SEARCH + "?query=measles",
+        "body": json.dumps({"resultList": {"result": results}}),
+    }
+    other = {
+        "url": "https://example.org/rest/search",
+        "body": json.dumps({"resultList": {"result": results}}),
+    }
+    for name, record in (("search", search), ("other", other)):
+        (tmp_path / f"{name}.json").write_text(json.dumps(record), encoding="utf-8")
+    (tmp_path / "scenario.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "busy.json").write_text(
+        json.dumps({"url": SEARCH, "body": "<html>busy</html>"}), encoding="utf-8"
+    )
+    assert open_licence_pmids(tmp_path) == {"1", "2"}

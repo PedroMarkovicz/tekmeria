@@ -49,22 +49,42 @@ def test_notice_credits_the_recorded_full_text_and_preprint() -> None:
         assert expected in notice, expected
 
 
-def test_pubmed_responses_keep_abstracts_only_of_fetched_records() -> None:
-    # PubMed carries no licence: only the records the demo, the tests and the evaluation fetch
-    # keep their abstracts. Read with an XML parser, independently of the recorder's step.
+def _open_search_results() -> dict[str, bool]:
+    """PMID -> whether its Europe PMC search result carries an abstract, for every recorded
+    result listed as CC BY or CC0. Read here without the recorder's own helpers."""
+    found: dict[str, bool] = {}
+    for record in _recorded():
+        if httpx.URL(record["url"]).path == "/europepmc/webservices/rest/search":
+            for result in json.loads(record["body"])["resultList"]["result"]:
+                if result.get("pmid") and result.get("license") in ("cc by", "cc0"):
+                    pmid = str(result["pmid"])
+                    found[pmid] = found.get(pmid, False) or "abstractText" in result
+    return found
+
+
+def test_pubmed_responses_keep_abstracts_only_of_fetched_or_open_records() -> None:
+    # PubMed carries no licence: abstracts stay only for the records the demo, the tests and
+    # the evaluation fetch, and for those Europe PMC lists as CC BY or CC0, whose search
+    # previews then keep a text. Read with an XML parser, independently of the recorder.
     scenario = json.loads((FIXTURES_DIR / "scenario.json").read_text(encoding="utf-8"))
-    keep = fetched_pmids(scenario)
+    fetched = fetched_pmids(scenario)
+    open_results = _open_search_results()
+    keep = fetched | set(open_results)
+    in_fetches: set[str] = set()
     with_abstract: set[str] = set()
     for record in _recorded():
         if is_pubmed_fetch(record["url"]):
             root = ET.fromstring(record["body"])
             for kind in ("PubmedArticle", "PubmedBookArticle"):
                 for article in root.iter(kind):
+                    in_fetches.add(article.findtext(".//PMID") or "")
                     if (
                         article.find(".//Abstract") is not None
                         or article.find(".//OtherAbstract") is not None
                     ):
                         with_abstract.add(article.findtext(".//PMID") or "")
         elif "/pubtator3-api/" in record["url"]:  # annotations carry the abstract's text too
-            assert set(httpx.URL(record["url"]).params["pmids"].split(",")) <= keep
+            assert set(httpx.URL(record["url"]).params["pmids"].split(",")) <= fetched
     assert with_abstract <= keep, sorted(with_abstract - keep)
+    restored = {p for p, has_abstract in open_results.items() if has_abstract} & in_fetches
+    assert restored <= with_abstract, sorted(restored - with_abstract)

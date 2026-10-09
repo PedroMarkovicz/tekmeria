@@ -1,9 +1,13 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from tekmerion.demo.scenario import (
     COHORT_PMID,
     RETRACTED_PMID,
     DemoError,
+    abstract_pmids,
     fetched_pmids,
     require_complete,
     wanted,
@@ -41,3 +45,15 @@ def test_only_a_cc_by_article_is_recorded_as_open_access() -> None:
 def test_the_fetched_records_are_the_demo_papers_and_the_recorded_finds() -> None:
     scenario = {"in_process_pmid": "3", "open_access_pmid": "4", "preprint_id": "PPR5"}
     assert fetched_pmids(scenario) == {COHORT_PMID, RETRACTED_PMID, "3", "4"}
+
+
+def test_abstracts_are_kept_for_fetched_records_and_open_licence_search_results(
+    tmp_path: Path,
+) -> None:
+    body = {"resultList": {"result": [{"pmid": "5", "license": "cc by"}]}}
+    url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=x"
+    (tmp_path / "s.json").write_text(
+        json.dumps({"url": url, "body": json.dumps(body)}), encoding="utf-8"
+    )
+    scenario = {"in_process_pmid": "3", "open_access_pmid": "4", "preprint_id": "PPR5"}
+    assert abstract_pmids(scenario, tmp_path) == {COHORT_PMID, RETRACTED_PMID, "3", "4", "5"}

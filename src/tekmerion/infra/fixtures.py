@@ -7,8 +7,8 @@ Recorded responses are redistributed with the repository, so the recorder keeps 
 that may be redistributed (see NOTICE): a search result's abstract is dropped unless its
 licence is CC BY or CC0. Lookups of one record by ID keep theirs, since the demo and the
 evaluation fetch those records' text. PubMed responses carry no licence, so once a recording
-is done they keep abstracts only for the records the demo, the tests and the evaluation fetch
-(`strip_abstracts`).
+is done they keep abstracts only for the records the demo, the tests and the evaluation fetch,
+and for those the recorded Europe PMC searches list as CC BY or CC0 (`strip_abstracts`).
 """
 
 import hashlib
@@ -91,6 +91,24 @@ def strip_abstracts(root: Path, pmids: Collection[str]) -> int:
             path.write_text(json.dumps(record, indent=1, ensure_ascii=False), encoding="utf-8")
             changed += 1
     return changed
+
+
+def open_licence_pmids(root: Path) -> frozenset[str]:
+    """The PMIDs of the records that the Europe PMC searches recorded in `root` list as CC BY or
+    CC0: their abstracts may be redistributed, from PubMed as from Europe PMC."""
+    pmids: set[str] = set()
+    for path in root.glob("*.json"):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if httpx.URL(record.get("url", "")).path != _EUROPEPMC_SEARCH:
+            continue  # another source, or scenario.json
+        try:
+            results = json.loads(record["body"]).get("resultList", {}).get("result", [])
+        except (ValueError, AttributeError):  # an error page
+            continue
+        pmids.update(
+            str(r["pmid"]) for r in results if r.get("pmid") and r.get("license") in OPEN_LICENCES
+        )
+    return frozenset(pmids)
 
 
 class FixtureTransport(httpx.AsyncBaseTransport):
