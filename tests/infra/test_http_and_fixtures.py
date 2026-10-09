@@ -218,3 +218,15 @@ def test_strip_abstracts_rewrites_only_pubmed_fetches(tmp_path: Path) -> None:
         in json.loads((tmp_path / "other.json").read_text(encoding="utf-8"))["body"]
     )
     assert strip_abstracts(tmp_path, {"1"}) == 0  # nothing left to remove
+
+
+def test_keep_abstracts_covers_book_records_too() -> None:
+    # A PubMed search can return a Bookshelf record (StatPearls, GeneReviews), whose abstract
+    # sits in a PubmedBookArticle.
+    book = (
+        '<PubmedArticleSet><PubmedBookArticle><BookDocument><PMID Version="1">7</PMID>'
+        "<Abstract><AbstractText>Abstract of 7.</AbstractText></Abstract>"
+        "</BookDocument></PubmedBookArticle></PubmedArticleSet>"
+    )
+    assert "Abstract of 7." not in keep_abstracts(book, {"1"})
+    assert keep_abstracts(book, {"7"}) == book

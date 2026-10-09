@@ -23,7 +23,7 @@ VOLATILE_PARAMS = frozenset({"api_key", "tool", "email", "mailto"})
 OPEN_LICENCES = frozenset({"cc by", "cc0"})
 _EUROPEPMC_SEARCH = "/europepmc/webservices/rest/search"
 _LOOKUPS = ("EXT_ID:", "PMCID:")
-_PUBMED_ARTICLE = re.compile(r"<PubmedArticle>.*?</PubmedArticle>", re.S)
+_PUBMED_ARTICLE = re.compile(r"<(PubmedArticle|PubmedBookArticle)>.*?</\1>", re.S)
 _PMID = re.compile(r"<PMID[^>]*>(\d+)</PMID>")
 _ABSTRACT = re.compile(r"\s*<Abstract>.*?</Abstract>|\s*<OtherAbstract\b.*?</OtherAbstract>", re.S)
 

@@ -57,9 +57,14 @@ def test_pubmed_responses_keep_abstracts_only_of_fetched_records() -> None:
     with_abstract: set[str] = set()
     for record in _recorded():
         if is_pubmed_fetch(record["url"]):
-            for article in ET.fromstring(record["body"]).iter("PubmedArticle"):
-                if article.find(".//Abstract") is not None:
-                    with_abstract.add(article.findtext(".//PMID") or "")
+            root = ET.fromstring(record["body"])
+            for kind in ("PubmedArticle", "PubmedBookArticle"):
+                for article in root.iter(kind):
+                    if (
+                        article.find(".//Abstract") is not None
+                        or article.find(".//OtherAbstract") is not None
+                    ):
+                        with_abstract.add(article.findtext(".//PMID") or "")
         elif "/pubtator3-api/" in record["url"]:  # annotations carry the abstract's text too
             assert set(httpx.URL(record["url"]).params["pmids"].split(",")) <= keep
     assert with_abstract <= keep, sorted(with_abstract - keep)
