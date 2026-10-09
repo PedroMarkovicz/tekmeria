@@ -159,6 +159,22 @@ async def test_a_typographic_variant_still_differs_from_the_passage(snapshot: Sn
         assert planted.quote is not None and planted.quote not in text, planted.quote
 
 
+async def test_an_invalid_citation_shares_its_sentence_with_a_genuine_one(
+    snapshot: Snapshot,
+) -> None:
+    rng = random.Random(0)
+    found = [
+        case
+        for case in generate_cases(snapshot, DEMO_KEY, seed=0, per_category=4)
+        if case.category == "invalid_beside_valid"
+    ]
+    kinds = [sorted(p.verdict for p in case.citations) for case in found]
+    assert kinds == [["ok", "quote_mismatch"], ["ok", "withdrawn"]] * 2  # in turn
+    for case in found:
+        (claim,) = parse_answer_text(render_text(case, rng))  # one sentence, both citations
+        assert len(claim.citations) == 2
+
+
 async def test_a_note_follows_a_genuine_handle(snapshot: Snapshot) -> None:
     for planted, _ in _planted(snapshot, {"malformed_with_note"}):
         handle, note = planted.handle.split(" ", 1)

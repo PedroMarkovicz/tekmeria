@@ -158,13 +158,14 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 
 ## Evaluation
 
-`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 33 categories:
+`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 34 categories:
 - genuine citations, with verbatim quotes and with quotes written in typographic variants the comparison must accept: spacing, decomposed accents, every dash, apostrophe and quote mark it folds, and the invisible characters it removes;
 - quotes with one detail changed: a number, a decimal point, a comparison sign, a unit, a minus sign, a letter's case, an added accent, a superscript digit, a removed space, an inserted "not" or a swapped word;
 - forged check codes, paths and record IDs, a forged handle written outside brackets, malformed handles, and a note written inside the citation;
 - passages and records that do not exist, and a source that is down;
 - retracted papers, preprints and older record versions;
-- a forged handle hidden inside an unclosed quote.
+- a forged handle hidden inside an unclosed quote;
+- a misquote or a withdrawn record cited beside a genuine citation in the same sentence.
 
 **How the cases are built.**
 - They rest on 7 real records (178 passages) from the demo's recorded responses.
@@ -177,14 +178,14 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 - The cases are also written into whole answers of several sentences. A whole answer passes only when every sentence's status, every citation, every metric and the overall verdict come out as planted. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them. There are three kinds:
   - mixed: every case, four at a time, with a heading, bold lead-ins and uncited sentences;
   - clean: genuine citations only, which pass;
-  - paired: the first case of each category that can be written as answer text (31 of 33) between two sentences that each carry a genuine citation, so its own effect on the overall verdict is scored. A mismatched or withdrawn citation alone gives `warn`.
+  - paired: the first case of each category that can be written as answer text (32 of 34) between two sentences that each carry a genuine citation, so its own effect on the overall verdict is scored. A mismatched or withdrawn citation gives `warn`, alone in its sentence or beside a genuine one.
 - CI runs the evaluation on every push.
 
 This is its output:
 
 <!-- evaluation:start -->
-planted cases: 1550/1550 correct (seed 0, 25 per category; 7 records, 178 passages)
-whole answers: 250/250 correct
+planted cases: 1600/1600 correct (seed 0, 25 per category; 7 records, 178 passages)
+whole answers: 257/257 correct
 
 | Category | Distinct cases | Structured claims | Answer text |
 |---|---|---|---|
@@ -221,32 +222,33 @@ whole answers: 250/250 correct
 | `preprint_cited` | 2 | 25/25 | 25/25 |
 | `version_changed` | 25 | 25/25 | 25/25 |
 | `hidden_in_quote` | 25 | - | 25/25 |
+| `invalid_beside_valid` | 25 | 25/25 | 25/25 |
 
 | Verdict | Planted | Given | Precision | Recall |
 |---|---|---|---|---|
 | `malformed` | 100 | 100 | 1.000 | 1.000 |
 | `forged` | 200 | 200 | 1.000 | 1.000 |
 | `unavailable` | 50 | 50 | 1.000 | 1.000 |
-| `withdrawn` | 100 | 100 | 1.000 | 1.000 |
-| `quote_mismatch` | 575 | 575 | 1.000 | 1.000 |
-| `ok` | 550 | 550 | 1.000 | 1.000 |
+| `withdrawn` | 124 | 124 | 1.000 | 1.000 |
+| `quote_mismatch` | 601 | 601 | 1.000 | 1.000 |
+| `ok` | 600 | 600 | 1.000 | 1.000 |
 
 | Whole answers | Correct | Planted overall verdicts |
 |---|---|---|
-| mixed | 194/194 | `fail` 132, `incomplete` 9, `warn` 53 |
+| mixed | 200/200 | `fail` 128, `incomplete` 15, `warn` 57 |
 | clean | 25/25 | `pass` 25 |
-| paired | 31/31 | `fail` 7, `incomplete` 1, `pass` 9, `warn` 14 |
+| paired | 32/32 | `fail` 7, `incomplete` 1, `pass` 9, `warn` 15 |
 
 | Record | Planted citations |
 |---|---|
-| nct:NCT04363697 | 199 |
-| outside the snapshot | 75 |
-| pmcid:PMC13425182 | 39 |
-| pmid:30831578 | 23 |
-| pmid:42530928 | 2 |
+| nct:NCT04363697 | 208 |
+| outside the snapshot | 87 |
+| pmcid:PMC13425182 | 40 |
+| pmid:30831578 | 30 |
+| pmid:42530928 | 3 |
 | pmid:9500320 | 25 |
 | ppr:PPR1297067 | 25 |
-| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 462 |
+| setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 482 |
 <!-- evaluation:end -->
 
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.
@@ -256,13 +258,13 @@ whole answers: 250/250 correct
 - The drug label and the trial supply most planted citations: see the last table.
 - The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
 
-**Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 37 faults are chosen by hand:
+**Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 38 faults are chosen by hand:
 - lenient comparators: case, punctuation, accents, whitespace, NFKC, or only the first 40 characters;
 - each of 19 folds of the contract removed in turn, and a no-break space not read as whitespace (deleting that fold entry itself changes nothing, since whitespace normalization already reads it as a space);
 - each of the 4 invisible characters no longer removed;
-- a check code that ignores the path, dropped flags, and wrong rules for claim status, coverage, validity and the overall verdict, among them the earlier rule under which a sentence cited only by invalid citations did not warn.
+- a check code that ignores the path, dropped flags, and wrong rules for claim status, coverage, validity and the overall verdict, among them the two earlier rules under which a sentence cited only by invalid citations, or an invalid citation beside a valid one, did not warn.
 
-It catches 36 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 10 cases per category, enough for every dash and quote mark to appear.
+It catches 37 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 10 cases per category, enough for every dash and quote mark to appear.
 
 **Mutation score.** `python -m tekmerion.evaluation.mutants` is less selective. It makes one small change at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each one. A change negates a comparison or moves it across its boundary, swaps `and` and `or`, removes a `not`, flips a boolean, or adds one to an integer. String and regular-expression constants are not changed, so the score says little about the citation grammar or the fold table: the injected faults cover those.
 - The evaluation kills 71 of 78 changes: 52 by a wrong result and 19 by a crash.

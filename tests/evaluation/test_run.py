@@ -54,7 +54,7 @@ async def test_the_audit_gives_every_planted_case_its_verdict(snapshot: Snapshot
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
     # ok_quote_double_marks and ok_quote_folded_marks run on structured claims only;
     # forged_bare and hidden_in_quote on answer text only
-    assert report.cases == 5 * (29 * 2 + 4)
+    assert report.cases == 5 * (30 * 2 + 4)
     assert (report.correct, report.failures) == (report.cases, [])
     assert all(score.precision == score.recall == 1.0 for score in report.verdicts)
     assert report.passed()
@@ -91,15 +91,15 @@ async def test_a_citation_the_audit_misses_counts_against_recall(
 async def test_the_report_reads_as_markdown_tables(snapshot: Snapshot) -> None:
     text = render_report(await _evaluate(snapshot, SnapshotResolver(snapshot)))
     lines = text.splitlines()
-    assert lines[0].startswith("planted cases: 310/310 correct (seed 0, 5 per category;")
-    assert lines[1] == "whole answers: 75/75 correct"
+    assert lines[0].startswith("planted cases: 320/320 correct (seed 0, 5 per category;")
+    assert lines[1] == "whole answers: 77/77 correct"
     assert "| `hidden_in_quote` | 5 | - | 5/5 |" in lines
     assert "| `ok_quote_double_marks` | 5 | 5/5 | - |" in lines
     assert "| `preprint_cited` | 2 | 5/5 | 5/5 |" in lines
     assert "| `forged` | 40 | 40 | 1.000 | 1.000 |" in lines
     assert "| clean | 5/5 | `pass` 5 |" in lines
-    assert "| paired | 31/31 | `fail` 7, `incomplete` 1, `pass` 9, `warn` 14 |" in lines
-    assert "| outside the snapshot | 15 |" in lines
+    assert "| paired | 32/32 | `fail` 7, `incomplete` 1, `pass` 9, `warn` 15 |" in lines
+    assert "| outside the snapshot | 17 |" in lines
 
 
 async def test_the_report_counts_distinct_cases_and_citations_per_record(
@@ -108,8 +108,8 @@ async def test_the_report_counts_distinct_cases_and_citations_per_record(
     report = await _evaluate(snapshot, SnapshotResolver(snapshot))
     distinct = {score.category: score.distinct for score in report.categories}
     assert distinct["preprint_cited"] == 2 and distinct["ok_plain"] == 5
-    assert sum(report.records.values()) == 5 * 34  # every planted citation, once per case
-    assert report.records["outside the snapshot"] == 15  # withdrawn records and the offline one
+    assert sum(report.records.values()) == 5 * 36  # every planted citation, once per case
+    assert report.records["outside the snapshot"] == 17  # withdrawn records and the offline one
 
 
 # Each test below breaks one decision of the audit, as a real bug would, and the evaluation

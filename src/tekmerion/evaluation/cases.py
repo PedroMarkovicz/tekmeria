@@ -551,6 +551,17 @@ class _Builder:
         )
         return Case("hidden_in_quote", cited, modes=("text",))
 
+    def invalid_beside_valid(self) -> Case:
+        # A sentence that cites a genuine passage and, beside it, a misquote or a withdrawn
+        # record, in turn: the sentence counts as cited, so only the invalid citation itself
+        # can make the answer warn.
+        _, passage = self.pick(self.clean)
+        genuine = Planted(self.handle(passage), None, "ok")
+        kind = self.turn("invalid_beside_valid", ("quote_negated", "withdrawn_record"))
+        (invalid,) = getattr(self, kind)().citations
+        pair = (genuine, invalid) if self.rng.random() < 0.5 else (invalid, genuine)
+        return Case("invalid_beside_valid", pair)
+
 
 CATEGORIES: tuple[str, ...] = (
     "ok_plain",
@@ -586,6 +597,7 @@ CATEGORIES: tuple[str, ...] = (
     "preprint_cited",
     "version_changed",
     "hidden_in_quote",
+    "invalid_beside_valid",
 )
 
 
@@ -602,6 +614,8 @@ def render_group(case: Case, rng: random.Random) -> str:
     if case.category == "hidden_in_quote":
         visible, hidden = case.citations
         return f"[{visible.handle} 'see; {hidden.handle} 'here']"
+    if case.category == "invalid_beside_valid":  # two entries in one group: [handle; handle]
+        return "[" + "; ".join(_group(p, rng)[1:-1] for p in case.citations) + "]"
     (planted,) = case.citations
     if case.category == "forged_bare":
         return f"(see {planted.handle})"

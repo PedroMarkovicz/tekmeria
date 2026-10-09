@@ -144,6 +144,11 @@ FAULTS: tuple[Fault, ...] = (
         (audit_module, "overall_verdict"),
         _earlier_warn_rule(invalid_only=False),
     ),
+    Fault(
+        "an invalid citation beside a valid one does not warn",
+        (audit_module, "overall_verdict"),
+        _earlier_warn_rule(invalid_only=True),
+    ),
     Fault("invalid_only read as uncited", (audit_module, "_claim_status"), _invalid_as_uncited),
     _summary_fault(
         "coverage = cited / (cited + invalid_only)",

@@ -41,6 +41,12 @@ def test_every_fold_that_matters_has_its_fault() -> None:
     assert {f"no removal of U+{ord(char):04X}" for char in oracle.REMOVED} <= names
 
 
+def test_each_earlier_rule_for_warn_has_its_fault() -> None:
+    names = {fault.name for fault in FAULTS}
+    assert "invalid_only sentences do not warn" in names
+    assert "an invalid citation beside a valid one does not warn" in names
+
+
 async def test_a_real_fault_is_caught_and_a_harmless_one_is_not(
     snapshot: Snapshot, monkeypatch: pytest.MonkeyPatch
 ) -> None:

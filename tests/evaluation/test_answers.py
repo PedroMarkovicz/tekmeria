@@ -62,7 +62,8 @@ def test_the_expected_result_follows_the_contract() -> None:
 
 # A category's own effect on the overall verdict, with the default fail_on: forged and
 # malformed citations fail; an unavailable source makes the answer incomplete; a misquoted or
-# withdrawn citation, or a retracted source, warns; a genuine citation, even with a flag, passes.
+# withdrawn citation, alone or beside a genuine one, or a retracted source, warns; a genuine
+# citation, even with a flag, passes.
 FAILS = {
     "forged_check_code",
     "forged_path_swap",
@@ -79,7 +80,10 @@ def _paired_verdict(category: str) -> str:
         return "fail"
     if category == "unavailable":
         return "incomplete"
-    if category.startswith(("quote_", "withdrawn_")) or category == "retracted_cited":
+    if category.startswith(("quote_", "withdrawn_")) or category in (
+        "retracted_cited",
+        "invalid_beside_valid",
+    ):
         return "warn"
     return "pass"
 
