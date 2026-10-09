@@ -143,7 +143,7 @@ The report's `verdict` is decided in this order:
 
 1. `fail` if anything listed in `fail_on` occurs.
 2. Otherwise `incomplete` if any citation is `unavailable`.
-3. Otherwise `warn` if any sentence is uncited or any `ok` citation is retracted.
+3. Otherwise `warn` if any sentence is uncited or cited only by invalid citations (`invalid_only`), or any `ok` citation is retracted.
 4. Otherwise `pass`.
 
 `fail_on` may list any of `malformed`, `forged`, `unavailable`, `withdrawn`, `quote_mismatch`, `uncited` and `retracted`. The default is `forged` and `malformed`, the two signs that a model invented or mangled a citation.

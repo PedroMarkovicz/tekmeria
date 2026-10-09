@@ -138,6 +138,22 @@ async def test_retracted_flag_and_warn_verdict() -> None:
     assert report.verdict == "warn"
 
 
+@pytest.mark.parametrize(
+    "citation",
+    [
+        CitationIn(handle=CODEC.issue(OK_LOC), quote="MMR vaccination increased"),  # misquoted
+        CitationIn(handle=CODEC.issue(GONE_LOC)),  # withdrawn
+    ],
+)
+async def test_a_sentence_cited_only_by_invalid_citations_warns(citation: CitationIn) -> None:
+    # Neither a misquote nor a withdrawn record is fabrication, but neither supports the
+    # sentence: the answer cannot pass (docs/CONTRACT.md section 9).
+    claim = ClaimIn(sentence="s", citations=[citation])
+    report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
+    assert report.claims[0].status == "invalid_only"
+    assert report.verdict == "warn"
+
+
 async def test_version_changed_flag_and_issued_text() -> None:
     claim = ClaimIn(sentence="s", citations=[CitationIn(handle=CODEC.issue(TRIAL_LOC))])
     report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)

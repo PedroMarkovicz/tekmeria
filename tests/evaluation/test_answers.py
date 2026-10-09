@@ -61,19 +61,27 @@ def test_the_expected_result_follows_the_contract() -> None:
 
 
 # A category's own effect on the overall verdict, with the default fail_on: forged and
-# malformed citations fail; an unavailable source makes the answer incomplete; a retracted
-# source warns; everything else (a mismatch, a withdrawn record, a flag) still passes.
-PAIRED_VERDICT = {
-    "forged_check_code": "fail",
-    "forged_path_swap": "fail",
-    "forged_record_id": "fail",
-    "forged_bare": "fail",
-    "hidden_in_quote": "fail",
-    "malformed": "fail",
-    "malformed_with_note": "fail",
-    "unavailable": "incomplete",
-    "retracted_cited": "warn",
+# malformed citations fail; an unavailable source makes the answer incomplete; a misquoted or
+# withdrawn citation, or a retracted source, warns; a genuine citation, even with a flag, passes.
+FAILS = {
+    "forged_check_code",
+    "forged_path_swap",
+    "forged_record_id",
+    "forged_bare",
+    "hidden_in_quote",
+    "malformed",
+    "malformed_with_note",
 }
+
+
+def _paired_verdict(category: str) -> str:
+    if category in FAILS:
+        return "fail"
+    if category == "unavailable":
+        return "incomplete"
+    if category.startswith(("quote_", "withdrawn_")) or category == "retracted_cited":
+        return "warn"
+    return "pass"
 
 
 async def test_a_paired_answer_shows_its_category_on_its_own(snapshot: Snapshot) -> None:
@@ -87,4 +95,4 @@ async def test_a_paired_answer_shows_its_category_on_its_own(snapshot: Snapshot)
             for case in cases
             if case.citations == answer.sentences[1] and "text" in case.modes
         }
-        assert expected_result(answer).verdict == PAIRED_VERDICT.get(category, "pass"), category
+        assert expected_result(answer).verdict == _paired_verdict(category), category

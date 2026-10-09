@@ -98,7 +98,7 @@ async def test_the_report_reads_as_markdown_tables(snapshot: Snapshot) -> None:
     assert "| `preprint_cited` | 2 | 5/5 | 5/5 |" in lines
     assert "| `forged` | 40 | 40 | 1.000 | 1.000 |" in lines
     assert "| clean | 5/5 | `pass` 5 |" in lines
-    assert "| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 21, `warn` 1 |" in lines
+    assert "| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 8, `warn` 14 |" in lines
     assert "| outside the snapshot | 15 |" in lines
 
 

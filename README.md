@@ -232,9 +232,9 @@ whole answers: 243/243 correct
 
 | Whole answers | Correct | Planted overall verdicts |
 |---|---|---|
-| mixed | 188/188 | `fail` 129, `incomplete` 11, `pass` 1, `warn` 47 |
+| mixed | 188/188 | `fail` 129, `incomplete` 11, `warn` 48 |
 | clean | 25/25 | `pass` 25 |
-| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 21, `warn` 1 |
+| paired | 30/30 | `fail` 7, `incomplete` 1, `pass` 8, `warn` 14 |
 
 | Record | Planted citations |
 |---|---|
