@@ -158,8 +158,8 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 
 ## Evaluation
 
-`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 32 categories:
-- genuine citations, with verbatim quotes and with quotes written in typographic variants the comparison must accept: spacing, decomposed accents, and every dash, apostrophe and quote mark it folds;
+`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 33 categories:
+- genuine citations, with verbatim quotes and with quotes written in typographic variants the comparison must accept: spacing, decomposed accents, every dash, apostrophe and quote mark it folds, and the invisible characters it removes;
 - quotes with one detail changed: a number, a decimal point, a comparison sign, a unit, a minus sign, a letter's case, an added accent, a superscript digit, a removed space, an inserted "not" or a swapped word;
 - forged check codes, paths and record IDs, a forged handle written outside brackets, malformed handles, and a note written inside the citation;
 - passages and records that do not exist, and a source that is down;
@@ -172,12 +172,12 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 - What each case plants is decided by a reference oracle, written from the spec and sharing no code with the audit.
 
 **How they are scored.**
-- Each case is audited as structured claims and as answer text in one of the citation styles a model might write. The bare-handle and hidden-handle cases run on answer text only, and the two cases that put quote marks inside a quote on structured claims only. The two audits of a case use the same planted citations, so they are not independent observations.
+- Each case is audited as structured claims and as answer text in one of the citation styles a model might write. The bare-handle and hidden-handle cases run on answer text only, and the two categories that put quote marks inside a quote on structured claims only. The two audits of a case use the same planted citations, so they are not independent observations.
 - A case passes only when every citation gets its planted verdict and exactly its planted flags.
 - The cases are also written into whole answers of several sentences. A whole answer passes only when every sentence's status, every citation, every metric and the overall verdict come out as planted. Faults in claim status, metrics or the overall verdict leave every citation right, so only whole answers catch them. There are three kinds:
   - mixed: every case, four at a time, with a heading, bold lead-ins and uncited sentences;
   - clean: genuine citations only, which pass;
-  - paired: the first case of each category that can be written as answer text (30 of 32) between two genuine citations, so its own effect on the overall verdict is scored. With the default `fail_on`, a mismatched or withdrawn citation alone still passes.
+  - paired: the first case of each category that can be written as answer text (31 of 33) between two sentences that each carry a genuine citation, so its own effect on the overall verdict is scored. A mismatched or withdrawn citation alone gives `warn`.
 - CI runs the evaluation on every push.
 
 This is its output:
@@ -256,12 +256,13 @@ whole answers: 250/250 correct
 - The drug label and the trial supply most planted citations: see the last table.
 - The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
 
-**Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 27 faults are chosen by hand:
+**Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 37 faults are chosen by hand:
 - lenient comparators: case, punctuation, accents, whitespace, NFKC, or only the first 40 characters;
-- each of 14 folds of the contract removed in turn, and a no-break space not read as whitespace (deleting that fold entry itself changes nothing, since whitespace normalization already reads it as a space);
-- a check code that ignores the path, dropped flags, and wrong rules for claim status, coverage, validity and the overall verdict.
+- each of 19 folds of the contract removed in turn, and a no-break space not read as whitespace (deleting that fold entry itself changes nothing, since whitespace normalization already reads it as a space);
+- each of the 4 invisible characters no longer removed;
+- a check code that ignores the path, dropped flags, and wrong rules for claim status, coverage, validity and the overall verdict, among them the earlier rule under which a sentence cited only by invalid citations did not warn.
 
-It catches 26 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 8 cases per category.
+It catches 36 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 10 cases per category, enough for every dash and quote mark to appear.
 
 **Mutation score.** `python -m tekmerion.evaluation.mutants` is less selective. It makes one small change at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each one. A change negates a comparison or moves it across its boundary, swaps `and` and `or`, removes a `not`, flips a boolean, or adds one to an integer. String and regular-expression constants are not changed, so the score says little about the citation grammar or the fold table: the injected faults cover those.
 - The evaluation kills 71 of 78 changes: 52 by a wrong result and 19 by a crash.
