@@ -36,7 +36,12 @@ def scrub(url: httpx.URL, body: str) -> str:
     """`body` without the abstracts a search result may not redistribute."""
     if url.path != _EUROPEPMC_SEARCH or any(x in url.params.get("query", "") for x in _LOOKUPS):
         return body
-    data = json.loads(body)
+    try:
+        data = json.loads(body)
+    except ValueError:  # an error page: recorded as it came, for the upstream to judge
+        return body
+    if not isinstance(data, dict):
+        return body
     results = data.get("resultList", {}).get("result", [])
     restricted = [
         r for r in results if "abstractText" in r and r.get("license") not in OPEN_LICENCES

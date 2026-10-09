@@ -157,3 +157,13 @@ async def test_the_recorder_writes_scrubbed_bodies(tmp_path: Path) -> None:
     assert "abstractText" not in response.text
     (written,) = list(tmp_path.glob("*.json"))
     assert "abstractText" not in json.loads(written.read_text(encoding="utf-8"))["body"]
+
+
+async def test_the_recorder_writes_an_error_page_as_it_came(tmp_path: Path) -> None:
+    # A search can fail with an HTML page; the recorder must pass it on for the upstream's
+    # retries and the degraded-result check, not fail on it.
+    page = "<html>Service Unavailable</html>"
+    live, _ = scripted(httpx.Response(503, text=page, headers={"content-type": "text/html"}))
+    async with httpx.AsyncClient(transport=RecordingTransport(tmp_path, inner=live)) as client:
+        response = await client.get(SEARCH, params={"query": "measles"})
+    assert (response.status_code, response.text) == (503, page)

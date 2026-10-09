@@ -15,7 +15,9 @@ terms of its source:
 - Crossref metadata: bibliographic facts, which Crossref makes available without
   restriction.
 - PubMed and PubTator (National Library of Medicine): bibliographic records and
-  abstracts. Abstracts remain under the copyright of their publishers or authors.
+  abstracts, both of the records the demo, the tests and the evaluation fetch and of
+  search results the search tool completes from PubMed. Abstracts remain under the
+  copyright of their publishers or authors.
 - Europe PMC search results: an abstract is kept only when Europe PMC lists the
   article under CC BY or CC0, or when the result is the lookup of a record the demo
   or the evaluation fetches. The recorder removes every other abstract.

@@ -838,6 +838,11 @@ A licence check before making the repository public found that the recorded fixt
 
 - **The open-access article.** Its full text (PMC13425182, JAMA Network Open) was CC BY-NC-ND 4.0, whose notice forbids alteration and commercial use, including text and data mining. It is replaced by a CC BY 4.0 article: Jiao et al., PLoS Medicine 2025 (PMID 41187138, PMC12585062). The scenario's open-access search now asks Europe PMC for `LICENSE:"cc by"` and for 2020 to 2025, and its choice of hit requires a `cc by` licence. A 2026 article was the first candidate, but PubTator had not annotated it yet and the recorder refuses degraded results; an article from 2025 or earlier has also settled upstream. Only the open-access calls were re-recorded; every other fixture is unchanged.
 - **Search abstracts.** The recorder removes, from Europe PMC search results, every abstract whose licence is not CC BY or CC0, except in lookups of one record by ID, which the demo and the evaluation fetch. Applied to the existing fixtures, this removed 53 abstracts and changed no test or evaluation result.
-- **What stays.** PubMed and PubTator abstracts of the records the demo and the evaluation fetch stay, among them the cohort study and the retracted paper, which remain under their publishers' copyright. NOTICE lists every source and its terms, and attributes the CC BY works.
+- **What stays.** The scrub covers Europe PMC search results only; PubMed and PubTator responses keep their abstracts. They hold 16:
+  - 4 of records the demo, the tests and the evaluation fetch: the cohort study, the retracted paper and the in-process record, under their publishers' copyright, and the CC BY article;
+  - 6 of search results Europe PMC lists as CC BY;
+  - 6 of search results under publisher copyright, which the search tool completes from PubMed. Two of them are among the abstracts the scrub removed from Europe PMC results.
+
+  Removing those six would need the recorder to tell a search's PubMed lookups from a fetch. NOTICE lists every source and its terms, and attributes the CC BY works; a test checks that it names the recorded article and preprint.
 - **Tests.** Every recorded full text must carry a CC BY or CC0 licence, and no recorded search may keep an abstract the recorder would remove. The contract's example handles must name passages of the snapshot.
 - **Evaluation.** The snapshot grows from 178 to 213 passages, 63 of them from the literature instead of 28, so the label and the trial weigh less. Every planted case and whole answer is still scored correct.
