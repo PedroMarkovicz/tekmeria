@@ -2,6 +2,11 @@
 
 One JSON file per request, named by a hash of the request with credentials
 removed. `FixtureTransport` replays them; `RecordingTransport` writes them.
+
+Recorded responses are redistributed with the repository, so the recorder keeps only text
+that may be redistributed (see NOTICE): a search result's abstract is dropped unless its
+licence is CC BY or CC0. Lookups of one record by ID keep theirs, since the demo and the
+evaluation fetch those records' text.
 """
 
 import hashlib
@@ -11,6 +16,9 @@ from pathlib import Path
 import httpx
 
 VOLATILE_PARAMS = frozenset({"api_key", "tool", "email", "mailto"})
+OPEN_LICENCES = frozenset({"cc by", "cc0"})
+_EUROPEPMC_SEARCH = "/europepmc/webservices/rest/search"
+_LOOKUPS = ("EXT_ID:", "PMCID:")
 
 
 def request_key(method: str, url: httpx.URL) -> str:
@@ -22,6 +30,22 @@ def request_key(method: str, url: httpx.URL) -> str:
 def _display_url(url: httpx.URL) -> str:
     params = [(k, v) for k, v in url.params.multi_items() if k not in VOLATILE_PARAMS]
     return str(url.copy_with(params=params))
+
+
+def scrub(url: httpx.URL, body: str) -> str:
+    """`body` without the abstracts a search result may not redistribute."""
+    if url.path != _EUROPEPMC_SEARCH or any(x in url.params.get("query", "") for x in _LOOKUPS):
+        return body
+    data = json.loads(body)
+    results = data.get("resultList", {}).get("result", [])
+    restricted = [
+        r for r in results if "abstractText" in r and r.get("license") not in OPEN_LICENCES
+    ]
+    if not restricted:
+        return body
+    for result in restricted:
+        del result["abstractText"]
+    return json.dumps(data, ensure_ascii=False)
 
 
 class FixtureTransport(httpx.AsyncBaseTransport):
@@ -52,7 +76,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         response = await self.inner.handle_async_request(request)
-        body = (await response.aread()).decode("utf-8")
+        body = scrub(request.url, (await response.aread()).decode("utf-8"))
         self.root.mkdir(parents=True, exist_ok=True)
         record = {
             "url": _display_url(request.url),

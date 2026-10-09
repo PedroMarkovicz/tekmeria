@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from tekmerion.infra.cache import Cache
-from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport, request_key
+from tekmerion.infra.fixtures import FixtureTransport, RecordingTransport, request_key, scrub
 from tekmerion.infra.http import (
     HostConfig,
     Upstream,
@@ -123,3 +123,37 @@ async def test_body_rejected_by_the_validator_is_not_cached() -> None:
             await upstream.get_text("x", {}, ttl_s=60, validate=must_be_good)
         assert await upstream.get_text("x", {}, ttl_s=60, validate=must_be_good) == "good"
     assert len(seen) == 2
+
+
+SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+
+
+def _results(*licences: str | None) -> str:
+    return json.dumps(
+        {"resultList": {"result": [{"license": x, "abstractText": "text"} for x in licences]}}
+    )
+
+
+def test_scrub_drops_the_abstracts_a_search_may_not_redistribute() -> None:
+    url = httpx.URL(SEARCH, params={"query": "measles"})
+    kept = json.loads(scrub(url, _results("cc by", "cc0", "cc by-nc-nd", None)))
+    abstracts = ["abstractText" in r for r in kept["resultList"]["result"]]
+    assert abstracts == [True, True, False, False]
+    open_only = _results("cc by")
+    assert scrub(url, open_only) is open_only  # nothing to drop: the body is kept as recorded
+
+
+def test_scrub_keeps_lookups_by_id_and_other_hosts() -> None:
+    body = _results("cc by-nc-nd")
+    for query in ("(EXT_ID:PPR1297067) AND SRC:PPR", "(PMCID:PMC12585062)"):
+        assert scrub(httpx.URL(SEARCH, params={"query": query}), body) is body
+    assert scrub(httpx.URL("https://e.org/search", params={"query": "x"}), body) is body
+
+
+async def test_the_recorder_writes_scrubbed_bodies(tmp_path: Path) -> None:
+    live, _ = scripted(httpx.Response(200, text=_results("cc by-nc-nd")))
+    async with httpx.AsyncClient(transport=RecordingTransport(tmp_path, inner=live)) as client:
+        response = await client.get(SEARCH, params={"query": "measles"})
+    assert "abstractText" not in response.text
+    (written,) = list(tmp_path.glob("*.json"))
+    assert "abstractText" not in json.loads(written.read_text(encoding="utf-8"))["body"]
