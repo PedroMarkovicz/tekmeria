@@ -69,3 +69,12 @@ def test_a_release_is_tested_and_must_match_the_package_version() -> None:
     text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
     tag_check = 'run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"'
     assert text.index(tag_check) < text.index("run: uv run pytest") < text.index("run: uv build")
+
+
+def test_a_release_waits_for_the_demo_page_the_readme_links_to() -> None:
+    # The README, frozen into the package page at release, links the audit view on GitHub
+    # Pages: no release while that page does not answer.
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    check = "run: curl --fail --silent --show-error --location --output /dev/null"
+    assert f"{check} https://pedromarkovicz.github.io/tekmerion/" in text
+    assert text.index(check) < text.index("run: uv build")

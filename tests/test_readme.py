@@ -61,12 +61,15 @@ def _targets() -> list[str]:
 
 def test_linked_files_exist() -> None:
     targets = _targets()
-    blob = f"{REPO}/blob/main/"
+    blob, tree = f"{REPO}/blob/main/", f"{REPO}/tree/main/"
     files = [t.removeprefix(blob) for t in targets if t.startswith(blob)]
+    folders = [t.removeprefix(tree) for t in targets if t.startswith(tree)]
     images = [t.removeprefix(RAW) for t in targets if t.startswith(RAW)]
-    assert files and images
+    assert files and folders and images
     for target in files + images:
-        assert (ROOT / target.split("#")[0]).exists(), f"README links to missing {target}"
+        assert (ROOT / target.split("#")[0]).is_file(), f"README links to missing {target}"
+    for target in folders:
+        assert (ROOT / target).is_dir(), f"README links to missing folder {target}"
     assert "https://pedromarkovicz.github.io/tekmerion/" in README
 
 
@@ -77,7 +80,14 @@ def test_every_link_works_on_pypi_too() -> None:
     assert relative == []
 
 
-def test_the_banner_is_built_from_its_committed_source() -> None:
+def test_every_section_link_has_its_anchor() -> None:
+    # PyPI gives headings no ids, so every "#section" link needs an explicit anchor.
+    anchors = set(re.findall(r'<a id="([^"]+)"></a>', README))
+    links = {t.removeprefix("#") for t in _targets() if t.startswith("#")}
+    assert links and links <= anchors, sorted(links - anchors)
+
+
+def test_the_banner_has_its_source_beside_it() -> None:
     assert (ROOT / "docs" / "assets" / "banner.html").exists()
     hero = README.split("\n## ", 1)[0]
     assert README.startswith('<div align="center">')
@@ -106,9 +116,9 @@ def _acceptance_status(row: int) -> str:
     return line.rsplit("|", 2)[-2].strip()
 
 
-def test_claims_about_pages_and_hosts_wait_for_the_acceptance_checks() -> None:
-    if not _acceptance_status(5).startswith("Done"):
-        assert "is published at" not in README, "Pages is not deployed yet (criterion 5)"
+def test_claims_about_hosts_wait_for_the_acceptance_checks() -> None:
+    # The Pages demo the README links to is checked by the release workflow, which refuses
+    # to publish while that page does not answer (tests/test_workflows.py).
     if not _acceptance_status(6).startswith("Done"):
         assert "results as the audit view" not in README, "no host render shown yet (criterion 6)"
 
@@ -123,3 +133,30 @@ def test_the_evaluation_section_claims_only_what_it_shows() -> None:
     section = README.split("## Evaluation", 1)[1].split("\n## ", 1)[0]
     assert "Each case cites a real passage" not in section  # withdrawn cases cite made-up ones
     assert "reference oracle" in section and "not independent" in section
+
+
+def test_the_summary_numbers_are_the_evaluation_s() -> None:
+    # The badge, the highlights, the results table and the diagrams repeat numbers of the
+    # evaluation's output, which another test compares with a real run.
+    from tekmerion.evaluation.faults import FAULTS, NOT_EXERCISED
+
+    block = README.split("<!-- evaluation:start -->", 1)[1].split("<!-- evaluation:end -->", 1)[0]
+    outside = README.replace(block, "")
+    audits = int(re.search(r"planted cases: (\d+)/\1 correct", block).group(1))  # type: ignore[union-attr]
+    answers = int(re.search(r"whole answers: (\d+)/\1 correct", block).group(1))  # type: ignore[union-attr]
+    passages = re.search(r"(\d+) passages\)", block).group(1)  # type: ignore[union-attr]
+    categories = len(re.findall(r"^\| `[a-z_]+` \| \d+ \| (?:\d+/\d+|-) \|", block, re.M))
+    caught = len(FAULTS) - len(NOT_EXERCISED)
+    for expected in (
+        f"{audits:,}%2F{audits:,}".replace(",", "%2C"),  # the badge
+        f"**{audits:,} / {audits:,}** audits correct",
+        f"**{answers} / {answers}** correct",
+        f"{audits:,} audits and {answers} whole answers",
+        f"{categories * 25} cases in {categories} categories",
+        f"{categories} categories of planted citations",
+        f"{passages} passages",
+        f"{len(FAULTS)} injected faults, {caught} caught",
+        f"{len(FAULTS)} hand-chosen faults",
+        f"**{caught}** caught",
+    ):
+        assert expected in outside, expected

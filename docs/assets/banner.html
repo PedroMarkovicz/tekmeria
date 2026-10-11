@@ -2,7 +2,9 @@
 <!--
   The README banner. To regenerate docs/assets/banner.png (2560x640) from the repository root:
   chrome --headless=new --hide-scrollbars --window-size=2560,640 --virtual-time-budget=5000
-         --screenshot=docs/assets/banner.png docs/assets/banner.html
+         --default-background-color=00000000
+         --screenshot=<absolute path>/docs/assets/banner.png <absolute path>/docs/assets/banner.html
+  The corners outside the card stay transparent, for dark themes.
   The fonts load from Google Fonts, so the render needs a network connection.
 -->
 <html lang="en">
@@ -28,7 +30,7 @@
     --bad: #b3261e;
     --bad-bg: #fdeceb;
   }
-  html, body { margin: 0; width: 2560px; height: 640px; background: #ffffff; }
+  html, body { margin: 0; width: 2560px; height: 640px; background: transparent; }
   .card {
     box-sizing: border-box; width: 2560px; height: 640px; background: var(--paper);
     border-radius: 28px; display: flex; align-items: center; justify-content: space-between;

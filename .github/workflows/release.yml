@@ -22,6 +22,8 @@ jobs:
       - run: uv sync --locked
       - name: The release tag must name the package version
         run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
+      - name: The demo page the README links to must be live
+        run: curl --fail --silent --show-error --location --output /dev/null https://pedromarkovicz.github.io/tekmerion/
       - run: uv run pytest
       - run: uv build --out-dir dist
       - uses: actions/upload-artifact@v7

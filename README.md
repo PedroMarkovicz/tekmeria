@@ -4,7 +4,7 @@
 
 <a id="tekmerion"></a>
 
-### Citations an AI answer cannot fake: server-issued handles and a deterministic audit for biomedical evidence
+### Citations that can be checked: server-issued handles and a deterministic audit for biomedical evidence
 
 <br/>
 
@@ -16,7 +16,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/protocol-MCP-6e56cf.svg)](https://modelcontextprotocol.io/)
 [![Contract 0.1.0](https://img.shields.io/badge/citation%20contract-0.1.0-1a2040.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md)
-[![Evaluation](https://img.shields.io/badge/evaluation-1%2C600%2F1%2C600%20audits-1f7a3d.svg)](#evaluation)
+[![Conformance](https://img.shields.io/badge/conformance-1%2C600%2F1%2C600%20planted%20audits-1f7a3d.svg)](#evaluation)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE)
 
 [Overview](#overview) •
@@ -46,7 +46,7 @@
 
 <div align="justify">
 
-Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Most safeguards run after the answer is written and must judge whether an imperfect bibliographic match is the right work.
+Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work.
 
 tekmerion moves the guarantee into the tool server. It is a [Model Context Protocol](https://modelcontextprotocol.io/) server for PubMed, Europe PMC, ClinicalTrials.gov and openFDA, and every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`. The handle ends in a check code that only this installation can compute. Any model, in any MCP host, cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
 
@@ -69,18 +69,18 @@ The protocol points the same way: the [2026-07-28 MCP revision](https://modelcon
 <tr>
 <td width="50%">
 
-### Handles a model cannot forge
+### Handles a model cannot guess
 - The check code is the first 25 bits of HMAC-SHA256 over the passage locator
 - A guessed code passes about once in 33.5 million tries
-- Works for any model, on any MCP host
+- Independent of the model: a handle is plain text (tried with one model, in one host)
 
 </td>
 <td width="50%">
 
 ### A deterministic audit
 - Six verdicts, from the first check that fails, in a fixed order
-- Flags for retracted, preprint and outdated sources
-- An answer passes only when every sentence is cited and every citation is valid
+- Flags for retracted sources, preprints and records whose version has changed
+- An answer passes only when every sentence is cited, every citation is valid and no cited source is retracted
 
 </td>
 </tr>
@@ -96,19 +96,19 @@ The protocol points the same way: the [2026-07-28 MCP revision](https://modelcon
 <td width="50%">
 
 ### A conformance evaluation
-- 34 categories of planted errors, with a separately written reference oracle
-- 1,600 audits and 257 whole answers, all correct, across eleven seeds
-- Run in CI on every push
+- 34 categories of planted citations, genuine and faulty, with a separately written reference oracle
+- 1,600 audits and 257 whole answers per seed, all correct on each of eleven seeds
+- Run in CI on pushes to `main` and on pull requests
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-### Tested against its own blind spots
+### An evaluation that is itself tested
 - 38 injected faults, 37 caught; the miss cannot be planted from the records
 - A mutation analysis kills 71 of 78 mutants
-- Every limit of the evaluation is written down
+- Its known limits are listed with the results
 
 </td>
 <td width="50%">
@@ -135,12 +135,12 @@ The evaluation is a conformance test: it plants citations whose correct verdict 
 
 | Check | What it measures | Result |
 |---|---|---|
-| Planted citations | 850 cases in 34 categories, each audited as structured claims and as answer text | **1,600 / 1,600** audits correct |
+| Planted citations | 850 cases in 34 categories, audited as structured claims and as answer text (four categories in one form only) | **1,600 / 1,600** audits correct |
 | Whole answers | Every sentence status, every citation, the metrics and the overall verdict of multi-sentence answers | **257 / 257** correct |
 | Other seeds | Seeds 1 to 10 at 25 cases per category; seed 0 at 200 (12,800 audits, 1,832 answers) | All correct |
 | Injected faults | 38 hand-chosen faults: lenient comparators, lost typographic folds, wrong report rules | **37** caught |
 | Mutation analysis | 78 mutants of comparisons, boolean operators and integer constants in the audit's code | **71** killed: 52 by a wrong result, 19 by a crash |
-| Live pilot | A frontier model in Claude Desktop, asked one question, auditing its own answer | 16 / 16 citations genuine, 4 / 4 quotes verbatim |
+| Live pilot | One question to a frontier model in Claude Desktop; the second of two runs (the first failed on an example handle in the instructions) | 16 / 16 citations issued by the server, 4 / 4 quotes verbatim; `warn`, with 8 of 21 sentences uncited; support not checked |
 
 <div align="justify">
 
@@ -182,7 +182,7 @@ flowchart TD
 
 <div align="justify">
 
-The answer as a whole is `fail` if anything in a configurable `fail_on` list occurs (by default, a forged or malformed citation), otherwise `incomplete` if a source could not be reached, otherwise `warn` if any sentence is uncited, any citation is not `ok` or a cited source is retracted, and otherwise `pass`. The full rules are in [docs/CONTRACT.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md).
+The answer as a whole is `fail` if anything in a configurable `fail_on` list occurs (by default, a forged or malformed citation), otherwise `incomplete` if a source could not be reached, otherwise `warn` if any sentence is uncited, any citation is not `ok` or a cited source is retracted, and otherwise `pass`. Each sentence also gets a status: `cited`, `uncited`, or `invalid_only` when none of its citations is `ok`. The report adds metrics, among them citation validity, sentence coverage, quote accuracy and the number of fabricated citations. The full rules are in [docs/CONTRACT.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md).
 
 </div>
 
@@ -191,7 +191,7 @@ The answer as a whole is `fail` if anything in a configurable `fail_on` list occ
 | Practice | In this project |
 |---|---|
 | Verify identifiers, not bibliographic similarity | A keyed check code: no title or author matching, no judgement about which work was meant |
-| Keep fabrication apart from copy errors and outages | `malformed`, `forged`, `unavailable` and `withdrawn` are separate verdicts, so an outage never counts as fabrication |
+| Keep outages apart from fabrication | `unavailable` and `withdrawn` are verdicts of their own, so an outage never counts as fabrication. A copy error that breaks the handle grammar is `malformed`; one that keeps it still reads as `forged` |
 | Quote numbers and doses | A quote is compared after Unicode NFC, whitespace collapsing and a fixed list of typographic folds and removed invisible characters, and nothing more lenient |
 | Report what is not checked | Every citation carries `support: not_checked` |
 | Flag the state of the literature | `retracted`, `preprint` and `version_changed` describe the source without changing the verdict |
@@ -278,14 +278,17 @@ sequenceDiagram
     S->>E: query, with filters and a time budget
     E->>A: rate-limited requests
     A-->>E: records
-    E-->>M: hits
+    E-->>S: records, merged
+    S-->>M: hits
     M->>S: fetch_passages
+    S->>E: fetch the records
     E->>E: cut records into passages, mint a handle for each,<br/>keep the first text issued in the cache
+    E-->>S: passages with handles
     S-->>M: passages with handles
     M->>M: writes the answer, citing [handle "exact words"]
     M->>S: audit_answer
-    S->>S: split sentences, read every citation group
-    S->>E: resolve each handle: check code, then the passage
+    S->>S: split sentences, read every citation group,<br/>verify each check code
+    S->>E: resolve the genuine handles to their passages
     S->>S: verdicts, flags, statuses, metrics, overall verdict
     S-->>M: the report, and the audit view in the host
 ```
@@ -300,8 +303,8 @@ flowchart TD
     CA --> WA["Whole answers audited<br/>mixed, clean, paired"]
     AU --> SC["Scored against the plan<br/>verdicts, flags, statuses, metrics, overall verdict"]
     WA --> SC
-    SC --> FA["Injected faults<br/>38, one at a time"]
-    SC --> MU["Mutation analysis<br/>78 mutants"]
+    FA["Injected faults<br/>the audit broken in 38 ways, one at a time"] -. "rerun" .-> AU
+    MU["Mutation analysis<br/>78 mutants of the audit's code"] -. "rerun" .-> AU
 ```
 
 ### 3. From a push to a release
@@ -310,8 +313,9 @@ flowchart TD
 flowchart LR
     P["Push or pull request"] --> PY["python<br/>ruff, pyright, pytest,<br/>demo, evaluation, faults"]
     P --> WE["web<br/>types, tests, build,<br/>committed view unchanged"]
-    PY --> PG["pages<br/>publishes the demo's<br/>audit view"]
-    R["GitHub release v*"] --> B["build<br/>tag = version, tests, package"]
+    PY --> PG["pages<br/>after CI passes on main:<br/>the demo's audit view"]
+    WE --> PG
+    R["GitHub release v*"] --> B["build<br/>tag = version, demo page live,<br/>tests, package"]
     B --> AP["approval<br/>in the pypi environment"]
     AP --> PI["PyPI<br/>trusted publishing, no token"]
     R --> Z["Zenodo<br/>archive and DOI"]
@@ -394,7 +398,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
   - mixed: every case, four at a time, with a heading, bold lead-ins and uncited sentences;
   - clean: genuine citations only, which pass;
   - paired: the first case of each category that can be written as answer text (32 of 34) between two sentences that each carry a genuine citation, so its own effect on the overall verdict is scored. A mismatched or withdrawn citation gives `warn`, alone in its sentence or beside a genuine one.
-- CI runs the evaluation on every push.
+- CI runs the evaluation on pushes to `main` and on pull requests.
 
 This is its output:
 
@@ -620,7 +624,7 @@ npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 
 After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE)).
 
-Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that the tag names the package version, runs the tests, builds the package and, once the maintainer approves it in the `pypi` environment, publishes it to PyPI by trusted publishing, so no PyPI token is stored anywhere.
+Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that the tag names the package version and that the demo page this README links to is live, runs the tests, builds the package and, once the maintainer approves it in the `pypi` environment, publishes it to PyPI by trusted publishing, so no PyPI token is stored anywhere.
 
 </div>
 
@@ -628,11 +632,11 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 | Path | What is there |
 |---|---|
-| [src/tekmerion/](https://github.com/PedroMarkovicz/tekmerion/blob/main/src/tekmerion) | the server, the citation contract, the evidence sources, the evaluation and the offline demo |
-| [web/](https://github.com/PedroMarkovicz/tekmerion/blob/main/web) | the audit view: React and TypeScript, built into one committed HTML file |
-| [tests/](https://github.com/PedroMarkovicz/tekmerion/blob/main/tests) | offline tests on recorded responses, and live smoke tests |
-| [docs/](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs) | the [contract](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md), the [design and its decisions](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), the [acceptance criteria](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/ACCEPTANCE.md) and the [live runs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/live-run.md) |
-| [schemas/](https://github.com/PedroMarkovicz/tekmerion/blob/main/schemas) | the JSON Schema of the report, exported from the models |
+| [src/tekmerion/](https://github.com/PedroMarkovicz/tekmerion/tree/main/src/tekmerion) | the server, the citation contract, the evidence sources, the evaluation and the offline demo |
+| [web/](https://github.com/PedroMarkovicz/tekmerion/tree/main/web) | the audit view: React and TypeScript, built into one committed HTML file |
+| [tests/](https://github.com/PedroMarkovicz/tekmerion/tree/main/tests) | offline tests on recorded responses, and live smoke tests |
+| [docs/](https://github.com/PedroMarkovicz/tekmerion/tree/main/docs) | the [contract](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md), the [design and its decisions](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), the [acceptance criteria](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/ACCEPTANCE.md) and the [live runs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/live-run.md) |
+| [schemas/](https://github.com/PedroMarkovicz/tekmerion/tree/main/schemas) | the JSON Schema of the report, exported from the models |
 
 ---
 
@@ -660,7 +664,8 @@ To cite tekmerion, use the metadata in [CITATION.cff](https://github.com/PedroMa
 ```bibtex
 @software{markovicz_tekmerion,
   author  = {Markovicz, Pedro},
-  title   = {tekmerion: server-issued citation handles and a deterministic audit for biomedical evidence},
+  title   = {tekmerion},
+  note    = {Server-issued citation handles and a deterministic audit for biomedical evidence},
   version = {0.1.0},
   year    = {2026},
   url     = {https://github.com/PedroMarkovicz/tekmerion},
