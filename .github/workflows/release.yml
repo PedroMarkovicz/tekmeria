@@ -1,0 +1,46 @@
+name: release
+
+# A published GitHub release goes to PyPI by trusted publishing: PyPI trusts this workflow's
+# identity token, so no PyPI password or API token is stored anywhere. The upload waits in
+# the pypi environment for the maintainer's approval.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: uv python install 3.12
+      - run: uv sync --locked
+      - name: The release tag must name the package version
+        run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
+      - run: uv run pytest
+      - run: uv build --out-dir dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tekmerion/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@v1.14.2

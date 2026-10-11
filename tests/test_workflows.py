@@ -7,7 +7,7 @@ import pytest
 WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 
 
-@pytest.mark.parametrize("name", ["ci.yml", "live.yml", "mutants.yml", "pages.yml"])
+@pytest.mark.parametrize("name", ["ci.yml", "live.yml", "mutants.yml", "pages.yml", "release.yml"])
 def test_every_workflow_declares_its_permissions(name: str) -> None:
     text = (WORKFLOWS / name).read_text(encoding="utf-8")
     assert "\npermissions:\n  contents: read\n" in text
@@ -29,9 +29,10 @@ def test_ci_runs_the_planted_error_evaluation() -> None:
     assert "run: uv run tekmerion evaluate" in text
 
 
-def test_every_ci_job_has_a_time_limit() -> None:
+@pytest.mark.parametrize("name", ["ci.yml", "release.yml"])
+def test_every_job_has_a_time_limit(name: str) -> None:
     # A hung job would otherwise run for GitHub's default of six hours.
-    text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
     jobs = text.split("\njobs:\n", 1)[1].splitlines()
     names = [line for line in jobs if line.startswith("  ") and line[2] != " "]
     assert names and text.count("    timeout-minutes: ") == len(names)
@@ -49,3 +50,22 @@ def test_ci_runs_the_injected_faults() -> None:
     # Ten cases per category cycle through every fold variant at least once.
     text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
     assert "run: uv run python -m tekmerion.evaluation.faults --per-category 10" in text
+
+
+def test_a_release_is_published_by_trusted_publishing_after_approval() -> None:
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    assert "on:\n  release:\n    types: [published]\n" in text
+    build, publish = text.split("\n  publish:\n")
+    # Only the upload may ask for an identity token, and only from the approved environment.
+    assert "id-token" not in build
+    assert "    permissions:\n      id-token: write\n" in publish
+    assert "    environment:\n      name: pypi\n" in publish
+    assert "    needs: build\n" in publish
+    # No stored credential: trusted publishing needs none.
+    assert "password:" not in text and "secrets." not in text
+
+
+def test_a_release_is_tested_and_must_match_the_package_version() -> None:
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    assert 'run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"' in text
+    assert text.index("run: uv run pytest") < text.index("run: uv build")
