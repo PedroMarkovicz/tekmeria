@@ -54,21 +54,43 @@ REPO = "https://github.com/PedroMarkovicz/tekmerion"
 RAW = "https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/"
 
 
+def _targets() -> list[str]:
+    """Every link and image target: Markdown links and the HTML attributes of the hero."""
+    return re.findall(r"\]\(([^)\s]+)\)", README) + re.findall(r'(?:href|src)="([^"]+)"', README)
+
+
 def test_linked_files_exist() -> None:
-    files = re.findall(rf"\]\({re.escape(REPO)}/blob/main/([^)#]+)\)", README)
-    images = re.findall(rf"\]\({re.escape(RAW)}([^)#]+)\)", README)
+    targets = _targets()
+    blob = f"{REPO}/blob/main/"
+    files = [t.removeprefix(blob) for t in targets if t.startswith(blob)]
+    images = [t.removeprefix(RAW) for t in targets if t.startswith(RAW)]
     assert files and images
     for target in files + images:
-        assert (ROOT / target).exists(), f"README links to missing {target}"
+        assert (ROOT / target.split("#")[0]).exists(), f"README links to missing {target}"
     assert "https://pedromarkovicz.github.io/tekmerion/" in README
 
 
 def test_every_link_works_on_pypi_too() -> None:
     # PyPI shows this README as the package description, where relative links break; a
     # release's description cannot be changed afterwards.
-    targets = re.findall(r"\]\(([^)]+)\)", README)
-    relative = [t for t in targets if not t.startswith(("https://", "http://", "#", "mailto:"))]
+    relative = [t for t in _targets() if not t.startswith(("https://", "http://", "#", "mailto:"))]
     assert relative == []
+
+
+def test_the_banner_is_built_from_its_committed_source() -> None:
+    assert (ROOT / "docs" / "assets" / "banner.html").exists()
+    hero = README.split("\n## ", 1)[0]
+    assert README.startswith('<div align="center">')
+    assert f'src="{RAW}docs/assets/banner.png"' in hero
+
+
+def test_headings_carry_no_emoji() -> None:
+    # An academic register: the headings stay plain text.
+    headings = [line for line in README.splitlines() if line.startswith("#")]
+    assert headings
+    for heading in headings:
+        assert all(ord(char) < 0x2000 for char in heading), heading
+    assert "Built with ☕ and a healthy distrust of unverifiable citations" in README
 
 
 def test_no_text_assumes_a_private_repository() -> None:
