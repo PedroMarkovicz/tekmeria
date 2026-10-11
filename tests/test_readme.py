@@ -50,11 +50,32 @@ def test_every_flag_in_the_readme_exists(capsys: pytest.CaptureFixture[str]) -> 
         assert flag in known, f"{flag} is not a tekmerion flag"
 
 
+REPO = "https://github.com/PedroMarkovicz/tekmerion"
+RAW = "https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/"
+
+
 def test_linked_files_exist() -> None:
-    for target in re.findall(r"\]\(((?:docs|LICENSE|NOTICE)[^)#]*)\)", README):
+    files = re.findall(rf"\]\({re.escape(REPO)}/blob/main/([^)#]+)\)", README)
+    images = re.findall(rf"\]\({re.escape(RAW)}([^)#]+)\)", README)
+    assert files and images
+    for target in files + images:
         assert (ROOT / target).exists(), f"README links to missing {target}"
-    assert "https://github.com/PedroMarkovicz/tekmerion" in README
     assert "https://pedromarkovicz.github.io/tekmerion/" in README
+
+
+def test_every_link_works_on_pypi_too() -> None:
+    # PyPI shows this README as the package description, where relative links break; a
+    # release's description cannot be changed afterwards.
+    targets = re.findall(r"\]\(([^)]+)\)", README)
+    relative = [t for t in targets if not t.startswith(("https://", "http://", "#", "mailto:"))]
+    assert relative == []
+
+
+def test_no_text_assumes_a_private_repository() -> None:
+    acceptance = (ROOT / "docs" / "ACCEPTANCE.md").read_text(encoding="utf-8")
+    for text in (README, acceptance):
+        assert "repository is private" not in text
+    assert "Once GitHub Pages is enabled" not in README
 
 
 def _acceptance_status(row: int) -> str:

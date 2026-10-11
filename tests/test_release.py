@@ -44,3 +44,10 @@ def test_the_author_orcid_is_well_formed() -> None:
 def test_the_changelog_opens_with_the_package_version() -> None:
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert re.findall(r"^## (\S+)", text, re.M)[0] == PROJECT["version"]
+
+
+def test_the_sdist_ships_the_release_metadata() -> None:
+    # tests/test_release.py reads both files, so the sdist's tests need them.
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    shipped = pyproject["tool"]["hatch"]["build"]["targets"]["sdist"]["only-include"]
+    assert {"CITATION.cff", "CHANGELOG.md"} <= set(shipped)

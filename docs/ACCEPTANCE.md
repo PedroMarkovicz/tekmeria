@@ -37,7 +37,7 @@ Both checks use Claude Desktop with tekmerion installed from GitHub. They need n
 
 3. Run `uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion --help` once in a terminal. The first run downloads and installs tekmerion, which can take longer than Claude Desktop waits for a server to start.
 
-   While the repository is private, `uvx` needs your GitHub credentials to fetch it (Git Credential Manager provides them on Windows). Alternatively, point `--from` at a local checkout, for example `"args": ["--from", "C:/path/to/tekmerion", "tekmerion"]`.
+   To run a local checkout instead, point `--from` at it, for example `"args": ["--from", "C:/path/to/tekmerion", "tekmerion"]`.
 
 4. Restart Claude Desktop. tekmerion's seven tools should appear in the tools menu.
 

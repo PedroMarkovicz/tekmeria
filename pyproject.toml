@@ -64,6 +64,8 @@ only-include = [
   "README.md",
   "LICENSE",
   "NOTICE",
+  "CITATION.cff",
+  "CHANGELOG.md",
   ".gitignore",
   ".python-version",
 ]

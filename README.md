@@ -2,9 +2,9 @@
 
 Biomedical evidence over MCP, cited by handle. Every passage tekmerion returns comes with a short handle such as `pmid:30831578/abstract.7~30med`. An agent cites those handles, and a deterministic audit then shows, for any model, which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
 
-![The audit view showing the offline demo's report](docs/assets/audit-view.png)
+![The audit view showing the offline demo's report](https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/docs/assets/audit-view.png)
 
-Once GitHub Pages is enabled for the repository, running the `pages` workflow (`.github/workflows/pages.yml`) publishes this view of the demo to <https://pedromarkovicz.github.io/tekmerion/>.
+The `pages` workflow (`.github/workflows/pages.yml`) publishes this view of the demo to <https://pedromarkovicz.github.io/tekmerion/>.
 
 ## Why
 
@@ -29,11 +29,11 @@ scheme  id      path     check code: HMAC of everything before the "~"
 2. **Answer.** The model writes its answer with citations in brackets: `[handle]`, or `[handle "exact words"]` for numbers and doses.
 3. **Audit.** `audit_answer` checks each citation, in this order: is the handle well formed, did this server issue it, can its source be reached, does the passage still exist, and is the quote verbatim? It reports a verdict per citation, a status per sentence, metrics such as the number of fabricated citations, and an overall `pass`, `warn`, `fail` or `incomplete`.
 
-The audit checks integrity, not support: whether a passage actually backs the claim is reported as `not_checked`. [docs/CONTRACT.md](docs/CONTRACT.md) has the full rules.
+The audit checks integrity, not support: whether a passage actually backs the claim is reported as `not_checked`. [docs/CONTRACT.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md) has the full rules.
 
 ## Quickstart
 
-You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. While the repository is private, `uvx --from git+https://...` needs your GitHub credentials (Git Credential Manager provides them); you can also point `--from` at a local clone.
+You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. You can also point `--from` at a local clone.
 
 See the audit on the offline demo, in the terminal and in your browser:
 
@@ -143,7 +143,7 @@ fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 
 Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued. The screenshot was taken before the rename, so the widget's header shows the project's earlier name:
 
-![The audit view rendered inside Claude Desktop](docs/assets/host-audit-view.png)
+![The audit view rendered inside Claude Desktop](https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/docs/assets/host-audit-view.png)
 
 ## A real run
 
@@ -154,7 +154,7 @@ verdict: WARN  (16 citations: 16 ok)
 fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
 ```
 
-Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](docs/live-run.md).
+Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/live-run.md).
 
 ## Evaluation
 
@@ -294,7 +294,7 @@ Some categories rest on few passages: one passage has an accented letter, so the
 - `src/tekmerion/infra/` holds settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports.
 - `src/tekmerion/server/` is the thin MCP layer; `src/tekmerion/ui/audit-view.html` is the audit view, built from `web/` (React and TypeScript) and committed, so running tekmerion never needs Node.
 
-The design is in [docs/specs](docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16.
+The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16.
 
 ## Development
 
@@ -314,11 +314,11 @@ npm test && npm run typecheck
 npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 ```
 
-After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](NOTICE)).
+After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE)).
 
 Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that the tag names the package version, runs the tests, builds the package and, once the maintainer approves it in the `pypi` environment, publishes it to PyPI by trusted publishing, so no PyPI token is stored anywhere.
 
-[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
+[docs/ACCEPTANCE.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
 
 ## Limits
 
@@ -332,8 +332,8 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 ## Citing
 
-To cite tekmerion, use the metadata in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](CHANGELOG.md).
+To cite tekmerion, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmerion/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/CHANGELOG.md).
 
 ## License
 
-Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The recorded API responses under `src/tekmerion/demo/fixtures/` keep the terms of their sources, listed in NOTICE.
+Apache License 2.0; see [LICENSE](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE) and [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE). The recorded API responses under `src/tekmerion/demo/fixtures/` keep the terms of their sources, listed in NOTICE.

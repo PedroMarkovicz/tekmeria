@@ -67,5 +67,5 @@ def test_a_release_is_published_by_trusted_publishing_after_approval() -> None:
 
 def test_a_release_is_tested_and_must_match_the_package_version() -> None:
     text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
-    assert 'run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"' in text
-    assert text.index("run: uv run pytest") < text.index("run: uv build")
+    tag_check = 'run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"'
+    assert text.index(tag_check) < text.index("run: uv run pytest") < text.index("run: uv build")
