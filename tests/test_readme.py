@@ -136,7 +136,7 @@ def test_the_evaluation_section_claims_only_what_it_shows() -> None:
 
 
 def test_the_summary_numbers_are_the_evaluation_s() -> None:
-    # The highlights, the results table and the diagrams repeat numbers of the
+    # The results table, and the diagrams in docs/DESIGN.md, repeat numbers of the
     # evaluation's output, which another test compares with a real run.
     from tekmerion.evaluation.faults import FAULTS, NOT_EXERCISED
 
@@ -150,15 +150,19 @@ def test_the_summary_numbers_are_the_evaluation_s() -> None:
     for expected in (
         f"**{audits:,} / {audits:,}** audits correct",
         f"**{answers} / {answers}** correct",
-        f"{audits:,} audits and {answers} whole answers",
         f"{categories * 25} cases in {categories} categories",
-        f"{categories} categories of planted citations",
         f"{passages} passages",
-        f"{len(FAULTS)} injected faults, {caught} caught",
         f"{len(FAULTS)} hand-chosen faults",
         f"**{caught}** caught",
     ):
         assert expected in outside, expected
+    design = (ROOT / "docs" / "DESIGN.md").read_text(encoding="utf-8")
+    for expected in (
+        f"{passages} passages",
+        f"{categories} categories",
+        f"broken in {len(FAULTS)} ways",
+    ):
+        assert expected in design, expected
 
 
 def test_the_framework_badges_show_the_pinned_versions() -> None:
@@ -186,3 +190,34 @@ def test_the_name_is_capitalised_only_where_a_sentence_starts() -> None:
     prose = re.sub(r"```.*?```|`[^`]*`", "", README, flags=re.S)
     assert not re.search(r"(?:^|[.!?] |\*\* )tekmerion [a-z]", prose, re.M)
     assert "Tekmerion moves the guarantee into the tool server." in prose
+
+
+def _section(title: str) -> str:
+    return README.split(f"\n## {title}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_readme_says_what_the_software_is_before_anything_else() -> None:
+    # Research READMEs open with what the software is, and put a quickstart near the top.
+    overview = _section("Overview")
+    first = next(line for line in overview.splitlines() if line and not line.startswith("<"))
+    assert first.startswith("Tekmerion is ")
+    assert "**Status.**" in overview and "It is meant for" in overview
+    order = [README.index(f"\n## {title}\n") for title in ("Overview", "Quickstart", "Results")]
+    assert order == sorted(order)
+    assert "tekmerion demo --open" in _section("Quickstart")
+    assert README[: order[1]].count("\n") < 80, "the quickstart belongs near the top"
+
+
+def test_the_readme_says_how_to_report_a_problem_and_contribute() -> None:
+    section = _section("Contributing and support")
+    assert f"{REPO}/issues" in section
+    assert "pull request" in section.lower()
+
+
+def test_long_reference_material_is_folded_or_moved() -> None:
+    assert "## Highlights" not in README and "## Low-level design" not in README
+    assert f"{REPO}/blob/main/docs/DESIGN.md" in README
+    evaluation = _section("Evaluation")
+    start = evaluation.index("<!-- evaluation:start -->")
+    assert "<details>" in evaluation[:start] and "</details>" in evaluation[start:]
+    assert README.count("```mermaid") == 2  # the verdict order and the architecture

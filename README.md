@@ -22,11 +22,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE)
 
 [Overview](#overview) •
-[Highlights](#highlights) •
+[Quickstart](#quickstart) •
 [Results](#results) •
 [How a citation works](#how-a-citation-works) •
 [Architecture](#architecture) •
-[Low-level design](#low-level-design) •
 [Evaluation](#evaluation) •
 [Usage](#usage) •
 [Citing](#citing)
@@ -48,9 +47,9 @@
 
 <div align="justify">
 
-Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work.
+Tekmerion is a [Model Context Protocol](https://modelcontextprotocol.io/) server for biomedical evidence from PubMed, Europe PMC, ClinicalTrials.gov and openFDA. Every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`, which ends in a check code that only this installation can compute. A model cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim. It is meant for people who build or evaluate biomedical question-answering agents, and for developers of MCP hosts who want citations their users can check.
 
-Tekmerion moves the guarantee into the tool server. It is a [Model Context Protocol](https://modelcontextprotocol.io/) server for PubMed, Europe PMC, ClinicalTrials.gov and openFDA, and every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`. The handle ends in a check code that only this installation can compute. Any model, in any MCP host, cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
+Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work. Tekmerion moves the guarantee into the tool server. The server that hands out a passage also issues its citation, so a citation is checked against what was issued, not searched for.
 
 > The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmerion narrows that question to genuine, correctly quoted passages, and leaves it open.
 
@@ -62,67 +61,20 @@ The project stays out of the race for coverage. [BioMCP](https://github.com/geno
 
 The protocol points the same way: the [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
 
+**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/CHANGELOG.md).
+
 ---
 
-<a id="highlights"></a>
-## Highlights
+<a id="quickstart"></a>
+## Quickstart
 
-<table>
-<tr>
-<td width="50%">
+You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. One command runs the offline demo on recorded responses and opens its audit in your browser:
 
-### Handles a model cannot guess
-- The check code is the first 25 bits of HMAC-SHA256 over the passage locator
-- A guessed code passes about once in 33.5 million tries
-- Independent of the model: a handle is plain text (tried with one model, in one host)
+```bash
+uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion demo --open
+```
 
-</td>
-<td width="50%">
-
-### A deterministic audit
-- Six verdicts, from the first check that fails, in a fixed order
-- Flags for retracted sources, preprints and records whose version has changed
-- An answer passes only when every sentence is cited, every citation is valid and no cited source is retracted
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Four biomedical sources
-- PubMed and Europe PMC, with preprints and open-access full text
-- ClinicalTrials.gov registrations and results; openFDA drug labels
-- PubTator3 entities and Crossref retraction status
-
-</td>
-<td width="50%">
-
-### A conformance evaluation
-- 34 categories of planted citations, genuine and faulty, with a separately written reference oracle
-- 1,600 audits and 257 whole answers per seed, all correct on each of eleven seeds
-- Run in CI on pushes to `main` and on pull requests
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### An evaluation that is itself tested
-- 38 injected faults, 37 caught; the miss cannot be planted from the records
-- A mutation analysis kills 71 of 78 mutants
-- Its known limits are listed with the results
-
-</td>
-<td width="50%">
-
-### Readable where the answer is
-- The report renders as an interactive view in hosts that support MCP Apps
-- An offline demo runs on recorded responses, with no API keys
-- Recorded data limited to what the demo and the evaluation use, with every source's terms listed
-
-</td>
-</tr>
-</table>
+To use tekmerion in a chat, add it to an MCP host such as Claude Desktop or VS Code: see [Usage](#usage). You can also point `--from` at a local clone.
 
 ---
 
@@ -258,70 +210,9 @@ flowchart TB
 
 <div align="justify">
 
-The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16.
+The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16. [docs/DESIGN.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/DESIGN.md) draws the path from a question to an audited answer, the evaluation, and the path from a push to a release.
 
 </div>
-
----
-
-<a id="low-level-design"></a>
-## Low-level design
-
-### 1. From a question to an audited answer
-
-```mermaid
-sequenceDiagram
-    participant M as Model
-    participant S as tekmerion
-    participant E as Evidence service
-    participant A as Upstream APIs
-
-    M->>S: search_literature, search_trials, search_drug_labels
-    S->>E: query, with filters and a time budget
-    E->>A: rate-limited requests
-    A-->>E: records
-    E-->>S: records, merged
-    S-->>M: hits
-    M->>S: fetch_passages
-    S->>E: fetch the records
-    E->>E: cut records into passages, mint a handle for each,<br/>keep the first text issued in the cache
-    E-->>S: passages with handles
-    S-->>M: passages with handles
-    M->>M: writes the answer, citing [handle "exact words"]
-    M->>S: audit_answer
-    S->>S: split sentences, read every citation group,<br/>verify each check code
-    S->>E: resolve the genuine handles to their passages
-    S->>S: verdicts, flags, statuses, metrics, overall verdict
-    S-->>M: the report, and the audit view in the host
-```
-
-### 2. The evaluation
-
-```mermaid
-flowchart TD
-    SN["Recorded responses<br/>a snapshot of 7 records, 213 passages"] --> OR["Reference oracle<br/>issues and forges handles, checks quotes"]
-    OR --> CA["Planted cases<br/>34 categories"]
-    CA --> AU["Each case audited<br/>as structured claims and as answer text"]
-    CA --> WA["Whole answers audited<br/>mixed, clean, paired"]
-    AU --> SC["Scored against the plan<br/>verdicts, flags, statuses, metrics, overall verdict"]
-    WA --> SC
-    FA["Injected faults<br/>the audit broken in 38 ways, one at a time"] -. "rerun" .-> AU
-    MU["Mutation analysis<br/>78 mutants of the audit's code"] -. "rerun" .-> AU
-```
-
-### 3. From a push to a release
-
-```mermaid
-flowchart LR
-    P["Push or pull request"] --> PY["python<br/>ruff, pyright, pytest,<br/>demo, evaluation, faults"]
-    P --> WE["web<br/>types, tests, build,<br/>committed view unchanged"]
-    PY --> PG["pages<br/>after CI passes on main:<br/>the demo's audit view"]
-    WE --> PG
-    R["GitHub release v*"] --> B["build<br/>tag = version, demo page live,<br/>tests, package"]
-    B --> AP["approval<br/>in the pypi environment"]
-    AP --> PI["PyPI<br/>trusted publishing, no token"]
-    R --> Z["Zenodo<br/>archive and DOI"]
-```
 
 ---
 
@@ -402,7 +293,10 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
   - paired: the first case of each category that can be written as answer text (32 of 34) between two sentences that each carry a genuine citation, so its own effect on the overall verdict is scored. A mismatched or withdrawn citation gives `warn`, alone in its sentence or beside a genuine one.
 - CI runs the evaluation on pushes to `main` and on pull requests.
 
-This is its output:
+Its output, for seed 0 and 25 cases per category:
+
+<details>
+<summary>The evaluation's full output: every category, verdict, whole answer and record</summary>
 
 <!-- evaluation:start -->
 planted cases: 1600/1600 correct (seed 0, 25 per category; 7 records, 213 passages)
@@ -472,6 +366,8 @@ whole answers: 257/257 correct
 | setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130 | 401 |
 <!-- evaluation:end -->
 
+</details>
+
 **Options.** `--seed` (default 0) and `--per-category` (default 25) choose the cases, and `--json-out` writes the full report, with the confusion matrix.
 
 **How to read it.**
@@ -501,15 +397,10 @@ Some categories rest on few passages: one passage has an accented letter, so the
 <a id="usage"></a>
 ## Usage
 
-### Quickstart
+The [quickstart](#quickstart) runs the offline demo. To use tekmerion in a chat, add it to an MCP host:
 
-You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. You can also point `--from` at a local clone.
-
-See the audit on the offline demo, in the terminal and in your browser:
-
-```bash
-uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion demo --open
-```
+<details>
+<summary>Claude Desktop, VS Code and MCP Inspector</summary>
 
 ### Claude Desktop
 
@@ -550,7 +441,9 @@ Add this to `.vscode/mcp.json`:
 npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion
 ```
 
-### Other ways to run it
+</details>
+
+### Commands
 
 | Command | What it does |
 |---|---|
@@ -561,7 +454,10 @@ npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarko
 
 ### Configuration
 
-Everything is optional and read from environment variables; a `.env` file is not read:
+Everything is optional and read from environment variables; a `.env` file is not read.
+
+<details>
+<summary>The eight environment variables</summary>
 
 | Variable | Use |
 |---|---|
@@ -573,6 +469,8 @@ Everything is optional and read from environment variables; a `.env` file is not
 | `TEKMERION_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
 | `TEKMERION_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
 | `TEKMERION_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
+
+</details>
 
 ### Tools
 
@@ -592,17 +490,6 @@ There is also a prompt, `cite_by_handle`, and two resource templates, `evidence:
 
 <a id="development"></a>
 ## Development
-
-### Tech stack
-
-| Layer | Technology |
-|---|---|
-| **Server** | Python 3.12, the MCP Python SDK, Pydantic, httpx, anyio |
-| **Text** | pySBD for sentence splitting; Unicode NFC and a fixed fold table for quotes |
-| **Storage** | SQLite (aiosqlite) for the cache and the text as first issued |
-| **Audit view** | React, TypeScript, built into one HTML file served as an MCP App |
-| **Tests** | pytest, Hypothesis, Vitest, ruff, pyright |
-| **Delivery** | GitHub Actions, GitHub Pages, PyPI trusted publishing, Zenodo |
 
 ### How it is checked
 
@@ -654,6 +541,16 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 ---
 
+<a id="contributing"></a>
+## Contributing and support
+
+- **A problem or a question:** open an [issue](https://github.com/PedroMarkovicz/tekmerion/issues). For a wrong verdict, include the answer text you audited and the report; a handle verifies only on the installation that issued it, so say whether you used the demo key.
+- **A vulnerability:** report it privately, through the repository's Security tab.
+- **A change:** pull requests are welcome. Run the checks under [Development](#development) first; a change to what the audit decides needs a case in the evaluation.
+- **A rights holder** who wants a recorded item removed can open an issue, as [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE) says.
+
+---
+
 <a id="citing"></a>
 ## Citing
 
@@ -684,6 +581,8 @@ To cite tekmerion, use the metadata in [CITATION.cff](https://github.com/PedroMa
 Code: Apache License 2.0; see [LICENSE](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE) and [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE).
 
 The recorded API responses under `src/tekmerion/demo/fixtures/` keep the terms of their sources, listed in NOTICE: United States government data from ClinicalTrials.gov and openFDA, bibliographic records from PubMed, Europe PMC and Crossref, a CC BY 4.0 full-text article and a CC BY 4.0 preprint, both credited there.
+
+Tekmerion relies on the public APIs of the National Library of Medicine (PubMed, PubTator3 and ClinicalTrials.gov), Europe PMC, the Food and Drug Administration (openFDA) and Crossref. It is not affiliated with or endorsed by any of them.
 
 </div>
 
