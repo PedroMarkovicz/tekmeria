@@ -314,7 +314,7 @@ npm test && npm run typecheck
 npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
 ```
 
-After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps only text the repository may redistribute: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](NOTICE)).
+After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](NOTICE)).
 
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) tracks the acceptance criteria and how each one is checked.
 
@@ -327,6 +327,10 @@ After changing the report models, run `uv run python -m tekmerion.contract.schem
 - **Handles are per installation.** A handle verifies only on the installation (key) that issued it.
 - **No PubMed book chapters yet.** Records such as StatPearls or GeneReviews chapters are left out of searches, and fetching one reports it as not found.
 - **Duplicates are merged page by page.** `search_literature` never shows the same record twice on one page, but a record can reappear on a later page.
+
+## Citing
+
+To cite tekmerion, use the metadata in [CITATION.cff](CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

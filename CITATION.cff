@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: tekmerion
+abstract: >-
+  An MCP server for biomedical evidence from PubMed, Europe PMC, ClinicalTrials.gov and
+  openFDA. Every passage it returns carries a handle whose check code is a truncated keyed
+  MAC over the passage's locator, so the installation that issued it can tell a genuine
+  citation from a fabricated one, and a deterministic audit checks each citation of an
+  answer: malformed, forged, unavailable, withdrawn, misquoted or valid, with flags for
+  retracted, preprint and outdated sources.
+authors:
+  - family-names: Markovicz
+    given-names: Pedro
+    orcid: "https://orcid.org/0009-0006-6878-793X"
+version: 0.1.0
+license: Apache-2.0
+repository-code: "https://github.com/PedroMarkovicz/tekmerion"
+url: "https://pedromarkovicz.github.io/tekmerion/"
+keywords:
+  - mcp
+  - citations
+  - biomedical
+  - pubmed
+  - llm
+  - provenance
