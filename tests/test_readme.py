@@ -136,7 +136,7 @@ def test_the_evaluation_section_claims_only_what_it_shows() -> None:
 
 
 def test_the_summary_numbers_are_the_evaluation_s() -> None:
-    # The badge, the highlights, the results table and the diagrams repeat numbers of the
+    # The highlights, the results table and the diagrams repeat numbers of the
     # evaluation's output, which another test compares with a real run.
     from tekmerion.evaluation.faults import FAULTS, NOT_EXERCISED
 
@@ -148,7 +148,6 @@ def test_the_summary_numbers_are_the_evaluation_s() -> None:
     categories = len(re.findall(r"^\| `[a-z_]+` \| \d+ \| (?:\d+/\d+|-) \|", block, re.M))
     caught = len(FAULTS) - len(NOT_EXERCISED)
     for expected in (
-        f"{audits:,}%2F{audits:,}".replace(",", "%2C"),  # the badge
         f"**{audits:,} / {audits:,}** audits correct",
         f"**{answers} / {answers}** correct",
         f"{audits:,} audits and {answers} whole answers",
@@ -160,3 +159,30 @@ def test_the_summary_numbers_are_the_evaluation_s() -> None:
         f"**{caught}** caught",
     ):
         assert expected in outside, expected
+
+
+def test_the_framework_badges_show_the_pinned_versions() -> None:
+    import json
+    import tomllib
+
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    floors: dict[str, str] = {}
+    for dependency in project["dependencies"]:
+        name, _, floor = dependency.partition(">=")
+        floors[name] = floor.split(",")[0]
+    web = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))
+    packages = {**web.get("dependencies", {}), **web.get("devDependencies", {})}
+    for badge in (
+        f"python-{project['requires-python'].removeprefix('>=')}-",
+        f"MCP%20Python%20SDK-{floors['mcp']}-",
+        f"Pydantic-{floors['pydantic'].split('.')[0]}-",
+        f"React-{packages['react'].split('.')[0]}-",
+        f"TypeScript-{packages['typescript'].split('.')[0]}-",
+    ):
+        assert f"https://img.shields.io/badge/{badge}" in README, badge
+
+
+def test_the_name_is_capitalised_only_where_a_sentence_starts() -> None:
+    prose = re.sub(r"```.*?```|`[^`]*`", "", README, flags=re.S)
+    assert not re.search(r"(?:^|[.!?] |\*\* )tekmerion [a-z]", prose, re.M)
+    assert "Tekmerion moves the guarantee into the tool server." in prose

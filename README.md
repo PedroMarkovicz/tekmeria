@@ -14,9 +14,11 @@
 
 [![CI](https://github.com/PedroMarkovicz/tekmerion/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroMarkovicz/tekmerion/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![MCP](https://img.shields.io/badge/protocol-MCP-6e56cf.svg)](https://modelcontextprotocol.io/)
+[![MCP Python SDK 2.3](https://img.shields.io/badge/MCP%20Python%20SDK-2.3-6e56cf.svg)](https://github.com/modelcontextprotocol/python-sdk)
+[![Pydantic 2](https://img.shields.io/badge/Pydantic-2-e92063.svg)](https://docs.pydantic.dev/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+[![TypeScript 7](https://img.shields.io/badge/TypeScript-7-3178c6.svg)](https://www.typescriptlang.org/)
 [![Contract 0.1.0](https://img.shields.io/badge/citation%20contract-0.1.0-1a2040.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md)
-[![Conformance](https://img.shields.io/badge/conformance-1%2C600%2F1%2C600%20planted%20audits-1f7a3d.svg)](#evaluation)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE)
 
 [Overview](#overview) •
@@ -48,7 +50,7 @@
 
 Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work.
 
-tekmerion moves the guarantee into the tool server. It is a [Model Context Protocol](https://modelcontextprotocol.io/) server for PubMed, Europe PMC, ClinicalTrials.gov and openFDA, and every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`. The handle ends in a check code that only this installation can compute. Any model, in any MCP host, cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
+Tekmerion moves the guarantee into the tool server. It is a [Model Context Protocol](https://modelcontextprotocol.io/) server for PubMed, Europe PMC, ClinicalTrials.gov and openFDA, and every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`. The handle ends in a check code that only this installation can compute. Any model, in any MCP host, cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim.
 
 > The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmerion narrows that question to genuine, correctly quoted passages, and leaves it open.
 
@@ -644,7 +646,7 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 ## What it cannot tell you
 
 - **Whether a passage supports its sentence.** The audit checks that a citation was issued by this server, that its passage still exists, and that any quote is verbatim (in the text as issued or as it is now). Support is not checked.
-- **Medical advice.** tekmerion retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance. It queries public biomedical APIs and is not built for patient data.
+- **Medical advice.** Tekmerion retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance. It queries public biomedical APIs and is not built for patient data.
 - **Old versions of registries.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from tekmerion's cache.
 - **A handle from another installation.** A handle verifies only on the installation (key) that issued it.
 - **PubMed book chapters.** Records such as StatPearls or GeneReviews chapters are left out of searches, and fetching one reports it as not found.
