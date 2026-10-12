@@ -25,6 +25,14 @@ def test_pages_deploys_the_commit_ci_tested_after_a_push() -> None:
     assert "github.event.workflow_run.event == 'push'" in text
 
 
+def test_pages_runs_after_ci_on_main_and_on_request() -> None:
+    text = (WORKFLOWS / "pages.yml").read_text(encoding="utf-8")
+    trigger = "  workflow_run:\n    workflows: [ci]\n    types: [completed]\n    branches: [main]\n"
+    assert f"\non:\n{trigger}  workflow_dispatch:\n\npermissions" in text
+    # workflow_run finds CI by its name: after a rename the demo page would stop updating.
+    assert (WORKFLOWS / "ci.yml").read_text(encoding="utf-8").startswith("name: ci\n")
+
+
 def test_ci_runs_the_planted_error_evaluation() -> None:
     text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
     assert "run: uv run tekmerion evaluate" in text

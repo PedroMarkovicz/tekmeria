@@ -887,3 +887,9 @@ Before the first release, the README was rewritten in the layout the author uses
 - **Related systems.** The overview names three systems that also put trust in the tool rather than the model (signed tool receipts, numbers checked against the records they name, a genome-writing tool layer over MCP) and says what tekmerion adds: the cited identifier itself is authenticated. The support note cites a study in which verbatim quotes often failed to support their claims. The README claims a design, not a first.
 - **Register.** The thesis line says citations can be checked, not that they cannot be faked: the check code is sized against guessing, not against a determined attacker (CONTRACT section 1.2), and a genuine handle can still sit under a claim its passage does not support.
 - **The demo link.** The README links the audit view on GitHub Pages, and a release freezes the README into the package page. The release workflow therefore requests that page and stops if it does not answer, so Pages is enabled before the first release (16.18).
+
+### 16.20 The Pages trigger, switched on with the public repository
+
+- **Trigger.** The `pages` workflow runs when the `ci` workflow completes on `main`, and still on request. Its job already required that CI had succeeded on a push, and already checked out the commit CI tested (16.9). This replaces the on-demand-only trigger of 16.5.
+- **When.** The trigger was added only once the repository was public and Pages was set to "GitHub Actions". Before that, every push to `main` would have ended in a failed deployment.
+- **By name.** `workflow_run` finds CI by its workflow name, so a test keeps `ci.yml` named `ci`: after a rename, the demo page would stop updating without any run failing.
