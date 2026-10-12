@@ -91,7 +91,7 @@ def test_every_action_is_pinned_to_a_commit() -> None:
             assert re.fullmatch(r" # v\d+\.\d+\.\d+", comment), f"{path.name}: {action}{comment}"
 
 
-def test_dependabot_watches_every_ecosystem() -> None:
-    text = (WORKFLOWS.parent / "dependabot.yml").read_text(encoding="utf-8")
-    for ecosystem, directory in (("github-actions", "/"), ("uv", "/"), ("npm", "/web")):
-        assert f'  - package-ecosystem: "{ecosystem}"\n    directory: "{directory}"\n' in text
+def test_dependency_updates_are_applied_by_hand() -> None:
+    # No scheduled update pull requests: an update of the audit view's packages needs the
+    # bundled view rebuilt with it, and a pinned action needs its new commit checked.
+    assert not (WORKFLOWS.parent / "dependabot.yml").exists()
