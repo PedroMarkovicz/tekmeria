@@ -1,0 +1,25 @@
+# Version updates once a month, one pull request per ecosystem. An update under web/ changes
+# the bundled audit view, so CI fails on it until the view is rebuilt and committed.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+    groups:
+      web:
+        patterns: ["*"]

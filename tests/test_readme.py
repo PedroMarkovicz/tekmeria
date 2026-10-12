@@ -221,3 +221,9 @@ def test_long_reference_material_is_folded_or_moved() -> None:
     start = evaluation.index("<!-- evaluation:start -->")
     assert "<details>" in evaluation[:start] and "</details>" in evaluation[start:]
     assert README.count("```mermaid") == 2  # the verdict order and the architecture
+
+
+def test_the_security_policy_says_where_to_report_privately() -> None:
+    policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert f"{REPO}/security/advisories/new" in policy
+    assert f"{REPO}/blob/main/SECURITY.md" in _section("Contributing and support")

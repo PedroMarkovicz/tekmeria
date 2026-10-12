@@ -545,7 +545,7 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 ## Contributing and support
 
 - **A problem or a question:** open an [issue](https://github.com/PedroMarkovicz/tekmerion/issues). For a wrong verdict, include the answer text you audited and the report; a handle verifies only on the installation that issued it, so say whether you used the demo key.
-- **A vulnerability:** report it privately, through the repository's Security tab.
+- **A vulnerability:** report it privately, through the repository's Security tab, as [SECURITY.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/SECURITY.md) describes.
 - **A change:** pull requests are welcome. Run the checks under [Development](#development) first; a change to what the audit decides needs a case in the evaluation.
 - **A rights holder** who wants a recorded item removed can open an issue, as [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE) says.
 

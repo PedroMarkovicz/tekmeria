@@ -1,5 +1,6 @@
 """The GitHub workflows keep least privilege and never cut a deployment short."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -78,3 +79,19 @@ def test_a_release_waits_for_the_demo_page_the_readme_links_to() -> None:
     check = "run: curl --fail --silent --show-error --location --output /dev/null"
     assert f"{check} https://pedromarkovicz.github.io/tekmerion/" in text
     assert text.index(check) < text.index("run: uv build")
+
+
+def test_every_action_is_pinned_to_a_commit() -> None:
+    # A tag can be moved to other code; a commit hash cannot. The comment names the version.
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        uses = re.findall(r"uses: (\S+)(.*)", path.read_text(encoding="utf-8"))
+        assert uses, path.name
+        for action, comment in uses:
+            assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", action), f"{path.name}: {action}"
+            assert re.fullmatch(r" # v\d+\.\d+\.\d+", comment), f"{path.name}: {action}{comment}"
+
+
+def test_dependabot_watches_every_ecosystem() -> None:
+    text = (WORKFLOWS.parent / "dependabot.yml").read_text(encoding="utf-8")
+    for ecosystem, directory in (("github-actions", "/"), ("uv", "/"), ("npm", "/web")):
+        assert f'  - package-ecosystem: "{ecosystem}"\n    directory: "{directory}"\n' in text
