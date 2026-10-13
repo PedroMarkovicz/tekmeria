@@ -8,7 +8,7 @@
       "status": "cited",
       "citations": [
         {
-          "handle": "pmid:30831578/abstract.7~30med",
+          "handle": "pmid:30831578/abstract.7~ae2tc",
           "quote": "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism",
           "verdict": "ok",
           "flags": [],
@@ -17,7 +17,7 @@
           "closest_match": null,
           "similarity": null,
           "passage": {
-            "handle": "pmid:30831578/abstract.7~30med",
+            "handle": "pmid:30831578/abstract.7~ae2tc",
             "record_id": "pmid:30831578",
             "path": "abstract.7",
             "section_label": "RESULTS",
@@ -38,7 +38,7 @@
       "status": "invalid_only",
       "citations": [
         {
-          "handle": "pmid:30831578/abstract.9~2h68h",
+          "handle": "pmid:30831578/abstract.9~wdbv3",
           "quote": "MMR vaccination strongly increases the risk of autism",
           "verdict": "quote_mismatch",
           "flags": [],
@@ -47,7 +47,7 @@
           "closest_match": "MMR vaccination does not increase the risk for autism",
           "similarity": 0.8491,
           "passage": {
-            "handle": "pmid:30831578/abstract.9~2h68h",
+            "handle": "pmid:30831578/abstract.9~wdbv3",
             "record_id": "pmid:30831578",
             "path": "abstract.9",
             "section_label": "CONCLUSION",
@@ -68,7 +68,7 @@
       "status": "invalid_only",
       "citations": [
         {
-          "handle": "pmid:30831578/abstract.7~30me0",
+          "handle": "pmid:30831578/abstract.7~ae2t0",
           "quote": null,
           "verdict": "forged",
           "flags": [],
@@ -106,7 +106,7 @@
       "status": "cited",
       "citations": [
         {
-          "handle": "pmid:9500320/abstract.4~ewr8d",
+          "handle": "pmid:9500320/abstract.4~z567x",
           "quote": null,
           "verdict": "ok",
           "flags": [
@@ -120,7 +120,7 @@
           "closest_match": null,
           "similarity": null,
           "passage": {
-            "handle": "pmid:9500320/abstract.4~ewr8d",
+            "handle": "pmid:9500320/abstract.4~z567x",
             "record_id": "pmid:9500320",
             "path": "abstract.4",
             "section_label": "INTERPRETATION",

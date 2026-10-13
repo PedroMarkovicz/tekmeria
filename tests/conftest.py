@@ -6,9 +6,9 @@ import pytest
 from mcp import Client
 from mcp.types import CallToolResult
 
-from tekmerion.__main__ import demo_config
-from tekmerion.demo.scenario import SCENARIO_FILE
-from tekmerion.server.app import create_server
+from tekmeria.__main__ import demo_config
+from tekmeria.demo.scenario import SCENARIO_FILE
+from tekmeria.server.app import create_server
 
 
 @pytest.fixture

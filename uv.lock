@@ -906,7 +906,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tekmerion"
+name = "tekmeria"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

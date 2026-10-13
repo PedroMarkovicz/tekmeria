@@ -1,4 +1,4 @@
-tekmerion
+tekmeria
 Copyright 2026 Pedro Markovicz
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
@@ -6,7 +6,7 @@ Licensed under the Apache License, Version 2.0 (see LICENSE).
 Third-party data
 ----------------
 
-The recorded API responses in src/tekmerion/demo/fixtures/ are kept so that the demo
+The recorded API responses in src/tekmeria/demo/fixtures/ are kept so that the demo
 and the tests run offline. They are not covered by the Apache License; each keeps the
 terms of its source:
 

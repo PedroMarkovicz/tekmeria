@@ -2,12 +2,12 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-import tekmerion
+import tekmeria
 
 
 def test_version_and_contract_version() -> None:
-    assert tekmerion.__version__ == "0.1.0"
-    assert tekmerion.CONTRACT_VERSION == "0.1.0"
+    assert tekmeria.__version__ == "0.1.0"
+    assert tekmeria.CONTRACT_VERSION == "0.1.0"
 
 
 def test_licence_files_ship_with_the_package() -> None:
@@ -20,12 +20,14 @@ def test_licence_files_ship_with_the_package() -> None:
     assert project["project"]["license-files"] == ["LICENSE", "NOTICE"]
     sdist = project["tool"]["hatch"]["build"]["targets"]["sdist"]["only-include"]
     assert {"LICENSE", "NOTICE"} <= set(sdist)
-    assert project["project"]["urls"]["Repository"] == "https://github.com/PedroMarkovicz/tekmerion"
+    assert project["project"]["urls"]["Repository"] == "https://github.com/PedroMarkovicz/tekmeria"
 
 
-# The project's earlier name. It may appear only in records of what happened under it.
-OLD_NAME = "med" + "cite"
+# The project's earlier names. They may appear only in records of what happened under them.
+OLD_NAMES = ("med" + "cite", "tekmer" + "ion")
 HISTORY = ("docs/live-run.md",)
+SPEC = "docs/specs/2026-10-06-tekmeria-server-design.md"
+RENAME_SECTIONS = ("### 16.8 ", "### 16.21 ")  # the spec's records of the two renames
 
 
 def _scanned_files(root: Path) -> list[str]:
@@ -51,11 +53,29 @@ def test_the_earlier_name_appears_only_in_history() -> None:
         text = _text_or_none(root / name)
         if text is None or name == "tests/test_package.py":
             continue
-        if name == "docs/specs/2026-10-06-tekmerion-server-design.md":
-            text = text.split("### 16.8", 1)[0]  # its section 16.8 records the rename
-        if OLD_NAME in text.lower():
+        if name == SPEC:
+            text = _without_sections(text, RENAME_SECTIONS)
+        if any(old in text.lower() for old in OLD_NAMES):
             found.append(name)
     assert found == []
+
+
+def _without_sections(text: str, headings: tuple[str, ...]) -> str:
+    """The document without the sections that start at these headings."""
+    kept: list[str] = []
+    skipping = False
+    for line in text.splitlines():
+        if line.startswith("#"):
+            skipping = line.startswith(headings)
+        if not skipping:
+            kept.append(line)
+    return "\n".join(kept)
+
+
+def test_the_guard_drops_only_the_named_sections() -> None:
+    lines = ["# a", "keep", "### 16.8 The name", "drop", "### 16.9 Next", "keep too"]
+    text = "\n".join([*lines, "### 16.21 Again", "drop"])
+    assert _without_sections(text, RENAME_SECTIONS) == "# a\nkeep\n### 16.9 Next\nkeep too"
 
 
 def test_the_guard_reads_every_tracked_text_file(tmp_path: Path) -> None:

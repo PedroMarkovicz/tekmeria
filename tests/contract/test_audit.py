@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tekmerion.contract.audit import (
+from tekmeria.contract.audit import (
     Resolution,
     Resolved,
     Unavailable,
@@ -11,9 +11,9 @@ from tekmerion.contract.audit import (
     audit,
     check_handles,
 )
-from tekmerion.contract.audit_models import CitationIn, ClaimIn
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.contract.models import (
+from tekmeria.contract.audit_models import CitationIn, ClaimIn
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.contract.models import (
     Passage,
     Provenance,
     Quality,

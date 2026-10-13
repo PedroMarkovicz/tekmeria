@@ -5,7 +5,7 @@ import sys
 import pytest
 import structlog
 
-from tekmerion.infra.logging import configure_logging, get_logger
+from tekmeria.infra.logging import configure_logging, get_logger
 
 
 def test_logs_are_json_on_the_current_stderr(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,4 +1,4 @@
-These runs were made under the project's earlier name, medcite, before the rename described in spec section 16.8. The transcripts and audit outputs below keep that name as it was used.
+These runs were made under the project's first name, medcite, before the renames described in spec sections 16.8 and 16.21. The transcripts and audit outputs below keep that name as it was used.
 
 # Live run 1: a finding
 

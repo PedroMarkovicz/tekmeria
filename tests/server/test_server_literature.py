@@ -9,18 +9,18 @@ import pytest
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from tekmerion.__main__ import demo_config
-from tekmerion.contract.handles import HandleCodec
-from tekmerion.demo.scenario import (
+from tekmeria.__main__ import demo_config
+from tekmeria.contract.handles import HandleCodec
+from tekmeria.demo.scenario import (
     COHORT_PMID,
     DEMO_QUERY,
     FIXTURES_DIR,
     PUBMED_ONLY_SEARCH,
     RETRACTED_PMID,
 )
-from tekmerion.infra.fixtures import FixtureTransport
-from tekmerion.infra.keys import DEMO_KEY
-from tekmerion.server.app import create_server
+from tekmeria.infra.fixtures import FixtureTransport
+from tekmeria.infra.keys import DEMO_KEY
+from tekmeria.server.app import create_server
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio

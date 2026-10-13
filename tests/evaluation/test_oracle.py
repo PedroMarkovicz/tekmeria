@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.evaluation import oracle
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.evaluation import oracle
+from tekmeria.infra.keys import DEMO_KEY
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLES = re.findall(

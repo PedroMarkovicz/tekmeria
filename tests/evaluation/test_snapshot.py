@@ -2,15 +2,15 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.contract.audit import Resolved, Unavailable, Withdrawn
-from tekmerion.contract.handles import HandleCodec, Locator, parse_record_id
-from tekmerion.evaluation.snapshot import (
+from tekmeria.contract.audit import Resolved, Unavailable, Withdrawn
+from tekmeria.contract.handles import HandleCodec, Locator, parse_record_id
+from tekmeria.evaluation.snapshot import (
     OFFLINE_RECORD,
     Snapshot,
     SnapshotResolver,
     record_key,
 )
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.infra.keys import DEMO_KEY
 
 pytestmark = pytest.mark.anyio
 

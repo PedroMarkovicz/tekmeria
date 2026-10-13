@@ -4,8 +4,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.fixtures import (
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.fixtures import (
     FixtureTransport,
     RecordingTransport,
     keep_abstracts,
@@ -14,7 +14,7 @@ from tekmerion.infra.fixtures import (
     scrub,
     strip_abstracts,
 )
-from tekmerion.infra.http import (
+from tekmeria.infra.http import (
     HostConfig,
     Upstream,
     UpstreamNotFoundError,

@@ -35,7 +35,7 @@ def test_pages_runs_after_ci_on_main_and_on_request() -> None:
 
 def test_ci_runs_the_planted_error_evaluation() -> None:
     text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-    assert "run: uv run tekmerion evaluate" in text
+    assert "run: uv run tekmeria evaluate" in text
 
 
 @pytest.mark.parametrize("name", ["ci.yml", "release.yml"])
@@ -52,13 +52,13 @@ def test_the_mutation_run_is_on_request_only() -> None:
     text = (WORKFLOWS / "mutants.yml").read_text(encoding="utf-8")
     assert "on:\n  workflow_dispatch:\n\npermissions" in text
     assert "timeout-minutes: 30" in text
-    assert "run: uv run python -m tekmerion.evaluation.mutants" in text
+    assert "run: uv run python -m tekmeria.evaluation.mutants" in text
 
 
 def test_ci_runs_the_injected_faults() -> None:
     # Ten cases per category cycle through every fold variant at least once.
     text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-    assert "run: uv run python -m tekmerion.evaluation.faults --per-category 10" in text
+    assert "run: uv run python -m tekmeria.evaluation.faults --per-category 10" in text
 
 
 def test_a_release_is_published_by_trusted_publishing_after_approval() -> None:
@@ -85,7 +85,7 @@ def test_a_release_waits_for_the_demo_page_the_readme_links_to() -> None:
     # Pages: no release while that page does not answer.
     text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
     check = "run: curl --fail --silent --show-error --location --output /dev/null"
-    assert f"{check} https://pedromarkovicz.github.io/tekmerion/" in text
+    assert f"{check} https://pedromarkovicz.github.io/tekmeria/" in text
     assert text.index(check) < text.index("run: uv build")
 
 

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.infra.keys import DEMO_KEY, HandleKeyError, load_handle_key
-from tekmerion.infra.settings import Settings
+from tekmeria.infra.keys import DEMO_KEY, HandleKeyError, load_handle_key
+from tekmeria.infra.settings import Settings
 
 
 def test_demo_mode_uses_public_key(tmp_path: Path) -> None:
@@ -20,19 +20,19 @@ def test_creates_key_file_once(tmp_path: Path) -> None:
 
 
 def test_env_override_wins(tmp_path: Path) -> None:
-    settings = Settings.model_validate({"TEKMERION_HANDLE_KEY": "ab" * 32})
+    settings = Settings.model_validate({"TEKMERIA_HANDLE_KEY": "ab" * 32})
     assert load_handle_key(settings, demo=False, key_path=tmp_path / "k") == bytes([0xAB]) * 32
 
 
 def test_empty_env_override_counts_as_unset(tmp_path: Path) -> None:
-    settings = Settings.model_validate({"TEKMERION_HANDLE_KEY": ""})
+    settings = Settings.model_validate({"TEKMERIA_HANDLE_KEY": ""})
     key = load_handle_key(settings, demo=False, key_path=tmp_path / "k")
     assert key == (tmp_path / "k").read_bytes()
 
 
 @pytest.mark.parametrize("value", ["zz", "ab" * 8, DEMO_KEY.hex()])
 def test_rejects_bad_or_demo_key_outside_demo(tmp_path: Path, value: str) -> None:
-    settings = Settings.model_validate({"TEKMERION_HANDLE_KEY": value})
+    settings = Settings.model_validate({"TEKMERIA_HANDLE_KEY": value})
     with pytest.raises(HandleKeyError):
         load_handle_key(settings, demo=False, key_path=tmp_path / "k")
 
@@ -51,9 +51,9 @@ def test_a_key_another_process_wrote_first_is_kept(
 def test_settings_never_come_from_a_dotenv_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_path / ".env").write_text("TEKMERION_HANDLE_KEY=" + "ab" * 32 + "\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("TEKMERIA_HANDLE_KEY=" + "ab" * 32 + "\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("TEKMERION_HANDLE_KEY", raising=False)
+    monkeypatch.delenv("TEKMERIA_HANDLE_KEY", raising=False)
     assert Settings().handle_key_hex is None
 
 

@@ -3,11 +3,11 @@ import json
 import httpx
 import pytest
 
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream, UpstreamResponseError
-from tekmerion.sources.errors import InvalidInputError
-from tekmerion.sources.europepmc import EuropePmcAdapter, build_query, europepmc_host
-from tekmerion.sources.pubmed import LiteratureQuery
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream, UpstreamResponseError
+from tekmeria.sources.errors import InvalidInputError
+from tekmeria.sources.europepmc import EuropePmcAdapter, build_query, europepmc_host
+from tekmeria.sources.pubmed import LiteratureQuery
 
 pytestmark = pytest.mark.anyio
 

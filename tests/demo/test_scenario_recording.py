@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.demo.scenario import (
+from tekmeria.demo.scenario import (
     COHORT_PMID,
     RETRACTED_PMID,
     DemoError,

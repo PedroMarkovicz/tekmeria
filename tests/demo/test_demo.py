@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from mcp import Client
 
-from tekmerion.__main__ import main
-from tekmerion.demo.scenario import run_demo
+from tekmeria.__main__ import main
+from tekmeria.demo.scenario import run_demo
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio

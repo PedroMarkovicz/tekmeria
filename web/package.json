@@ -1,8 +1,8 @@
 {
-  "name": "tekmerion-audit-view",
+  "name": "tekmeria-audit-view",
   "private": true,
   "version": "0.1.0",
-  "description": "The tekmerion audit view: an MCP App and a standalone page for audit reports.",
+  "description": "The tekmeria audit view: an MCP App and a standalone page for audit reports.",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {

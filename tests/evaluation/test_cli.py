@@ -1,4 +1,4 @@
-"""`tekmerion evaluate` prints the report, can write it as JSON, and fails CI on a wrong case."""
+"""`tekmeria evaluate` prints the report, can write it as JSON, and fails CI on a wrong case."""
 
 import json
 from collections.abc import Mapping, Sequence
@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.__main__ import main
-from tekmerion.contract.audit import Resolution, Unavailable
-from tekmerion.contract.handles import Locator
-from tekmerion.evaluation.snapshot import Snapshot
+from tekmeria.__main__ import main
+from tekmeria.contract.audit import Resolution, Unavailable
+from tekmeria.contract.handles import Locator
+from tekmeria.evaluation.snapshot import Snapshot
 
 
 class EverythingDown:
@@ -38,7 +38,7 @@ def test_evaluate_fails_when_a_case_gets_the_wrong_verdict(monkeypatch: pytest.M
     def broken(snapshot: Snapshot) -> EverythingDown:
         return EverythingDown()
 
-    monkeypatch.setattr("tekmerion.evaluation.run.SnapshotResolver", broken)
+    monkeypatch.setattr("tekmeria.evaluation.run.SnapshotResolver", broken)
     with pytest.raises(SystemExit) as exited:
         main(["evaluate", "--per-category", "1"])
     assert exited.value.code == 1

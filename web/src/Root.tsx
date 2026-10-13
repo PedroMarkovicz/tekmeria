@@ -48,7 +48,7 @@ export function Root({ start = startSource }: { start?: typeof startSource }) {
         <main className="audit">
           <p className="notice">
             No audit report here. Open this view from an MCP host after calling audit_answer, or
-            run <code>tekmerion demo --open</code>.
+            run <code>tekmeria demo --open</code>.
           </p>
         </main>
       );

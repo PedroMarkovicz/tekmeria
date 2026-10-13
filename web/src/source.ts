@@ -3,7 +3,7 @@
 import { App, applyDocumentTheme } from "@modelcontextprotocol/ext-apps/app-with-deps";
 import type { AuditReport } from "./report";
 
-export const REPORT_ELEMENT_ID = "tekmerion-report";
+export const REPORT_ELEMENT_ID = "tekmeria-report";
 
 export type ViewState =
   | { kind: "waiting" }
@@ -29,7 +29,7 @@ function isReport(value: unknown): value is AuditReport {
   );
 }
 
-/** The report embedded in `<script type="application/json" id="tekmerion-report">`. */
+/** The report embedded in `<script type="application/json" id="tekmeria-report">`. */
 export function embeddedReport(doc: Document): ViewState | null {
   const text = doc.getElementById(REPORT_ELEMENT_ID)?.textContent?.trim();
   if (!text) return null;
@@ -68,7 +68,7 @@ export interface HostApp {
 
 export function createHostApp(): HostApp {
   // No cast: the compiler checks the library's App against HostApp.
-  return new App({ name: "tekmerion audit view", version: "0.1.0" }, {}, { autoResize: true });
+  return new App({ name: "tekmeria audit view", version: "0.1.0" }, {}, { autoResize: true });
 }
 
 /** Start the view: an embedded report wins; inside a frame, wait for the host's tool result;

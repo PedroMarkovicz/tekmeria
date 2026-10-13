@@ -5,11 +5,11 @@ from collections import Counter
 
 import pytest
 
-from tekmerion.contract.citations import parse_answer_text
-from tekmerion.evaluation import cases, oracle
-from tekmerion.evaluation.cases import CATEGORIES, Planted, generate_cases, render_text
-from tekmerion.evaluation.snapshot import Snapshot, record_key
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.contract.citations import parse_answer_text
+from tekmeria.evaluation import cases, oracle
+from tekmeria.evaluation.cases import CATEGORIES, Planted, generate_cases, render_text
+from tekmeria.evaluation.snapshot import Snapshot, record_key
+from tekmeria.infra.keys import DEMO_KEY
 
 pytestmark = pytest.mark.anyio
 

@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from mcp import Client
 
-from tekmerion.__main__ import main
-from tekmerion.demo.scenario import run_demo
-from tekmerion.infra.settings import Settings
+from tekmeria.__main__ import main
+from tekmeria.demo.scenario import run_demo
+from tekmeria.infra.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -42,16 +42,16 @@ def _help(argv: list[str], capsys: pytest.CaptureFixture[str]) -> str:
 
 def test_every_flag_in_the_readme_exists(capsys: pytest.CaptureFixture[str]) -> None:
     known = _help(["--help"], capsys) + _help(["demo", "--help"], capsys)
-    lines = [line for line in README.splitlines() if "tekmerion" in line and "--" in line]
+    lines = [line for line in README.splitlines() if "tekmeria" in line and "--" in line]
     flags = {flag for line in lines for flag in re.findall(r"(?<![\w-])--[a-z][a-z-]+", line)}
     flags -= {"--from"}  # uvx's own flag
-    assert flags, "no tekmerion flags found in the README"
+    assert flags, "no tekmeria flags found in the README"
     for flag in flags:
-        assert flag in known, f"{flag} is not a tekmerion flag"
+        assert flag in known, f"{flag} is not a tekmeria flag"
 
 
-REPO = "https://github.com/PedroMarkovicz/tekmerion"
-RAW = "https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/"
+REPO = "https://github.com/PedroMarkovicz/tekmeria"
+RAW = "https://raw.githubusercontent.com/PedroMarkovicz/tekmeria/main/"
 
 
 def _targets() -> list[str]:
@@ -70,7 +70,7 @@ def test_linked_files_exist() -> None:
         assert (ROOT / target.split("#")[0]).is_file(), f"README links to missing {target}"
     for target in folders:
         assert (ROOT / target).is_dir(), f"README links to missing folder {target}"
-    assert "https://pedromarkovicz.github.io/tekmerion/" in README
+    assert "https://pedromarkovicz.github.io/tekmeria/" in README
 
 
 def test_every_link_works_on_pypi_too() -> None:
@@ -138,7 +138,7 @@ def test_the_evaluation_section_claims_only_what_it_shows() -> None:
 def test_the_summary_numbers_are_the_evaluation_s() -> None:
     # The results table, and the diagrams in docs/DESIGN.md, repeat numbers of the
     # evaluation's output, which another test compares with a real run.
-    from tekmerion.evaluation.faults import FAULTS, NOT_EXERCISED
+    from tekmeria.evaluation.faults import FAULTS, NOT_EXERCISED
 
     block = README.split("<!-- evaluation:start -->", 1)[1].split("<!-- evaluation:end -->", 1)[0]
     outside = README.replace(block, "")
@@ -188,8 +188,8 @@ def test_the_framework_badges_show_the_pinned_versions() -> None:
 
 def test_the_name_is_capitalised_only_where_a_sentence_starts() -> None:
     prose = re.sub(r"```.*?```|`[^`]*`", "", README, flags=re.S)
-    assert not re.search(r"(?:^|[.!?] |\*\* )tekmerion [a-z]", prose, re.M)
-    assert "Tekmerion moves the guarantee into the tool server." in prose
+    assert not re.search(r"(?:^|[.!?] |\*\* )tekmeria [a-z]", prose, re.M)
+    assert "Tekmeria moves the guarantee into the tool server." in prose
 
 
 def _section(title: str) -> str:
@@ -200,11 +200,11 @@ def test_the_readme_says_what_the_software_is_before_anything_else() -> None:
     # Research READMEs open with what the software is, and put a quickstart near the top.
     overview = _section("Overview")
     first = next(line for line in overview.splitlines() if line and not line.startswith("<"))
-    assert first.startswith("Tekmerion is ")
+    assert first.startswith("Tekmeria is ")
     assert "**Status.**" in overview and "It is meant for" in overview
     order = [README.index(f"\n## {title}\n") for title in ("Overview", "Quickstart", "Results")]
     assert order == sorted(order)
-    assert "tekmerion demo --open" in _section("Quickstart")
+    assert "tekmeria demo --open" in _section("Quickstart")
     assert README[: order[1]].count("\n") < 80, "the quickstart belongs near the top"
 
 

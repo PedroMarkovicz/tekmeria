@@ -1,13 +1,13 @@
 # Low-level design
 
-Three diagrams of how tekmerion works. The [README](../README.md) has the architecture and the order of the audit's checks, and the [design document](specs/2026-10-06-tekmerion-server-design.md) records the decisions and their reasons.
+Three diagrams of how tekmeria works. The [README](../README.md) has the architecture and the order of the audit's checks, and the [design document](specs/2026-10-06-tekmeria-server-design.md) records the decisions and their reasons.
 
 ## From a question to an audited answer
 
 ```mermaid
 sequenceDiagram
     participant M as Model
-    participant S as tekmerion
+    participant S as tekmeria
     participant E as Evidence service
     participant A as Upstream APIs
 

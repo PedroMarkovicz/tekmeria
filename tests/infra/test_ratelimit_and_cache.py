@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from tekmerion.infra.cache import Cache, CachedResponse
-from tekmerion.infra.ratelimit import RateLimiter
+from tekmeria.infra.cache import Cache, CachedResponse
+from tekmeria.infra.ratelimit import RateLimiter
 
 pytestmark = pytest.mark.anyio
 

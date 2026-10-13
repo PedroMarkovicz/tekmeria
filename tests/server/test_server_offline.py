@@ -10,10 +10,10 @@ import pytest
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.infra.fixtures import FixtureTransport
-from tekmerion.server.app import create_server
-from tekmerion.server.runtime import RuntimeConfig
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.infra.fixtures import FixtureTransport
+from tekmeria.server.app import create_server
+from tekmeria.server.runtime import RuntimeConfig
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio
@@ -124,7 +124,7 @@ async def test_prompt_and_resource_templates(offline: Client) -> None:
 
 
 async def test_server_identity(offline: Client) -> None:
-    assert offline.server_info is not None and offline.server_info.name == "tekmerion"
+    assert offline.server_info is not None and offline.server_info.name == "tekmeria"
 
 
 class Hanging(httpx.AsyncBaseTransport):
@@ -180,7 +180,7 @@ async def test_an_internal_error_is_logged_as_an_error_with_its_traceback(
     def broken() -> object:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("tekmerion.server.app.contract_description", broken)
+    monkeypatch.setattr("tekmeria.server.app.contract_description", broken)
     capsys.readouterr()
     result = await offline.call_tool("describe_contract", {})
     assert result.is_error

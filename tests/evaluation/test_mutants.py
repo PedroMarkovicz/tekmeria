@@ -5,8 +5,8 @@ import subprocess
 
 import pytest
 
-from tekmerion.evaluation import mutants
-from tekmerion.evaluation.mutants import Outcome, render, sites
+from tekmeria.evaluation import mutants
+from tekmeria.evaluation.mutants import Outcome, render, sites
 
 SOURCE = '''
 def scored(a, b):
@@ -66,7 +66,7 @@ def _index(module: str, change: str) -> int:
 
 
 def test_the_real_code_survives_and_a_broken_quote_check_gives_a_wrong_result() -> None:
-    module = "tekmerion.contract.normalize"
+    module = "tekmeria.contract.normalize"
     assert mutants.outcome_of(module, -1, 1) == mutants.SURVIVED  # index -1: no mutation
     broken = _index(module, "In -> NotIn (negated)")
     assert mutants.outcome_of(module, broken, 1) == mutants.WRONG_RESULT
@@ -75,7 +75,7 @@ def test_the_real_code_survives_and_a_broken_quote_check_gives_a_wrong_result() 
 def test_a_mutant_that_stops_the_snapshot_loading_is_not_evaluated() -> None:
     # The evidence service issues every passage's handle with the check code, so a broken
     # check code stops the snapshot from loading: the evaluation never gets to judge it.
-    module = "tekmerion.contract.handles"
+    module = "tekmeria.contract.handles"
     assert mutants.outcome_of(module, _index(module, "31 -> 32"), 1) == mutants.NOT_LOADED
 
 
@@ -125,14 +125,14 @@ def test_a_mutant_that_hangs_counts_as_a_timeout(monkeypatch: pytest.MonkeyPatch
         raise subprocess.TimeoutExpired(cmd="evaluate", timeout=mutants.TIMEOUT_SECONDS)
 
     monkeypatch.setattr(mutants.subprocess, "run", hangs)
-    assert mutants.outcome_of("tekmerion.contract.normalize", 0, 1) == mutants.TIMEOUT
+    assert mutants.outcome_of("tekmeria.contract.normalize", 0, 1) == mutants.TIMEOUT
     assert _outcome(0, mutants.TIMEOUT).killed
 
 
 def test_handle_parsing_only_the_service_uses_is_out_of_scope() -> None:
     # parse_record_id and RecordRef.at build handles for the evidence service; the audit
     # never calls them. Their mutants would break the snapshot's loading, not a planted case.
-    module = "tekmerion.contract.handles"
+    module = "tekmeria.contract.handles"
     tree = mutants.parse(module)
     service_only = [
         node

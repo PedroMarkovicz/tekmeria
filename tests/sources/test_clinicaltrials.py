@@ -4,9 +4,9 @@ from typing import Any
 import httpx
 import pytest
 
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream, UpstreamResponseError
-from tekmerion.sources.clinicaltrials import (
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream, UpstreamResponseError
+from tekmeria.sources.clinicaltrials import (
     MAX_IDS_PER_CALL,
     PAGE_SIZE,
     ClinicalTrialsAdapter,
@@ -14,7 +14,7 @@ from tekmerion.sources.clinicaltrials import (
     build_params,
     clinicaltrials_host,
 )
-from tekmerion.sources.errors import InvalidInputError
+from tekmeria.sources.errors import InvalidInputError
 
 pytestmark = pytest.mark.anyio
 

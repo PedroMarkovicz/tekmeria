@@ -1,25 +1,25 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/docs/assets/banner.png" alt="Tekmerion: is every citation in this answer real, and does it quote its source verbatim?" width="100%" />
+<img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmeria/main/docs/assets/banner.png" alt="Tekmeria: is every citation in this answer real, and does it quote its source verbatim?" width="100%" />
 
-<a id="tekmerion"></a>
+<a id="tekmeria"></a>
 
 ### Citations that can be checked: server-issued handles and a deterministic audit for biomedical evidence
 
 <br/>
 
-<a href="https://pedromarkovicz.github.io/tekmerion/"><img src="https://img.shields.io/badge/%E2%96%B6%20%20OPEN%20THE%20AUDIT%20VIEW%20DEMO-pedromarkovicz.github.io%2Ftekmerion-2f5bd3?style=for-the-badge&labelColor=1a2040" alt="Open the audit view demo: pedromarkovicz.github.io/tekmerion" width="700" /></a>
+<a href="https://pedromarkovicz.github.io/tekmeria/"><img src="https://img.shields.io/badge/%E2%96%B6%20%20OPEN%20THE%20AUDIT%20VIEW%20DEMO-pedromarkovicz.github.io%2Ftekmeria-2f5bd3?style=for-the-badge&labelColor=1a2040" alt="Open the audit view demo: pedromarkovicz.github.io/tekmeria" width="700" /></a>
 
 <br/><br/>
 
-[![CI](https://github.com/PedroMarkovicz/tekmerion/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroMarkovicz/tekmerion/actions/workflows/ci.yml)
+[![CI](https://github.com/PedroMarkovicz/tekmeria/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroMarkovicz/tekmeria/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![MCP Python SDK 2.3](https://img.shields.io/badge/MCP%20Python%20SDK-2.3-6e56cf.svg)](https://github.com/modelcontextprotocol/python-sdk)
 [![Pydantic 2](https://img.shields.io/badge/Pydantic-2-e92063.svg)](https://docs.pydantic.dev/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![TypeScript 7](https://img.shields.io/badge/TypeScript-7-3178c6.svg)](https://www.typescriptlang.org/)
-[![Contract 0.1.0](https://img.shields.io/badge/citation%20contract-0.1.0-1a2040.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE)
+[![Contract 0.1.0](https://img.shields.io/badge/citation%20contract-0.1.0-1a2040.svg)](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/CONTRACT.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/PedroMarkovicz/tekmeria/blob/main/LICENSE)
 
 [Overview](#overview) •
 [Quickstart](#quickstart) •
@@ -33,8 +33,8 @@
 </div>
 
 <p align="center">
-  <a href="https://pedromarkovicz.github.io/tekmerion/">
-    <img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/docs/assets/audit-view.png" alt="The audit view showing the offline demo's report" width="100%" />
+  <a href="https://pedromarkovicz.github.io/tekmeria/">
+    <img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmeria/main/docs/assets/audit-view.png" alt="The audit view showing the offline demo's report" width="100%" />
   </a>
   <br/>
   <em>The audit view on the offline demo: each sentence with its status, each citation with its verdict. The answer fails on a forged and a malformed citation.</em>
@@ -47,11 +47,11 @@
 
 <div align="justify">
 
-Tekmerion is a [Model Context Protocol](https://modelcontextprotocol.io/) server for biomedical evidence from PubMed, Europe PMC, ClinicalTrials.gov and openFDA. Every passage it returns carries a short handle such as `pmid:30831578/abstract.7~30med`, which ends in a check code that only this installation can compute. A model cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim. It is meant for people who build or evaluate biomedical question-answering agents, and for developers of MCP hosts who want citations their users can check.
+Tekmeria is a [Model Context Protocol](https://modelcontextprotocol.io/) server for biomedical evidence from PubMed, Europe PMC, ClinicalTrials.gov and openFDA. Every passage it returns carries a short handle such as `pmid:30831578/abstract.7~ae2tc`, which ends in a check code that only this installation can compute. A model cites those handles, and a deterministic audit then shows which citations are genuine, which point to text that no longer exists, and which quotes are not verbatim. It is meant for people who build or evaluate biomedical question-answering agents, and for developers of MCP hosts who want citations their users can check.
 
-Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work. Tekmerion moves the guarantee into the tool server. The server that hands out a passage also issues its citation, so a citation is checked against what was issued, not searched for.
+Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work. Tekmeria moves the guarantee into the tool server. The server that hands out a passage also issues its citation, so a citation is checked against what was issued, not searched for.
 
-> The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmerion narrows that question to genuine, correctly quoted passages, and leaves it open. A verbatim quote does not settle it: across twelve models, verbatim quotes often failed to support their claims fully ([Zhang et al.](https://arxiv.org/abs/2609.15964)).
+> The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmeria narrows that question to genuine, correctly quoted passages, and leaves it open. A verbatim quote does not settle it: across twelve models, verbatim quotes often failed to support their claims fully ([Zhang et al.](https://arxiv.org/abs/2609.15964)).
 
 </div>
 
@@ -61,9 +61,9 @@ The project stays out of the race for coverage. [BioMCP](https://github.com/geno
 
 The protocol points the same way: the [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
 
-Others also put trust in the tool rather than the model. An agent runtime can sign a receipt for each tool call and check the claims that cite it ([Basu](https://arxiv.org/abs/2603.10060)); a renderer can mark a number verified only when it matches the record it names ([Solatorio](https://arxiv.org/abs/2509.06902)); and a genome-writing tool layer reachable over MCP requires every quantity to come from a validated tool ([Ali et al.](https://arxiv.org/abs/2608.20412)). Tekmerion applies the idea to citations of biomedical passages: the handle the model writes is itself authenticated, so the server that issued it can check it with its key alone, whichever model or MCP host wrote the answer.
+Others also put trust in the tool rather than the model. An agent runtime can sign a receipt for each tool call and check the claims that cite it ([Basu](https://arxiv.org/abs/2603.10060)); a renderer can mark a number verified only when it matches the record it names ([Solatorio](https://arxiv.org/abs/2509.06902)); and a genome-writing tool layer reachable over MCP requires every quantity to come from a validated tool ([Ali et al.](https://arxiv.org/abs/2608.20412)). Tekmeria applies the idea to citations of biomedical passages: the handle the model writes is itself authenticated, so the server that issued it can check it with its key alone, whichever model or MCP host wrote the answer.
 
-**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/CHANGELOG.md).
+**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
 
 ---
 
@@ -73,10 +73,10 @@ Others also put trust in the tool rather than the model. An agent runtime can si
 You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. One command runs the offline demo on recorded responses and opens its audit in your browser:
 
 ```bash
-uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion demo --open
+uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria demo --open
 ```
 
-To use tekmerion in a chat, add it to an MCP host such as Claude Desktop or VS Code: see [Usage](#usage). You can also point `--from` at a local clone.
+To use tekmeria in a chat, add it to an MCP host such as Claude Desktop or VS Code: see [Usage](#usage). You can also point `--from` at a local clone.
 
 ---
 
@@ -110,7 +110,7 @@ None of this measures how often models fabricate citations, or whether a cited p
 ## How a citation works
 
 ```
-pmid:30831578/abstract.7~30med
+pmid:30831578/abstract.7~ae2tc
 \__/ \______/ \________/ \___/
 scheme  id      path     check code: HMAC of everything before the "~"
 ```
@@ -138,7 +138,7 @@ flowchart TD
 
 <div align="justify">
 
-The answer as a whole is `fail` if anything in a configurable `fail_on` list occurs (by default, a forged or malformed citation), otherwise `incomplete` if a source could not be reached, otherwise `warn` if any sentence is uncited, any citation is not `ok` or a cited source is retracted, and otherwise `pass`. Each sentence also gets a status: `cited`, `uncited`, or `invalid_only` when none of its citations is `ok`. The report adds metrics, among them citation validity, sentence coverage, quote accuracy and the number of fabricated citations. The full rules are in [docs/CONTRACT.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md).
+The answer as a whole is `fail` if anything in a configurable `fail_on` list occurs (by default, a forged or malformed citation), otherwise `incomplete` if a source could not be reached, otherwise `warn` if any sentence is uncited, any citation is not `ok` or a cited source is retracted, and otherwise `pass`. Each sentence also gets a status: `cited`, `uncited`, or `invalid_only` when none of its citations is `ok`. The report adds metrics, among them citation validity, sentence coverage, quote accuracy and the number of fabricated citations. The full rules are in [docs/CONTRACT.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/CONTRACT.md).
 
 </div>
 
@@ -205,14 +205,14 @@ flowchart TB
 
 | Layer | Responsibility |
 |---|---|
-| **Contract** (`src/tekmerion/contract/`) | The handle codec, the evidence and report models, citation parsing and the audit; pure and fully typed. The JSON Schema in `schemas/` is exported from these models. |
-| **Sources** (`src/tekmerion/sources/`) | One adapter per upstream, a parser per record source, and the evidence service, which routes requests, merges sources and resolves handles for the audit. |
-| **Infrastructure** (`src/tekmerion/infra/`) | Settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports. |
-| **Server** (`src/tekmerion/server/`) | The MCP tools, resources and prompt. The audit view (`src/tekmerion/ui/audit-view.html`) is built from `web/` (React and TypeScript) and committed, so running tekmerion never needs Node. |
+| **Contract** (`src/tekmeria/contract/`) | The handle codec, the evidence and report models, citation parsing and the audit; pure and fully typed. The JSON Schema in `schemas/` is exported from these models. |
+| **Sources** (`src/tekmeria/sources/`) | One adapter per upstream, a parser per record source, and the evidence service, which routes requests, merges sources and resolves handles for the audit. |
+| **Infrastructure** (`src/tekmeria/infra/`) | Settings, keys, the rate-limited HTTP client, the SQLite cache and the recorded-fixture transports. |
+| **Server** (`src/tekmeria/server/`) | The MCP tools, resources and prompt. The audit view (`src/tekmeria/ui/audit-view.html`) is built from `web/` (React and TypeScript) and committed, so running tekmeria never needs Node. |
 
 <div align="justify">
 
-The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), with the decisions made while building it, and their reasons, in its section 16. [docs/DESIGN.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/DESIGN.md) draws the path from a question to an audited answer, the evaluation, and the path from a push to a release.
+The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/specs/2026-10-06-tekmeria-server-design.md), with the decisions made while building it, and their reasons, in its section 16. [docs/DESIGN.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/DESIGN.md) draws the path from a question to an audited answer, the evaluation, and the path from a push to a release.
 
 </div>
 
@@ -221,22 +221,22 @@ The design is in [docs/specs](https://github.com/PedroMarkovicz/tekmerion/blob/m
 <a id="the-demo"></a>
 ## The demo
 
-`tekmerion demo` runs offline on recorded responses. It searches, fetches two papers, and audits an answer with six planted cases: a correct quote, a misquote, a forged check code, a malformed handle, a citation of a retracted paper and an uncited sentence. This is its audit:
+`tekmeria demo` runs offline on recorded responses. It searches, fetches two papers, and audits an answer with six planted cases: a correct quote, a misquote, a forged check code, a malformed handle, a citation of a retracted paper and an uncited sentence. This is its audit:
 
 ```text
 verdict: FAIL  (5 citations: 1 malformed, 1 forged, 1 quote_mismatch, 2 ok)
 fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 [1] cited: A nationwide Danish cohort found no increased risk of autism after MMR vaccination.
-    ok             pmid:30831578/abstract.7~30med "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism"
+    ok             pmid:30831578/abstract.7~ae2tc "During 5 025 754 person-years of follow-up, 6517 children were diagnosed with autism"
 [2] invalid_only: The same study concluded that MMR vaccination raises autism risk.
-    quote_mismatch pmid:30831578/abstract.9~2h68h "MMR vaccination strongly increases the risk of autism"
+    quote_mismatch pmid:30831578/abstract.9~wdbv3 "MMR vaccination strongly increases the risk of autism"
                    closest: "MMR vaccination does not increase the risk for autism" (0.8491)
 [3] invalid_only: A second cohort reported the same null association.
-    forged         pmid:30831578/abstract.7~30me0
+    forged         pmid:30831578/abstract.7~ae2t0
 [4] invalid_only: Earlier reviews reached the same conclusion.
     malformed      pmid:30831578-abstract
 [5] cited: A 1998 case series that proposed a link was later retracted.
-    ok             pmid:9500320/abstract.4~ewr8d [retracted]
+    ok             pmid:9500320/abstract.4~z567x [retracted]
 [6] uncited: Parents should discuss the vaccination schedule with their paediatrician.
 ```
 
@@ -244,12 +244,12 @@ fabricated: 1  retracted cited: 1  cited sentences: 2/6  verbatim quotes: 1/2
 
 <div align="justify">
 
-Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued. The screenshot was taken before the rename, so the widget's header shows the project's earlier name.
+Claude Desktop shows the result of `audit_answer` as the audit view, here for an answer citing a handle this server never issued. The screenshot was taken under the project's first name, which the widget's header shows.
 
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmerion/main/docs/assets/host-audit-view.png" alt="The audit view rendered inside Claude Desktop" width="100%" />
+  <img src="https://raw.githubusercontent.com/PedroMarkovicz/tekmeria/main/docs/assets/host-audit-view.png" alt="The audit view rendered inside Claude Desktop" width="100%" />
 </p>
 
 ### A real run
@@ -263,7 +263,7 @@ fabricated: 0  retracted cited: 0  cited sentences: 13/21  verbatim quotes: 4/4
 
 <div align="justify">
 
-Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/live-run.md).
+Every citation was genuine and every quote verbatim. The result is a warning, not a pass, because some sentences had no citation. A first run failed on one forged citation, which turned out to be an example handle in the server's own instructions; it has been removed. Both transcripts, with the full audit output, are in [docs/live-run.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/live-run.md).
 
 </div>
 
@@ -272,7 +272,7 @@ Every citation was genuine and every quote verbatim. The result is a warning, no
 <a id="evaluation"></a>
 ## Evaluation
 
-`tekmerion evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 34 categories:
+`tekmeria evaluate` measures the audit's decisions. It plants citations whose correct verdict is known in advance, in 34 categories:
 - genuine citations, with verbatim quotes and with quotes written in typographic variants the comparison must accept: spacing, decomposed accents, every dash, apostrophe and quote mark it folds, and the invisible characters it removes;
 - quotes with one detail changed: a number, a decimal point, a comparison sign, a unit, a minus sign, a letter's case, an added accent, a superscript digit, a removed space, an inserted "not" or a swapped word;
 - forged check codes, paths and record IDs, a forged handle written outside brackets, malformed handles, and a note written inside the citation;
@@ -377,7 +377,7 @@ whole answers: 257/257 correct
 - The drug label and the trial supply most planted citations: see the last table.
 - The evaluation shows that the audit decides correctly on these planted errors. It does not show how often models make such errors: that takes runs with real models, like the one above.
 
-**Injected faults.** `python -m tekmerion.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 38 faults are chosen by hand:
+**Injected faults.** `python -m tekmeria.evaluation.faults` breaks one decision of the audit at a time, as a real bug would, and reruns the evaluation. Its 38 faults are chosen by hand:
 - lenient comparators: case, punctuation, accents, whitespace, NFKC, or only the first 40 characters;
 - each of 19 folds of the contract removed in turn, and a no-break space not read as whitespace (deleting that fold entry itself changes nothing, since whitespace normalization already reads it as a space);
 - each of the 4 invisible characters no longer removed;
@@ -385,7 +385,7 @@ whole answers: 257/257 correct
 
 It catches 37 of them. The one it misses is listed with its reason: no passage of the snapshot contains an ellipsis, so the ellipsis fold cannot be planted. CI runs it with 10 cases per category, enough for every dash and quote mark to appear.
 
-**Mutation score.** `python -m tekmerion.evaluation.mutants` is less selective. It makes one small change at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each one. A change negates a comparison or moves it across its boundary, swaps `and` and `or`, removes a `not`, flips a boolean, or adds one to an integer. String and regular-expression constants are not changed, so the score says little about the citation grammar or the fold table: the injected faults cover those.
+**Mutation score.** `python -m tekmeria.evaluation.mutants` is less selective. It makes one small change at a time in the audit's code (the citation parser, the handle codec, the quote comparison and the audit itself) and runs the evaluation against each one. A change negates a comparison or moves it across its boundary, swaps `and` and `or`, removes a `not`, flips a boolean, or adds one to an integer. String and regular-expression constants are not changed, so the score says little about the citation grammar or the fold table: the injected faults cover those.
 - The evaluation kills 71 of 78 changes: 52 by a wrong result and 19 by a crash.
 - One more change stops the snapshot from loading, so the evaluation never judges it, and it is left out of the score.
 - Three of the seven survivors change nothing for any record the current source parsers can build: two in the `preprint` rule, whose two signals the parsers always set together, and one in the handling of bold lead-ins, whose effect a later step removes.
@@ -399,7 +399,7 @@ Some categories rest on few passages: one passage has an accented letter, so the
 <a id="usage"></a>
 ## Usage
 
-The [quickstart](#quickstart) runs the offline demo. To use tekmerion in a chat, add it to an MCP host:
+The [quickstart](#quickstart) runs the offline demo. To use tekmeria in a chat, add it to an MCP host:
 
 <details>
 <summary>Claude Desktop, VS Code and MCP Inspector</summary>
@@ -411,15 +411,15 @@ Add this to `claude_desktop_config.json` (Settings, Developer, Edit Config) and 
 ```json
 {
   "mcpServers": {
-    "tekmerion": {
+    "tekmeria": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmerion", "tekmerion"]
+      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
     }
   }
 }
 ```
 
-Then start a chat with the `cite_by_handle` prompt. `audit_answer` also declares the audit view (`ui://tekmerion/audit-view`) as an MCP App, for hosts that support MCP Apps.
+Then start a chat with the `cite_by_handle` prompt. `audit_answer` also declares the audit view (`ui://tekmeria/audit-view`) as an MCP App, for hosts that support MCP Apps.
 
 ### VS Code
 
@@ -428,10 +428,10 @@ Add this to `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "tekmerion": {
+    "tekmeria": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmerion", "tekmerion"]
+      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
     }
   }
 }
@@ -440,7 +440,7 @@ Add this to `.vscode/mcp.json`:
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion
+npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria
 ```
 
 </details>
@@ -449,10 +449,10 @@ npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarko
 
 | Command | What it does |
 |---|---|
-| `tekmerion` | Serves MCP over stdio. |
-| `tekmerion --http --port 8000` | Serves Streamable HTTP on `http://127.0.0.1:8000/mcp` (localhost only). |
-| `tekmerion --demo` | Serves the recorded demo data with the public demo key: no network needed. |
-| `tekmerion demo` | Runs the offline demo and prints the audit. Add `--json-out PATH` for the report, `--html-out PATH` for the audit view, `--open` to open it. |
+| `tekmeria` | Serves MCP over stdio. |
+| `tekmeria --http --port 8000` | Serves Streamable HTTP on `http://127.0.0.1:8000/mcp` (localhost only). |
+| `tekmeria --demo` | Serves the recorded demo data with the public demo key: no network needed. |
+| `tekmeria demo` | Runs the offline demo and prints the audit. Add `--json-out PATH` for the report, `--html-out PATH` for the audit view, `--open` to open it. |
 
 ### Configuration
 
@@ -467,10 +467,10 @@ Everything is optional and read from environment variables; a `.env` file is not
 | `NCBI_EMAIL` | Contact address NCBI asks for; sent only when set. |
 | `OPENFDA_API_KEY` | Raises openFDA's daily limit from 1,000 to 120,000 requests. |
 | `CROSSREF_MAILTO` | Puts Crossref requests in its polite pool; sent only when set. |
-| `TEKMERION_HANDLE_KEY` | The handle key, in hex: at least 32 bytes (64 hex digits). By default a random key is created on first run and stored in your user data folder. |
-| `TEKMERION_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
-| `TEKMERION_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
-| `TEKMERION_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
+| `TEKMERIA_HANDLE_KEY` | The handle key, in hex: at least 32 bytes (64 hex digits). By default a random key is created on first run and stored in your user data folder. |
+| `TEKMERIA_CACHE_PATH` | Where the SQLite cache lives (default: your user cache folder). |
+| `TEKMERIA_LOG_LEVEL` | Log level for the JSON logs on stderr (default `INFO`). |
+| `TEKMERIA_TOOL_DEADLINE_S` | Seconds each tool call may take (default 45). |
 
 </details>
 
@@ -483,7 +483,7 @@ Everything is optional and read from environment variables; a `.env` file is not
 | `search_drug_labels` | Finds every openFDA drug label naming a drug, newest first. |
 | `fetch_passages` | Fetches records (`pmid:`, `pmcid:`, `ppr:`, `nct:`, `setid:`) and their passages, each with a handle; adds entities and retraction status. |
 | `resolve_handles` | Looks up the passage behind each handle and says whether the handle is genuine. |
-| `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://tekmerion/audit-view`) as an MCP App. |
+| `audit_answer` | Audits an answer's citations and returns the report; declares the audit view (`ui://tekmeria/audit-view`) as an MCP App. |
 | `describe_contract` | Returns the contract: handle grammar, verdicts, flags, metrics and the citing instructions. |
 
 There is also a prompt, `cite_by_handle`, and two resource templates, `evidence://record/{+record_id}` and `evidence://passage/{+handle}` (the `+` lets the slashes in a handle through).
@@ -508,12 +508,12 @@ The audit view:
 cd web
 npm ci
 npm test && npm run typecheck
-npm run build            # rewrites src/tekmerion/ui/audit-view.html; commit it
+npm run build            # rewrites src/tekmeria/ui/audit-view.html; commit it
 ```
 
 <div align="justify">
 
-After changing the report models, run `uv run python -m tekmerion.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmerion/demo/fixtures/*.json` and run `uv run tekmerion record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE)).
+After changing the report models, run `uv run python -m tekmeria.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmeria/demo/fixtures/*.json` and run `uv run tekmeria record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](https://github.com/PedroMarkovicz/tekmeria/blob/main/NOTICE)).
 
 Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that the tag names the package version and that the demo page this README links to is live, runs the tests, builds the package and, once the maintainer approves it in the `pypi` environment, publishes it to PyPI by trusted publishing, so no PyPI token is stored anywhere.
 
@@ -523,11 +523,11 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 | Path | What is there |
 |---|---|
-| [src/tekmerion/](https://github.com/PedroMarkovicz/tekmerion/tree/main/src/tekmerion) | the server, the citation contract, the evidence sources, the evaluation and the offline demo |
-| [web/](https://github.com/PedroMarkovicz/tekmerion/tree/main/web) | the audit view: React and TypeScript, built into one committed HTML file |
-| [tests/](https://github.com/PedroMarkovicz/tekmerion/tree/main/tests) | offline tests on recorded responses, and live smoke tests |
-| [docs/](https://github.com/PedroMarkovicz/tekmerion/tree/main/docs) | the [contract](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/CONTRACT.md), the [design and its decisions](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/specs/2026-10-06-tekmerion-server-design.md), the [acceptance criteria](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/ACCEPTANCE.md) and the [live runs](https://github.com/PedroMarkovicz/tekmerion/blob/main/docs/live-run.md) |
-| [schemas/](https://github.com/PedroMarkovicz/tekmerion/tree/main/schemas) | the JSON Schema of the report, exported from the models |
+| [src/tekmeria/](https://github.com/PedroMarkovicz/tekmeria/tree/main/src/tekmeria) | the server, the citation contract, the evidence sources, the evaluation and the offline demo |
+| [web/](https://github.com/PedroMarkovicz/tekmeria/tree/main/web) | the audit view: React and TypeScript, built into one committed HTML file |
+| [tests/](https://github.com/PedroMarkovicz/tekmeria/tree/main/tests) | offline tests on recorded responses, and live smoke tests |
+| [docs/](https://github.com/PedroMarkovicz/tekmeria/tree/main/docs) | the [contract](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/CONTRACT.md), the [design and its decisions](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/specs/2026-10-06-tekmeria-server-design.md), the [acceptance criteria](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/ACCEPTANCE.md) and the [live runs](https://github.com/PedroMarkovicz/tekmeria/blob/main/docs/live-run.md) |
+| [schemas/](https://github.com/PedroMarkovicz/tekmeria/tree/main/schemas) | the JSON Schema of the report, exported from the models |
 
 ---
 
@@ -535,8 +535,8 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 ## What it cannot tell you
 
 - **Whether a passage supports its sentence.** The audit checks that a citation was issued by this server, that its passage still exists, and that any quote is verbatim (in the text as issued or as it is now). Support is not checked.
-- **Medical advice.** Tekmerion retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance. It queries public biomedical APIs and is not built for patient data.
-- **Old versions of registries.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from tekmerion's cache.
+- **Medical advice.** Tekmeria retrieves and audits evidence; it does not judge it, and nothing it returns is clinical guidance. It queries public biomedical APIs and is not built for patient data.
+- **Old versions of registries.** ClinicalTrials.gov and openFDA serve only the current version of a record; an older cited version is flagged `version_changed`, but its old text can come only from tekmeria's cache.
 - **A handle from another installation.** A handle verifies only on the installation (key) that issued it.
 - **PubMed book chapters.** Records such as StatPearls or GeneReviews chapters are left out of searches, and fetching one reports it as not found.
 - **A deduplicated stream across pages.** `search_literature` never shows the same record twice on one page, but a record can reappear on a later page.
@@ -546,10 +546,10 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 <a id="contributing"></a>
 ## Contributing and support
 
-- **A problem or a question:** open an [issue](https://github.com/PedroMarkovicz/tekmerion/issues). For a wrong verdict, include the answer text you audited and the report; a handle verifies only on the installation that issued it, so say whether you used the demo key.
-- **A vulnerability:** report it privately, through the repository's Security tab, as [SECURITY.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/SECURITY.md) describes.
+- **A problem or a question:** open an [issue](https://github.com/PedroMarkovicz/tekmeria/issues). For a wrong verdict, include the answer text you audited and the report; a handle verifies only on the installation that issued it, so say whether you used the demo key.
+- **A vulnerability:** report it privately, through the repository's Security tab, as [SECURITY.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/SECURITY.md) describes.
 - **A change:** pull requests are welcome. Run the checks under [Development](#development) first; a change to what the audit decides needs a case in the evaluation.
-- **A rights holder** who wants a recorded item removed can open an issue, as [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE) says.
+- **A rights holder** who wants a recorded item removed can open an issue, as [NOTICE](https://github.com/PedroMarkovicz/tekmeria/blob/main/NOTICE) says.
 
 ---
 
@@ -558,18 +558,18 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 <div align="justify">
 
-To cite tekmerion, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmerion/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/CHANGELOG.md).
+To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmeria/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
 
 </div>
 
 ```bibtex
-@software{markovicz_tekmerion,
+@software{markovicz_tekmeria,
   author  = {Markovicz, Pedro},
-  title   = {tekmerion},
+  title   = {tekmeria},
   note    = {Server-issued citation handles and a deterministic audit for biomedical evidence},
   version = {0.1.0},
   year    = {2026},
-  url     = {https://github.com/PedroMarkovicz/tekmerion},
+  url     = {https://github.com/PedroMarkovicz/tekmeria},
   license = {Apache-2.0}
 }
 ```
@@ -580,11 +580,11 @@ To cite tekmerion, use the metadata in [CITATION.cff](https://github.com/PedroMa
 
 <div align="justify">
 
-Code: Apache License 2.0; see [LICENSE](https://github.com/PedroMarkovicz/tekmerion/blob/main/LICENSE) and [NOTICE](https://github.com/PedroMarkovicz/tekmerion/blob/main/NOTICE).
+Code: Apache License 2.0; see [LICENSE](https://github.com/PedroMarkovicz/tekmeria/blob/main/LICENSE) and [NOTICE](https://github.com/PedroMarkovicz/tekmeria/blob/main/NOTICE).
 
-The recorded API responses under `src/tekmerion/demo/fixtures/` keep the terms of their sources, listed in NOTICE: United States government data from ClinicalTrials.gov and openFDA, bibliographic records from PubMed, Europe PMC and Crossref, a CC BY 4.0 full-text article and a CC BY 4.0 preprint, both credited there.
+The recorded API responses under `src/tekmeria/demo/fixtures/` keep the terms of their sources, listed in NOTICE: United States government data from ClinicalTrials.gov and openFDA, bibliographic records from PubMed, Europe PMC and Crossref, a CC BY 4.0 full-text article and a CC BY 4.0 preprint, both credited there.
 
-Tekmerion relies on the public APIs of the National Library of Medicine (PubMed, PubTator3 and ClinicalTrials.gov), Europe PMC, the Food and Drug Administration (openFDA) and Crossref. It is not affiliated with or endorsed by any of them.
+Tekmeria relies on the public APIs of the National Library of Medicine (PubMed, PubTator3 and ClinicalTrials.gov), Europe PMC, the Food and Drug Administration (openFDA) and Crossref. It is not affiliated with or endorsed by any of them.
 
 </div>
 
@@ -594,6 +594,6 @@ Tekmerion relies on the public APIs of the National Library of Medicine (PubMed,
 
 **Built with ☕ and a healthy distrust of unverifiable citations**
 
-[⬆ Back to top](#tekmerion)
+[⬆ Back to top](#tekmeria)
 
 </div>

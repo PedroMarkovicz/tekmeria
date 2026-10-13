@@ -1,4 +1,4 @@
-"""Server behaviour against recorded PubMed responses (src/tekmerion/demo/fixtures)."""
+"""Server behaviour against recorded PubMed responses (src/tekmeria/demo/fixtures)."""
 
 import json
 from typing import Any
@@ -9,9 +9,9 @@ from mcp import Client
 from mcp.shared.exceptions import MCPError
 from mcp.types import TextResourceContents
 
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.demo.scenario import COHORT_PMID, DEMO_QUERY, RETRACTED_PMID, TEST_SEARCH_ARGS, forge
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.demo.scenario import COHORT_PMID, DEMO_QUERY, RETRACTED_PMID, TEST_SEARCH_ARGS, forge
+from tekmeria.infra.keys import DEMO_KEY
 from tests.conftest import structured
 
 pytestmark = pytest.mark.anyio

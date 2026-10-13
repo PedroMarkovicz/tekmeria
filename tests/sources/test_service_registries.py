@@ -11,23 +11,23 @@ import httpx
 import pytest
 from pydantic import JsonValue
 
-from tekmerion.contract.audit import check_handles
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream
-from tekmerion.sources.clinicaltrials import (
+from tekmeria.contract.audit import check_handles
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream
+from tekmeria.sources.clinicaltrials import (
     PAGE_SIZE,
     ClinicalTrialsAdapter,
     TrialQuery,
     clinicaltrials_host,
 )
-from tekmerion.sources.crossref import CrossrefAdapter, crossref_host
-from tekmerion.sources.errors import InvalidInputError
-from tekmerion.sources.europepmc import EuropePmcAdapter, europepmc_host
-from tekmerion.sources.openfda import OpenFdaAdapter, openfda_host
-from tekmerion.sources.pubmed import PubMedAdapter, ncbi_host
-from tekmerion.sources.pubtator import PubTatorAdapter, pubtator_host
-from tekmerion.sources.service import EvidenceService, TrialSearchState
+from tekmeria.sources.crossref import CrossrefAdapter, crossref_host
+from tekmeria.sources.errors import InvalidInputError
+from tekmeria.sources.europepmc import EuropePmcAdapter, europepmc_host
+from tekmeria.sources.openfda import OpenFdaAdapter, openfda_host
+from tekmeria.sources.pubmed import PubMedAdapter, ncbi_host
+from tekmeria.sources.pubtator import PubTatorAdapter, pubtator_host
+from tekmeria.sources.service import EvidenceService, TrialSearchState
 
 pytestmark = pytest.mark.anyio
 

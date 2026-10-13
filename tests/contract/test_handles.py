@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tekmerion.contract.handles import (
+from tekmeria.contract.handles import (
     CROCKFORD_ALPHABET,
     ForgedHandleError,
     HandleCodec,

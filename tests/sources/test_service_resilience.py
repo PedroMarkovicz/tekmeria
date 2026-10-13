@@ -11,16 +11,16 @@ import anyio
 import httpx
 import pytest
 
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream, UpstreamUnavailableError
-from tekmerion.sources.clinicaltrials import ClinicalTrialsAdapter, clinicaltrials_host
-from tekmerion.sources.crossref import CrossrefAdapter, crossref_host
-from tekmerion.sources.europepmc import EuropePmcAdapter, europepmc_host
-from tekmerion.sources.openfda import OpenFdaAdapter, openfda_host
-from tekmerion.sources.pubmed import LiteratureQuery, PubMedAdapter, ncbi_host
-from tekmerion.sources.pubtator import PubTatorAdapter, pubtator_host
-from tekmerion.sources.service import EvidenceService, SearchState
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream, UpstreamUnavailableError
+from tekmeria.sources.clinicaltrials import ClinicalTrialsAdapter, clinicaltrials_host
+from tekmeria.sources.crossref import CrossrefAdapter, crossref_host
+from tekmeria.sources.europepmc import EuropePmcAdapter, europepmc_host
+from tekmeria.sources.openfda import OpenFdaAdapter, openfda_host
+from tekmeria.sources.pubmed import LiteratureQuery, PubMedAdapter, ncbi_host
+from tekmeria.sources.pubtator import PubTatorAdapter, pubtator_host
+from tekmeria.sources.service import EvidenceService, SearchState
 
 pytestmark = pytest.mark.anyio
 

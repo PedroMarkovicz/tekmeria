@@ -4,10 +4,10 @@ from typing import Any
 import httpx
 import pytest
 
-from tekmerion.contract.models import Provenance, Quality, Record, RecordIds, Retraction, Signal
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream, UpstreamResponseError
-from tekmerion.sources.crossref import (
+from tekmeria.contract.models import Provenance, Quality, Record, RecordIds, Retraction, Signal
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream, UpstreamResponseError
+from tekmeria.sources.crossref import (
     CrossrefAdapter,
     crossref_host,
     merge_retraction,

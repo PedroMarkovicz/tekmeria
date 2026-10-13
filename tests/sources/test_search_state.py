@@ -1,7 +1,7 @@
 import pytest
 
-from tekmerion.sources.errors import InvalidInputError
-from tekmerion.sources.service import SearchState
+from tekmeria.sources.errors import InvalidInputError
+from tekmeria.sources.service import SearchState
 
 
 def test_search_state_round_trip_and_validation() -> None:

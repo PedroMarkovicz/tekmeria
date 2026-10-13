@@ -24,15 +24,15 @@ jobs:
       - run: uv run pyright
       - run: uv run pytest
       - name: Offline demo must catch every planted case
-        run: uv run tekmerion demo
+        run: uv run tekmeria demo
       - name: The audit must give every planted case its verdict
-        run: uv run tekmerion evaluate
+        run: uv run tekmeria evaluate
       - name: The evaluation must catch every injected fault it can
-        run: uv run python -m tekmerion.evaluation.faults --per-category 10
+        run: uv run python -m tekmeria.evaluation.faults --per-category 10
       - name: The wheel ships the audit view
         run: |
           uv build --wheel --out-dir dist
-          uv run python -c "import glob, sys, zipfile; names = zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist(); sys.exit(0 if 'tekmerion/ui/audit-view.html' in names else 'the wheel has no tekmerion/ui/audit-view.html')"
+          uv run python -c "import glob, sys, zipfile; names = zipfile.ZipFile(glob.glob('dist/*.whl')[0]).namelist(); sys.exit(0 if 'tekmeria/ui/audit-view.html' in names else 'the wheel has no tekmeria/ui/audit-view.html')"
 
   web:
     runs-on: ubuntu-latest
@@ -52,4 +52,4 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: The committed audit view must match the build
-        run: git diff --exit-code -- ../src/tekmerion/ui/audit-view.html
+        run: git diff --exit-code -- ../src/tekmeria/ui/audit-view.html

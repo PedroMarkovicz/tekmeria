@@ -5,8 +5,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tekmerion.contract.normalize import normalize_text
-from tekmerion.sources.openfda_parse import chunk_text, label_hit, parse_label, section_keys
+from tekmeria.contract.normalize import normalize_text
+from tekmeria.sources.openfda_parse import chunk_text, label_hit, parse_label, section_keys
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 LONG = " ".join(f"Sentence number {i} says something about bleeding risk." for i in range(40))

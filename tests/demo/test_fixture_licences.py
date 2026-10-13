@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
-from tekmerion.demo.scenario import FIXTURES_DIR, fetched_pmids
-from tekmerion.infra.fixtures import is_pubmed_fetch, scrub
+from tekmeria.demo.scenario import FIXTURES_DIR, fetched_pmids
+from tekmeria.infra.fixtures import is_pubmed_fetch, scrub
 
 _LICENCE_LINK = re.compile(r"creativecommons\.org/(?:licenses|publicdomain)/([a-z-]+)/")
 

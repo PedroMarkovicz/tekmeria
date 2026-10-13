@@ -6,8 +6,8 @@ from typing import get_args
 
 import pytest
 
-from tekmerion.contract import CONTRACT_VERSION
-from tekmerion.contract.audit_models import (
+from tekmeria.contract import CONTRACT_VERSION
+from tekmeria.contract.audit_models import (
     DEFAULT_FAIL_ON,
     FLAG_NAMES,
     VERDICTS,
@@ -17,10 +17,10 @@ from tekmerion.contract.audit_models import (
     FailOn,
     OverallVerdict,
 )
-from tekmerion.contract.descriptions import METRIC_MEANINGS, PASSAGE_PATHS
-from tekmerion.contract.handles import HANDLE_PATTERN, SCHEMES, HandleCodec
-from tekmerion.contract.normalize import _FOLDS  # pyright: ignore[reportPrivateUsage]
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.contract.descriptions import METRIC_MEANINGS, PASSAGE_PATHS
+from tekmeria.contract.handles import HANDLE_PATTERN, SCHEMES, HandleCodec
+from tekmeria.contract.normalize import _FOLDS  # pyright: ignore[reportPrivateUsage]
+from tekmeria.infra.keys import DEMO_KEY
 
 DOC = (Path(__file__).resolve().parents[2] / "docs" / "CONTRACT.md").read_text(encoding="utf-8")
 

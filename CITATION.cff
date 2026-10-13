@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 type: software
-title: tekmerion
+title: tekmeria
 abstract: >-
   An MCP server for biomedical evidence from PubMed, Europe PMC, ClinicalTrials.gov and
   openFDA. Every passage it returns carries a handle whose check code is a truncated keyed
@@ -15,8 +15,8 @@ authors:
     orcid: "https://orcid.org/0009-0006-6878-793X"
 version: 0.1.0
 license: Apache-2.0
-repository-code: "https://github.com/PedroMarkovicz/tekmerion"
-url: "https://pedromarkovicz.github.io/tekmerion/"
+repository-code: "https://github.com/PedroMarkovicz/tekmeria"
+url: "https://pedromarkovicz.github.io/tekmeria/"
 keywords:
   - mcp
   - citations

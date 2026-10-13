@@ -1,10 +1,10 @@
 import httpx
 import pytest
 
-from tekmerion.infra.cache import Cache
-from tekmerion.infra.http import Upstream, UpstreamResponseError
-from tekmerion.sources.errors import InvalidInputError
-from tekmerion.sources.pubmed import (
+from tekmeria.infra.cache import Cache
+from tekmeria.infra.http import Upstream, UpstreamResponseError
+from tekmeria.sources.errors import InvalidInputError
+from tekmeria.sources.pubmed import (
     LiteratureQuery,
     PubMedAdapter,
     _date_params,
@@ -52,7 +52,7 @@ def test_api_key_raises_rate() -> None:
     assert ncbi_host(api_key=None, email=None).rate == 3.0
     keyed = ncbi_host(api_key="k", email="a@b.org")
     assert keyed.rate == 10.0
-    assert keyed.default_params == {"tool": "tekmerion", "email": "a@b.org", "api_key": "k"}
+    assert keyed.default_params == {"tool": "tekmeria", "email": "a@b.org", "api_key": "k"}
 
 
 @pytest.mark.anyio

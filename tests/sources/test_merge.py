@@ -1,4 +1,4 @@
-from tekmerion.sources.merge import Candidate, identity_keys, interleave
+from tekmeria.sources.merge import Candidate, identity_keys, interleave
 
 
 def c(*keys: str) -> Candidate:

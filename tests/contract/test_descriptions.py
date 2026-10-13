@@ -1,7 +1,7 @@
-from tekmerion.contract import CONTRACT_VERSION
-from tekmerion.contract.audit_models import FLAG_NAMES, VERDICTS
-from tekmerion.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS, contract_description
-from tekmerion.contract.handles import HANDLE_PATTERN
+from tekmeria.contract import CONTRACT_VERSION
+from tekmeria.contract.audit_models import FLAG_NAMES, VERDICTS
+from tekmeria.contract.descriptions import CITE_BY_HANDLE_INSTRUCTIONS, contract_description
+from tekmeria.contract.handles import HANDLE_PATTERN
 
 
 def test_every_verdict_and_flag_is_described_in_order() -> None:

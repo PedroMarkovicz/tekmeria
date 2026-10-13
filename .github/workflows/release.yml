@@ -23,7 +23,7 @@ jobs:
       - name: The release tag must name the package version
         run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
       - name: The demo page the README links to must be live
-        run: curl --fail --silent --show-error --location --output /dev/null https://pedromarkovicz.github.io/tekmerion/
+        run: curl --fail --silent --show-error --location --output /dev/null https://pedromarkovicz.github.io/tekmeria/
       - run: uv run pytest
       - run: uv build --out-dir dist
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: pypi
-      url: https://pypi.org/project/tekmerion/
+      url: https://pypi.org/project/tekmeria/
     permissions:
       id-token: write
     steps:

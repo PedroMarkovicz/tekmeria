@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from tekmerion.sources.base import RecordBundle
-from tekmerion.sources.pubmed_parse import parse_efetch, study_designs
+from tekmeria.sources.base import RecordBundle
+from tekmeria.sources.pubmed_parse import parse_efetch, study_designs
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 

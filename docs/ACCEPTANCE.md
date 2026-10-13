@@ -6,18 +6,18 @@ How each acceptance criterion in spec section 13 is checked, and where it stands
 
 | # | Criterion | How it is checked | Status |
 |---|---|---|---|
-| 1 | Everything below works on a clean machine with no API keys and no network, except 6 and 7. | The CI jobs in `.github/workflows/ci.yml` run with no secrets; every server test replays recorded fixtures through `FixtureTransport`; `tekmerion demo` runs offline. | Automated |
-| 2 | `tekmerion demo` detects all six planted cases, with the expected verdicts, flags, claim statuses and hand-computed metrics. | `tests/demo/test_demo.py::test_demo_detects_every_planted_case` | Automated |
+| 1 | Everything below works on a clean machine with no API keys and no network, except 6 and 7. | The CI jobs in `.github/workflows/ci.yml` run with no secrets; every server test replays recorded fixtures through `FixtureTransport`; `tekmeria demo` runs offline. | Automated |
+| 2 | `tekmeria demo` detects all six planted cases, with the expected verdicts, flags, claim statuses and hand-computed metrics. | `tests/demo/test_demo.py::test_demo_detects_every_planted_case` | Automated |
 | 3 | `tools/list` returns the seven tools in a fixed order, each with an `outputSchema`, and every tool result validates against its schema. | Each tool's output is validated against its schema in at least one test: `tests/server/test_server_offline.py::test_tools_listed_in_fixed_order_with_schemas`, plus the schema-validating `_call` helpers in `tests/server/test_server.py::test_search_returns_hits_with_title_handles`, `tests/server/test_server_literature.py::test_default_search_merges_both_sources` and `tests/server/test_server_registries.py::test_trial_search_pages_without_repeats` | Automated |
 | 4 | CI passes: lint, types, Python tests and web tests. | The `python` and `web` jobs in `.github/workflows/ci.yml` | Automated; first run when the repository is pushed |
-| 5 | The audit view renders the demo report on GitHub Pages, and keyboard navigation reaches every citation chip. | `.github/workflows/pages.yml` publishes `tekmerion demo --html-out`; `web/src/AuditView.test.tsx::are all reachable with the keyboard` | Keyboard: automated. Publication: pending, since Pages needs a public repository (or a paid plan) and is not enabled yet |
-| 6 | The audit view renders inside an MCP Apps host (Claude Desktop), documented with a screenshot in the README. | Manual: checklist A; the screenshot is `docs/assets/host-audit-view.png` | Done (2026-10-07): Claude Desktop rendered the audit view as a widget, under the project's earlier name (spec 16.8) |
+| 5 | The audit view renders the demo report on GitHub Pages, and keyboard navigation reaches every citation chip. | `.github/workflows/pages.yml` publishes `tekmeria demo --html-out`; `web/src/AuditView.test.tsx::are all reachable with the keyboard` | Keyboard: automated. Publication: pending, since Pages needs a public repository (or a paid plan) and is not enabled yet |
+| 6 | The audit view renders inside an MCP Apps host (Claude Desktop), documented with a screenshot in the README. | Manual: checklist A; the screenshot is `docs/assets/host-audit-view.png` | Done (2026-10-07): Claude Desktop rendered the audit view as a widget, under the project's first name (spec 16.8) |
 | 7 | A live run in Claude Desktop or VS Code, using the `cite_by_handle` prompt, gives an answer whose audit is `pass` or `warn` with zero fabricated citations; the transcript goes in the README. | Manual: checklist B; transcripts in `docs/live-run.md` | Done (2026-10-07): run 2 audited `warn` with 0 fabricated (16 of 16 citations genuine, 4 of 4 quotes verbatim). Run 1 failed on one forged citation, the instructions' own example handle repeated by the model (fixed, spec 16.6) |
 | 8 | `docs/CONTRACT.md` matches the implementation. | `tests/contract/test_contract_doc.py::test_every_value_in_the_code_is_documented` and `tests/contract/test_contract_doc.py::test_verdicts_are_listed_in_precedence_order` | Automated |
 
 ## Manual checklist
 
-Both checks use Claude Desktop with tekmerion installed from GitHub. They need network access to the public biomedical APIs, and no API keys.
+Both checks use Claude Desktop with tekmeria installed from GitHub. They need network access to the public biomedical APIs, and no API keys.
 
 ### Setup
 
@@ -27,23 +27,23 @@ Both checks use Claude Desktop with tekmerion installed from GitHub. They need n
    ```json
    {
      "mcpServers": {
-       "tekmerion": {
+       "tekmeria": {
          "command": "uvx",
-         "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmerion", "tekmerion"]
+         "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
        }
      }
    }
    ```
 
-3. Run `uvx --from git+https://github.com/PedroMarkovicz/tekmerion tekmerion --help` once in a terminal. The first run downloads and installs tekmerion, which can take longer than Claude Desktop waits for a server to start.
+3. Run `uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria --help` once in a terminal. The first run downloads and installs tekmeria, which can take longer than Claude Desktop waits for a server to start.
 
-   To run a local checkout instead, point `--from` at it, for example `"args": ["--from", "C:/path/to/tekmerion", "tekmerion"]`.
+   To run a local checkout instead, point `--from` at it, for example `"args": ["--from", "C:/path/to/tekmeria", "tekmeria"]`.
 
-4. Restart Claude Desktop. tekmerion's seven tools should appear in the tools menu.
+4. Restart Claude Desktop. tekmeria's seven tools should appear in the tools menu.
 
 ### A. The audit view inside the host (criterion 6)
 
-1. Start a new chat and ask: *"Use tekmerion's audit_answer to audit this answer: Vaccines are tested [pmid:1/title~abcde]."*
+1. Start a new chat and ask: *"Use tekmeria's audit_answer to audit this answer: Vaccines are tested [pmid:1/title~abcde]."*
 2. The result should render as the audit view inside the chat: the verdict on top, and the sentence with a red "Forged" chip.
 3. Take a screenshot of the rendered view and save it as `docs/assets/host-audit-view.png`.
 4. If the host shows only text, note the Claude Desktop version; the structured result and the text are still complete, as the spec requires.

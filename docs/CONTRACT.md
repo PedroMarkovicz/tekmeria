@@ -1,4 +1,4 @@
-# The tekmerion citation contract
+# The tekmeria citation contract
 
 Contract version: `0.1.0`
 
@@ -19,13 +19,13 @@ The regular expression the server validates with:
 ^(pmid|pmcid|ppr|nct|setid):([A-Za-z0-9-]+)(?:@([A-Za-z0-9.-]+))?/([a-z0-9_]+(?:\.[a-z0-9_]+)*)~([0-9a-hjkmnp-tv-z]{5})$
 ```
 
-Examples, issued under the public demo key: they resolve with `tekmerion --demo`, and their check codes fail under any other key.
+Examples, issued under the public demo key: they resolve with `tekmeria --demo`, and their check codes fail under any other key.
 
 ```
-pmid:30831578/abstract.7~30med
-pmcid:PMC12585062/body.methods.data_sources.p1~19ev9
-nct:NCT04363697@2026-06-16/results.outcome.1.analysis.1~1abw2
-setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~gwfaa
+pmid:30831578/abstract.7~ae2tc
+pmcid:PMC12585062/body.methods.data_sources.p1~7xf52
+nct:NCT04363697@2026-06-16/results.outcome.1.analysis.1~cxt60
+setid:7c4deb97-9966-4c8e-9ba6-bb260b71e130@6/boxed_warning.1~dkqnm
 ```
 
 ### 1.1 Schemes

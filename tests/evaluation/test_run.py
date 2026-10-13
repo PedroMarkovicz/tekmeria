@@ -2,10 +2,10 @@ from collections.abc import Mapping, Sequence
 
 import pytest
 
-from tekmerion.contract import audit as audit_module
-from tekmerion.contract import normalize
-from tekmerion.contract.audit import PassageResolver, Resolution, Unavailable
-from tekmerion.contract.audit_models import (
+from tekmeria.contract import audit as audit_module
+from tekmeria.contract import normalize
+from tekmeria.contract.audit import PassageResolver, Resolution, Unavailable
+from tekmeria.contract.audit_models import (
     AuditSummary,
     CitationResult,
     ClaimIn,
@@ -14,14 +14,14 @@ from tekmerion.contract.audit_models import (
     FailOn,
     OverallVerdict,
 )
-from tekmerion.contract.citations import parse_answer_text
-from tekmerion.contract.handles import HandleCodec, Locator
-from tekmerion.evaluation import cases as cases_module
-from tekmerion.evaluation import run
-from tekmerion.evaluation.cases import generate_cases
-from tekmerion.evaluation.run import EvaluationReport, render_report, run_evaluation
-from tekmerion.evaluation.snapshot import Snapshot, SnapshotResolver
-from tekmerion.infra.keys import DEMO_KEY
+from tekmeria.contract.citations import parse_answer_text
+from tekmeria.contract.handles import HandleCodec, Locator
+from tekmeria.evaluation import cases as cases_module
+from tekmeria.evaluation import run
+from tekmeria.evaluation.cases import generate_cases
+from tekmeria.evaluation.run import EvaluationReport, render_report, run_evaluation
+from tekmeria.evaluation.snapshot import Snapshot, SnapshotResolver
+from tekmeria.infra.keys import DEMO_KEY
 
 pytestmark = pytest.mark.anyio
 

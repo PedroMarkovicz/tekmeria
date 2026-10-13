@@ -1,17 +1,17 @@
-"""`tekmerion demo` writes the report and the audit view, and can open the view."""
+"""`tekmeria demo` writes the report and the audit view, and can open the view."""
 
 import json
 from pathlib import Path
 
 import pytest
 
-from tekmerion.__main__ import main
-from tekmerion.contract.audit_models import AuditReport
-from tekmerion.ui import REPORT_SLOT
+from tekmeria.__main__ import main
+from tekmeria.contract.audit_models import AuditReport
+from tekmeria.ui import REPORT_SLOT
 
 
 def _embedded(page: str) -> dict[str, object]:
-    start = page.index('id="tekmerion-report">') + len('id="tekmerion-report">')
+    start = page.index('id="tekmeria-report">') + len('id="tekmeria-report">')
     return json.loads(page[start : page.index("</script>", start)])
 
 

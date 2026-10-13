@@ -2,16 +2,16 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tekmerion.contract.audit_models import (
+from tekmeria.contract.audit_models import (
     AuditReport,
     AuditSummary,
     CitationResult,
     ClaimResult,
     Flag,
 )
-from tekmerion.contract.handles import HandleCodec
-from tekmerion.contract.models import RecordIds, Signal, StudyDesign, ToolError
-from tekmerion.contract.tool_models import (
+from tekmeria.contract.handles import HandleCodec
+from tekmeria.contract.models import RecordIds, Signal, StudyDesign, ToolError
+from tekmeria.contract.tool_models import (
     LabelHit,
     LabelSearchResult,
     LiteratureHit,
@@ -19,15 +19,15 @@ from tekmerion.contract.tool_models import (
     TrialHit,
     TrialSearchResult,
 )
-from tekmerion.server.cursor import decode_cursor, decode_offset, encode_cursor
-from tekmerion.server.render import (
+from tekmeria.server.cursor import decode_cursor, decode_offset, encode_cursor
+from tekmeria.server.render import (
     render_audit,
     render_error,
     render_labels,
     render_search,
     render_trials,
 )
-from tekmerion.sources.errors import InvalidInputError
+from tekmeria.sources.errors import InvalidInputError
 
 CODEC = HandleCodec(bytes(range(32)))
 ARGS = {"query": "mmr", "limit": None}
