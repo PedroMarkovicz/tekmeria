@@ -51,7 +51,7 @@ Tekmerion is a [Model Context Protocol](https://modelcontextprotocol.io/) server
 
 Language models that answer biomedical questions with citations can cite papers that do not exist, misquote the ones that do, and cite retracted work. The problem now reaches the literature itself: an audit of 2.5 million open-access articles found fabricated references in 1 in 2,828 papers in 2023 and in 1 in 277 in early 2026 ([Topaz et al., *The Lancet*, 2026](https://doi.org/10.1016/S0140-6736%2826%2900603-3)). Checks that run after the answer is written must judge whether an imperfect bibliographic match is the right work. Tekmerion moves the guarantee into the tool server. The server that hands out a passage also issues its citation, so a citation is checked against what was issued, not searched for.
 
-> The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmerion narrows that question to genuine, correctly quoted passages, and leaves it open.
+> The audit checks provenance and quotation, not support. Whether a passage actually backs its claim is reported as `not_checked`: tekmerion narrows that question to genuine, correctly quoted passages, and leaves it open. A verbatim quote does not settle it: across twelve models, verbatim quotes often failed to support their claims fully ([Zhang et al.](https://arxiv.org/abs/2609.15964)).
 
 </div>
 
@@ -60,6 +60,8 @@ The project stays out of the race for coverage. [BioMCP](https://github.com/geno
 - in [Chen et al.](https://arxiv.org/abs/2608.30676), citation fabrication by a medical agent rose from 16.5% to 31.8% when reinforcement learning rewarded only correct answers.
 
 The protocol points the same way: the [2026-07-28 MCP revision](https://modelcontextprotocol.io/specification/2026-07-28/changelog) says that servers needing state across calls use "explicit, server-minted handles passed as ordinary tool arguments".
+
+Others also put trust in the tool rather than the model. An agent runtime can sign a receipt for each tool call and check the claims that cite it ([Basu](https://arxiv.org/abs/2603.10060)); a renderer can mark a number verified only when it matches the record it names ([Solatorio](https://arxiv.org/abs/2509.06902)); and a genome-writing tool layer reachable over MCP requires every quantity to come from a validated tool ([Ali et al.](https://arxiv.org/abs/2608.20412)). Tekmerion applies the idea to citations of biomedical passages: the handle the model writes is itself authenticated, so the server that issued it can check it with its key alone, whichever model or MCP host wrote the answer.
 
 **Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmerion/blob/main/CHANGELOG.md).
 
