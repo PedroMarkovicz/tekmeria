@@ -16,6 +16,7 @@ import json
 import re
 from collections.abc import Collection
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
@@ -74,7 +75,12 @@ def keep_abstracts(body: str, pmids: Collection[str]) -> str:
 
 
 def is_pubmed_fetch(url: str) -> bool:
-    return "/entrez/eutils/efetch.fcgi" in url and "db=pubmed" in url
+    parts = urlsplit(url)
+    return (
+        parts.hostname == "eutils.ncbi.nlm.nih.gov"
+        and parts.path == "/entrez/eutils/efetch.fcgi"
+        and parse_qs(parts.query).get("db") == ["pubmed"]
+    )
 
 
 def strip_abstracts(root: Path, pmids: Collection[str]) -> int:

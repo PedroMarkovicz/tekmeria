@@ -8,6 +8,7 @@ from tekmeria.infra.cache import Cache
 from tekmeria.infra.fixtures import (
     FixtureTransport,
     RecordingTransport,
+    is_pubmed_fetch,
     keep_abstracts,
     open_licence_pmids,
     request_key,
@@ -219,6 +220,25 @@ def test_strip_abstracts_rewrites_only_pubmed_fetches(tmp_path: Path) -> None:
         in json.loads((tmp_path / "other.json").read_text(encoding="utf-8"))["body"]
     )
     assert strip_abstracts(tmp_path, {"1"}) == 0  # nothing left to remove
+
+
+EFETCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (f"{EFETCH}?db=pubmed&id=1%2C2&retmode=xml", True),
+        (f"{EFETCH}?id=1&retmode=xml&db=pubmed", True),
+        (f"{EFETCH}?db=pmc&id=1", False),
+        (f"{EFETCH}?db=pubmedcentral&id=1", False),  # contains "db=pubmed", names another db
+        ("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=x", False),
+        ("https://example.org/entrez/eutils/efetch.fcgi?db=pubmed&id=1", False),
+        ("", False),
+    ],
+)
+def test_is_pubmed_fetch_reads_the_host_path_and_database(url: str, expected: bool) -> None:
+    assert is_pubmed_fetch(url) is expected
 
 
 def test_keep_abstracts_covers_book_records_too() -> None:
