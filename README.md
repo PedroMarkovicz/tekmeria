@@ -13,6 +13,8 @@
 <br/><br/>
 
 [![CI](https://github.com/PedroMarkovicz/tekmeria/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroMarkovicz/tekmeria/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/tekmeria.svg)](https://pypi.org/project/tekmeria/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23353865.svg)](https://doi.org/10.5281/zenodo.23353865)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![MCP Python SDK 2.3](https://img.shields.io/badge/MCP%20Python%20SDK-2.3-6e56cf.svg)](https://github.com/modelcontextprotocol/python-sdk)
 [![Pydantic 2](https://img.shields.io/badge/Pydantic-2-e92063.svg)](https://docs.pydantic.dev/)
@@ -558,7 +560,7 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 <div align="justify">
 
-To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmeria/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo, which gives each one a DOI. Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
+To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmeria/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo: [10.5281/zenodo.23353865](https://doi.org/10.5281/zenodo.23353865) always resolves to the latest release, and version 0.1.0 is [10.5281/zenodo.23353866](https://doi.org/10.5281/zenodo.23353866). Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
 
 </div>
 
@@ -569,6 +571,7 @@ To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMar
   note    = {Server-issued citation handles and a deterministic audit for biomedical evidence},
   version = {0.1.0},
   year    = {2026},
+  doi     = {10.5281/zenodo.23353866},
   url     = {https://github.com/PedroMarkovicz/tekmeria},
   license = {Apache-2.0}
 }

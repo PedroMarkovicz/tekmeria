@@ -14,6 +14,8 @@ authors:
     given-names: Pedro
     orcid: "https://orcid.org/0009-0006-6878-793X"
 version: 0.1.0
+date-released: "2026-10-13"
+doi: 10.5281/zenodo.23353865
 license: Apache-2.0
 repository-code: "https://github.com/PedroMarkovicz/tekmeria"
 url: "https://pedromarkovicz.github.io/tekmeria/"

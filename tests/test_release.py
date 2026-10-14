@@ -34,6 +34,15 @@ def test_citation_metadata_matches_the_package() -> None:
     assert _citation("repository-code") == PROJECT["urls"]["Repository"]
 
 
+def test_the_citation_carries_the_archive_doi() -> None:
+    # The DOI of all versions: the file cannot know the DOI of the release that will carry it.
+    doi = _citation("doi")
+    assert re.fullmatch(r"10\.5281/zenodo\.\d+", doi), doi
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert f"https://doi.org/{doi}" in readme
+    assert re.search(r"^  doi     = \{10\.5281/zenodo\.\d+\},$", readme, re.M)
+
+
 def test_the_author_orcid_is_well_formed() -> None:
     text = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
     (orcid,) = re.findall(r'orcid: "(https://orcid\.org/[0-9X-]+)"', text)

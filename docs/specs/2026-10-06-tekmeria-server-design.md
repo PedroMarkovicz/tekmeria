@@ -908,3 +908,12 @@ On the day the repository became public, an unrelated project published a packag
 - **History kept as written.** Section 16.8 keeps the name it gave. The old-name guard now covers both earlier names: the first may appear only in the transcripts and in 16.8, the second only in 16.8 and here.
 - **Existing installations.** A key created under the old name sits in the old folder. Move the folder (the user data folder named `tekmerion`) to the new name, or handles issued before the rename read as `forged`.
 - **Installing.** The README installs from the repository's address, which names its owner. `uvx tekmeria` alone is right only once the package is on PyPI under this name.
+
+### 16.22 The first release (2026-10-13)
+
+Version 0.1.0 was tagged `v0.1.0` and published the day the repository became public.
+
+- **PyPI.** The release workflow uploaded the package as `tekmeria` by trusted publishing, after the maintainer's approval in the `pypi` environment. No token is stored. `uvx tekmeria` now runs the released version.
+- **Archive.** Zenodo archived the release. `10.5281/zenodo.23353865` names all versions and always resolves to the latest; `10.5281/zenodo.23353866` names version 0.1.0.
+- **Where the DOIs are written.** `CITATION.cff` carries the DOI of all versions, because the file cannot know the DOI of the release that will carry it. The README gives both, and its BibTeX entry, which names a version, uses that version's DOI. A test keeps the citation file and the README in agreement.
+- **After a release.** The DOI of a new version is added to the README's BibTeX entry in the commit that follows it.
