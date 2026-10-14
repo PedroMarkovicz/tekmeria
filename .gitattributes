@@ -1,0 +1,4 @@
+# Text files are stored and checked out with LF on every platform, so a file built or edited on
+# Windows compares equal to the same file built in CI.
+* text=auto eol=lf
+*.png binary
