@@ -17,7 +17,7 @@ How each acceptance criterion in spec section 13 is checked, and where it stands
 
 ## Manual checklist
 
-Both checks use Claude Desktop with tekmeria installed from GitHub. They need network access to the public biomedical APIs, and no API keys.
+Both checks use Claude Desktop with tekmeria installed from PyPI. They need network access to the public biomedical APIs, and no API keys.
 
 ### Setup
 
@@ -29,13 +29,13 @@ Both checks use Claude Desktop with tekmeria installed from GitHub. They need ne
      "mcpServers": {
        "tekmeria": {
          "command": "uvx",
-         "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
+         "args": ["tekmeria"]
        }
      }
    }
    ```
 
-3. Run `uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria --help` once in a terminal. The first run downloads and installs tekmeria, which can take longer than Claude Desktop waits for a server to start.
+3. Run `uvx tekmeria --help` once in a terminal. The first run downloads and installs tekmeria, which can take longer than Claude Desktop waits for a server to start.
 
    To run a local checkout instead, point `--from` at it, for example `"args": ["--from", "C:/path/to/tekmeria", "tekmeria"]`.
 

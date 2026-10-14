@@ -75,10 +75,10 @@ Others also put trust in the tool rather than the model. An agent runtime can si
 You need [uv](https://docs.astral.sh/uv/) (it installs a suitable Python if needed). No API keys are required. One command runs the offline demo on recorded responses and opens its audit in your browser:
 
 ```bash
-uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria demo --open
+uvx tekmeria demo --open
 ```
 
-To use tekmeria in a chat, add it to an MCP host such as Claude Desktop or VS Code: see [Usage](#usage). You can also point `--from` at a local clone.
+To use tekmeria in a chat, add it to an MCP host such as Claude Desktop or VS Code: see [Usage](#usage). The command installs the released package from [PyPI](https://pypi.org/project/tekmeria/). To run the development version instead, use `uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria`, or point `--from` at a local clone.
 
 ---
 
@@ -415,7 +415,7 @@ Add this to `claude_desktop_config.json` (Settings, Developer, Edit Config) and 
   "mcpServers": {
     "tekmeria": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
+      "args": ["tekmeria"]
     }
   }
 }
@@ -433,7 +433,7 @@ Add this to `.vscode/mcp.json`:
     "tekmeria": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/PedroMarkovicz/tekmeria", "tekmeria"]
+      "args": ["tekmeria"]
     }
   }
 }
@@ -442,7 +442,7 @@ Add this to `.vscode/mcp.json`:
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector uvx --from git+https://github.com/PedroMarkovicz/tekmeria tekmeria
+npx @modelcontextprotocol/inspector uvx tekmeria
 ```
 
 </details>
