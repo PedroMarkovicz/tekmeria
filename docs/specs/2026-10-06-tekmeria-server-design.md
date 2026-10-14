@@ -933,3 +933,4 @@ A maintenance release; the audit, the handles and the contract (0.1.0) do not ch
 - **Line endings.** `.gitattributes` stores and checks out text with LF on every platform, so a file built on Windows compares equal to the one CI builds.
 - **Contributing.** `CONTRIBUTING.md` gives the checks CI runs and what a change needs: tests, an evaluation case for a change to a verdict, the contract's versioning and the decision record.
 - **Version.** A test now compares `__version__` with `pyproject.toml` instead of a fixed string.
+- **Published.** PyPI has 0.1.1 with its licence expression and the ownership line; the registry lists `io.github.PedroMarkovicz/tekmeria` 0.1.1 as active; Zenodo archived it as `10.5281/zenodo.23376855`, which the README's BibTeX entry now gives.

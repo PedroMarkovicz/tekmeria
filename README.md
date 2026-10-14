@@ -560,7 +560,7 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 <div align="justify">
 
-To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmeria/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo: [10.5281/zenodo.23353865](https://doi.org/10.5281/zenodo.23353865) always resolves to the latest release, and version 0.1.0 is [10.5281/zenodo.23353866](https://doi.org/10.5281/zenodo.23353866). [Software Heritage](https://www.softwareheritage.org/) archives the full history; release 0.1.0 is [swh:1:rel:9d852cbc58c0adc8919be14723b074d6dd5b7b45](https://archive.softwareheritage.org/swh:1:rel:9d852cbc58c0adc8919be14723b074d6dd5b7b45;origin=https://github.com/PedroMarkovicz/tekmeria). Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
+To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMarkovicz/tekmeria/blob/main/CITATION.cff); GitHub's "Cite this repository" button formats it. Releases are archived on Zenodo: [10.5281/zenodo.23353865](https://doi.org/10.5281/zenodo.23353865) always resolves to the latest release, and version 0.1.1 is [10.5281/zenodo.23376855](https://doi.org/10.5281/zenodo.23376855). [Software Heritage](https://www.softwareheritage.org/) archives the full history; release 0.1.0 is [swh:1:rel:9d852cbc58c0adc8919be14723b074d6dd5b7b45](https://archive.softwareheritage.org/swh:1:rel:9d852cbc58c0adc8919be14723b074d6dd5b7b45;origin=https://github.com/PedroMarkovicz/tekmeria). Changes between releases are in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
 
 </div>
 
@@ -569,9 +569,9 @@ To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMar
   author  = {Markovicz, Pedro},
   title   = {tekmeria},
   note    = {Server-issued citation handles and a deterministic audit for biomedical evidence},
-  version = {0.1.0},
+  version = {0.1.1},
   year    = {2026},
-  doi     = {10.5281/zenodo.23353866},
+  doi     = {10.5281/zenodo.23376855},
   url     = {https://github.com/PedroMarkovicz/tekmeria},
   license = {Apache-2.0}
 }
