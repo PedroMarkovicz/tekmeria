@@ -285,3 +285,38 @@ async def test_quote_of_the_issued_text_after_a_revision_is_ok() -> None:
     report = await audit([claim], codec=CODEC, resolver=FakeResolver(), now=lambda: FIXED_NOW)
     citation = report.claims[0].citations[0]
     assert (citation.verdict, citation.checked_against) == ("ok", "issued")
+
+
+class OneRecordResolver:
+    def __init__(self, record: Record) -> None:
+        self.record = record
+
+    async def resolve(self, locators: Sequence[Locator]) -> Mapping[Locator, Resolution]:
+        return {loc: _resolved(loc, self.record) for loc in locators}
+
+
+# The sources set the kind and peer review from the same fact, so they always agree; the rule
+# must still flag a record when either signal alone says it is a preprint.
+@pytest.mark.parametrize(
+    ("kind", "peer_reviewed", "flagged"),
+    [
+        ("journal_article", Signal[bool].known(True, "pubmed"), False),
+        ("journal_article", Signal[bool].known(False, "europepmc"), True),
+        ("journal_article", Signal[bool].unknown("pubmed"), False),
+        ("journal_article", Signal[bool].not_checked(), False),
+        ("preprint", Signal[bool].known(True, "europepmc"), True),
+        ("preprint", Signal[bool].unknown("europepmc"), True),
+    ],
+)
+async def test_either_signal_alone_flags_a_preprint(
+    kind: str, peer_reviewed: Signal[bool], flagged: bool
+) -> None:
+    base = _record("pmid:1")
+    quality = base.quality.model_copy(update={"peer_reviewed": peer_reviewed})
+    record = base.model_copy(update={"kind": kind, "quality": quality})
+    claim = ClaimIn(sentence="s", citations=[CitationIn(handle=CODEC.issue(OK_LOC))])
+    report = await audit(
+        [claim], codec=CODEC, resolver=OneRecordResolver(record), now=lambda: FIXED_NOW
+    )
+    names = [flag.name for flag in report.claims[0].citations[0].flags]
+    assert ("preprint" in names) is flagged
