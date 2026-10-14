@@ -65,7 +65,7 @@ The protocol points the same way: the [2026-07-28 MCP revision](https://modelcon
 
 Others also put trust in the tool rather than the model. An agent runtime can sign a receipt for each tool call and check the claims that cite it ([Basu](https://arxiv.org/abs/2603.10060)); a renderer can mark a number verified only when it matches the record it names ([Solatorio](https://arxiv.org/abs/2509.06902)); and a genome-writing tool layer reachable over MCP requires every quantity to come from a validated tool ([Ali et al.](https://arxiv.org/abs/2608.20412)). Tekmeria applies the idea to citations of biomedical passages: the handle the model writes is itself authenticated, so the server that issued it can check it with its key alone, whichever model or MCP host wrote the answer.
 
-**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md).
+**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md). A technical note describes the design and the evaluation: [10.5281/zenodo.23374728](https://doi.org/10.5281/zenodo.23374728).
 
 ---
 
@@ -574,6 +574,23 @@ To cite tekmeria, use the metadata in [CITATION.cff](https://github.com/PedroMar
   doi     = {10.5281/zenodo.23353866},
   url     = {https://github.com/PedroMarkovicz/tekmeria},
   license = {Apache-2.0}
+}
+```
+
+<div align="justify">
+
+To cite the design or the evaluation, cite the technical note. It is archived on Zenodo as a preprint: [10.5281/zenodo.23374728](https://doi.org/10.5281/zenodo.23374728) always resolves to its latest version, and version 1 is [10.5281/zenodo.23374729](https://doi.org/10.5281/zenodo.23374729).
+
+</div>
+
+```bibtex
+@misc{markovicz_tekmeria_note,
+  author    = {Markovicz, Pedro},
+  title     = {Tekmeria: Server-Issued Citation Handles and a Deterministic Audit for Biomedical {LLM} Answers},
+  year      = {2026},
+  publisher = {Zenodo},
+  note      = {Preprint, version 1},
+  doi       = {10.5281/zenodo.23374729}
 }
 ```
 
