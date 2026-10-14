@@ -65,7 +65,7 @@ The protocol points the same way: the [2026-07-28 MCP revision](https://modelcon
 
 Others also put trust in the tool rather than the model. An agent runtime can sign a receipt for each tool call and check the claims that cite it ([Basu](https://arxiv.org/abs/2603.10060)); a renderer can mark a number verified only when it matches the record it names ([Solatorio](https://arxiv.org/abs/2509.06902)); and a genome-writing tool layer reachable over MCP requires every quantity to come from a validated tool ([Ali et al.](https://arxiv.org/abs/2608.20412)). Tekmeria applies the idea to citations of biomedical passages: the handle the model writes is itself authenticated, so the server that issued it can check it with its key alone, whichever model or MCP host wrote the answer.
 
-**Status.** Research software, version 0.1.0. The citation contract is versioned separately, also at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md). A technical note describes the design and the evaluation: [10.5281/zenodo.23374728](https://doi.org/10.5281/zenodo.23374728).
+**Status.** Research software, version 0.1.1. The citation contract is versioned separately, at 0.1.0; while it is `0.x`, a breaking change raises its minor version. Changes are listed in [CHANGELOG.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CHANGELOG.md). A technical note describes the design and the evaluation: [10.5281/zenodo.23374728](https://doi.org/10.5281/zenodo.23374728).
 
 ---
 
@@ -517,7 +517,7 @@ npm run build            # rewrites src/tekmeria/ui/audit-view.html; commit it
 
 After changing the report models, run `uv run python -m tekmeria.contract.schemas`. To re-record the fixtures from the live APIs, delete `src/tekmeria/demo/fixtures/*.json` and run `uv run tekmeria record-fixtures` (with no email or API keys set). The recorder keeps third-party text to what the demo, the tests and the evaluation use: it records a CC BY open-access article, removes from search results every abstract that is not CC BY or CC0, and keeps PubMed abstracts only for the records the demo, the tests and the evaluation fetch and for search results Europe PMC lists as CC BY or CC0 (see [NOTICE](https://github.com/PedroMarkovicz/tekmeria/blob/main/NOTICE)).
 
-Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that the tag names the package version and that the demo page this README links to is live, runs the tests, builds the package and, once the maintainer approves it in the `pypi` environment, publishes it to PyPI by trusted publishing, so no PyPI token is stored anywhere.
+Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that CI passed on the tagged commit, that the tag names the package version, that `server.json` is valid and that the demo page this README links to is live, runs the tests and builds the package. Once the maintainer approves it in the `pypi` environment, it publishes the package to PyPI by trusted publishing and then lists the new version in the [MCP Registry](https://registry.modelcontextprotocol.io/); both sign in with the workflow's GitHub identity, so no token is stored anywhere.
 
 </div>
 
@@ -550,7 +550,7 @@ Publishing a GitHub release runs `.github/workflows/release.yml`: it checks that
 
 - **A problem or a question:** open an [issue](https://github.com/PedroMarkovicz/tekmeria/issues). For a wrong verdict, include the answer text you audited and the report; a handle verifies only on the installation that issued it, so say whether you used the demo key.
 - **A vulnerability:** report it privately, through the repository's Security tab, as [SECURITY.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/SECURITY.md) describes.
-- **A change:** pull requests are welcome. Run the checks under [Development](#development) first; a change to what the audit decides needs a case in the evaluation.
+- **A change:** pull requests are welcome. [CONTRIBUTING.md](https://github.com/PedroMarkovicz/tekmeria/blob/main/CONTRIBUTING.md) lists the checks to run and what a change needs; a change to what the audit decides needs a case in the evaluation.
 - **A rights holder** who wants a recorded item removed can open an issue, as [NOTICE](https://github.com/PedroMarkovicz/tekmeria/blob/main/NOTICE) says.
 
 ---
@@ -617,3 +617,5 @@ Tekmeria relies on the public APIs of the National Library of Medicine (PubMed, 
 [⬆ Back to top](#tekmeria)
 
 </div>
+
+<!-- mcp-name: io.github.PedroMarkovicz/tekmeria -->

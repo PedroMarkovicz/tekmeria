@@ -64,14 +64,38 @@ def test_ci_runs_the_injected_faults() -> None:
 def test_a_release_is_published_by_trusted_publishing_after_approval() -> None:
     text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
     assert "on:\n  release:\n    types: [published]\n" in text
-    build, publish = text.split("\n  publish:\n")
-    # Only the upload may ask for an identity token, and only from the approved environment.
+    build, rest = text.split("\n  publish:\n")
+    publish, registry = rest.split("\n  registry:\n")
+    # Only the two uploads may ask for an identity token, and the package only from the
+    # approved environment; the registry entry follows the package it lists.
     assert "id-token" not in build
     assert "    permissions:\n      id-token: write\n" in publish
     assert "    environment:\n      name: pypi\n" in publish
     assert "    needs: build\n" in publish
-    # No stored credential: trusted publishing needs none.
+    assert "      id-token: write\n" in registry
+    assert "    needs: publish\n" in registry
+    assert "run: ./mcp-publisher login github-oidc" in registry
+    # No stored credential: trusted publishing and the registry's OIDC login need none.
     assert "password:" not in text and "secrets." not in text
+
+
+def test_a_release_needs_ci_to_have_passed_on_the_tagged_commit() -> None:
+    # The release job runs only some of the checks; CI on the same commit ran them all.
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    query = "actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success"
+    assert query in text
+    assert text.index(query) < text.index("run: uv build")
+    build = text.split("\n  publish:\n")[0]
+    assert "      actions: read\n" in build
+
+
+def test_the_registry_publisher_is_pinned_and_checked_before_the_upload() -> None:
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    assert re.search(r"releases/download/v\d+\.\d+\.\d+/mcp-publisher_linux_amd64\.tar\.gz", text)
+    assert re.search(r"MCP_PUBLISHER_SHA256: [0-9a-f]{64}\n", text)
+    assert text.count("| sha256sum --check") == 2
+    # An invalid entry stops the release before anything is uploaded.
+    assert text.index("./mcp-publisher validate") < text.index("run: uv build")
 
 
 def test_a_release_is_tested_and_must_match_the_package_version() -> None:

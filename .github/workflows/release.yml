@@ -2,7 +2,8 @@ name: release
 
 # A published GitHub release goes to PyPI by trusted publishing: PyPI trusts this workflow's
 # identity token, so no PyPI password or API token is stored anywhere. The upload waits in
-# the pypi environment for the maintainer's approval.
+# the pypi environment for the maintainer's approval. The new version is then listed in the
+# MCP Registry, which trusts the same kind of token.
 
 on:
   release:
@@ -11,17 +12,37 @@ on:
 permissions:
   contents: read
 
+env:
+  # The registry's publisher, by version and checksum (registry_1.8.1_checksums.txt).
+  MCP_PUBLISHER_URL: https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
+  MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: The tagged commit must have passed CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success" --jq .total_count)
+          test "$passed" -gt 0
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - run: uv python install 3.12
       - run: uv sync --locked
       - name: The release tag must name the package version
         run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
+      - name: The registry entry must be valid
+        run: |
+          curl --fail --silent --show-error --location --output mcp-publisher.tar.gz "$MCP_PUBLISHER_URL"
+          echo "$MCP_PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum --check
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher validate
       - name: The demo page the README links to must be live
         run: curl --fail --silent --show-error --location --output /dev/null https://pedromarkovicz.github.io/tekmeria/
       - run: uv run pytest
@@ -46,3 +67,27 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+
+  registry:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Install the registry's publisher
+        run: |
+          curl --fail --silent --show-error --location --output mcp-publisher.tar.gz "$MCP_PUBLISHER_URL"
+          echo "$MCP_PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum --check
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - name: List the release in the MCP Registry
+        # The registry reads the package's description on PyPI, which can lag the upload.
+        run: |
+          for attempt in 1 2 3 4 5; do
+            ./mcp-publisher publish && exit 0
+            sleep 60
+          done
+          exit 1

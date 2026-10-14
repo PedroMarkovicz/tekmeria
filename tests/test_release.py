@@ -1,8 +1,11 @@
 """The release metadata: CITATION.cff and the changelog agree with the package."""
 
+import json
 import re
 import tomllib
 from pathlib import Path
+
+from tekmeria.infra.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
@@ -30,7 +33,9 @@ def test_citation_metadata_matches_the_package() -> None:
     assert _citation("cff-version") == "1.2.0"
     assert _citation("title") == PROJECT["name"]
     assert _citation("version") == PROJECT["version"]
-    assert _citation("license") == PROJECT["license"]
+    # The citation names the code's licence; the package's expression adds the licence of the
+    # recorded articles it ships (NOTICE).
+    assert _citation("license") == PROJECT["license"].split(" AND ")[0]
     assert _citation("repository-code") == PROJECT["urls"]["Repository"]
 
 
@@ -56,7 +61,27 @@ def test_the_changelog_opens_with_the_package_version() -> None:
 
 
 def test_the_sdist_ships_the_release_metadata() -> None:
-    # tests/test_release.py reads both files, so the sdist's tests need them.
+    # tests/test_release.py reads these files, so the sdist's tests need them.
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     shipped = pyproject["tool"]["hatch"]["build"]["targets"]["sdist"]["only-include"]
-    assert {"CITATION.cff", "CHANGELOG.md"} <= set(shipped)
+    assert {"CITATION.cff", "CHANGELOG.md", "server.json"} <= set(shipped)
+
+
+def test_the_registry_entry_matches_the_package() -> None:
+    server = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    assert server["version"] == PROJECT["version"]
+    assert server["repository"]["url"] == PROJECT["urls"]["Repository"]
+    assert len(server["description"]) <= 100  # the registry's limit
+    (package,) = server["packages"]
+    assert (package["registryType"], package["identifier"], package["version"]) == (
+        "pypi",
+        PROJECT["name"],
+        PROJECT["version"],
+    )
+    assert package["transport"] == {"type": "stdio"}
+    # The registry checks ownership by finding the entry's name in the package description.
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert re.findall(r"<!-- mcp-name: (\S+) -->", readme) == [server["name"]]
+    # Every variable the entry offers is one the server reads.
+    aliases = {field.alias for field in Settings.model_fields.values()}
+    assert {var["name"] for var in package["environmentVariables"]} <= aliases

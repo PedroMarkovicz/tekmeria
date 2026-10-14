@@ -6,7 +6,9 @@ import tekmeria
 
 
 def test_version_and_contract_version() -> None:
-    assert tekmeria.__version__ == "0.1.0"
+    root = Path(__file__).resolve().parents[1]
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert tekmeria.__version__ == pyproject["project"]["version"]
     assert tekmeria.CONTRACT_VERSION == "0.1.0"
 
 
@@ -16,7 +18,7 @@ def test_licence_files_ship_with_the_package() -> None:
     assert "Apache License" in licence and "Version 2.0, January 2004" in licence
     assert "Copyright 2026 Pedro Markovicz" in (root / "NOTICE").read_text(encoding="utf-8")
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    assert project["project"]["license"] == "Apache-2.0"
+    assert project["project"]["license"] == "Apache-2.0 AND CC-BY-4.0"
     assert project["project"]["license-files"] == ["LICENSE", "NOTICE"]
     sdist = project["tool"]["hatch"]["build"]["targets"]["sdist"]["only-include"]
     assert {"LICENSE", "NOTICE"} <= set(sdist)

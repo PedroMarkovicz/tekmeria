@@ -1,9 +1,9 @@
 [project]
 name = "tekmeria"
-version = "0.1.0"
+version = "0.1.1"
 description = "Biomedical evidence over MCP, cited by handle: every passage is citable and every citation is auditable."
 readme = "README.md"
-license = "Apache-2.0"
+license = "Apache-2.0 AND CC-BY-4.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 authors = [{ name = "Pedro Markovicz" }]
@@ -66,6 +66,8 @@ only-include = [
   "NOTICE",
   "CITATION.cff",
   "CHANGELOG.md",
+  "CONTRIBUTING.md",
+  "server.json",
   ".gitignore",
   ".python-version",
 ]
